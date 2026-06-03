@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiniela Mundial 2026</title>
+
+  <!--
+    =============================================================
+    PROYECTO: QUINIELA MUNDIAL 2026
+    ARCHIVO: index.html
+    OBJETIVO:
+      Página web de una sola pieza que puedes abrir directamente desde el navegador.
+
+    CÓMO TRABAJA:
+      1. La lectura de tablas públicas se hace con Google Sheets GViz JSONP.
+         Esto evita el problema CORS cuando abres el archivo desde C:/Users/.../index.html.
+      2. La escritura de registros se hace con tu Apps Script.
+         Apps Script se usa para insertar nuevos usuarios y predicciones.
+      3. El usuario demo permite entrar siempre aunque la tabla Users falle.
+      4. Los partidos se leen desde el archivo editable de matches.
+      5. Las predicciones guardadas se bloquean visualmente para el usuario.
+      6. El dashboard calcula puntos con base en predictions + results.
+
+    PUNTOS:
+      - Marcador exacto: 3 puntos.
+      - Ganador correcto o empate correcto: 1 punto.
+      - Incorrecto: 0 puntos.
+    =============================================================
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{
+      --azul:#003b8f;--azul2:#0b62d6;--verde:#00a86b;--oro:#ffd166;--rojo:#ef476f;
+      --tinta:#07111f;--gris:#64748b;--linea:#dbeafe;--bg:#eef6ff;--card:#ffffff;
+      --morado:#6d28d9;--cyan:#06b6d4;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Segoe UI,Arial,sans-serif}
+    body{min-height:100vh;background:radial-gradient(circle at top left,#fff4c2 0,#e8f7ff 30%,#dcefff 55%,#fff 100%);color:#0f172a}.hidden{display:none!important}
+    .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px}.login-card{width:100%;max-width:510px;background:rgba(255,255,255,.97);border-radius:30px;padding:34px;box-shadow:0 24px 70px rgba(6,59,142,.22);border:1px solid rgba(255,255,255,.8);position:relative;overflow:hidden}.login-card:before{content:"";position:absolute;inset:0 0 auto 0;height:10px;background:linear-gradient(90deg,var(--verde),var(--oro),var(--azul2),var(--rojo))}.brand{display:flex;gap:14px;align-items:center;margin-bottom:20px}.ball{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#fff,#dbeafe);display:grid;place-items:center;font-size:32px;box-shadow:inset 0 0 0 3px var(--azul2)}h1{font-size:28px;color:var(--azul)}.sub{color:var(--gris);line-height:1.5;margin-top:4px}.field{margin-bottom:14px}.field label{font-size:13px;font-weight:900;color:#334155;display:block;margin-bottom:7px}.field input{width:100%;border:1px solid #cbd5e1;border-radius:14px;padding:13px 14px;font-size:15px;background:#f8fafc}.field input:focus{outline:3px solid #bfdbfe;border-color:#60a5fa}
+
+    /* CAMBIO: estilo visual para identificar el nuevo campo de teléfono agregado al registro */
+
+    .changed-field label{color:#6d28d9}.changed-field input{border:2px solid #6d28d9;background:#faf5ff;color:#4c1d95}
+
+    /* FASE 1 CONTROL DE ACCESOS: estilos para mensajes de modo demo y pago */
+    .demo-inspiration{margin-top:14px;padding:14px;border-radius:16px;background:linear-gradient(135deg,#eef6ff,#fff7ed);border:1px solid #bfdbfe;color:#003b8f;font-weight:800;line-height:1.45;text-align:center}
+    .payment-box{margin-top:14px;padding:16px;border-radius:16px;background:#f0fdf4;border:1px solid #86efac;color:#14532d;line-height:1.55}
+    .payment-box b{color:#003b8f}
+
+    /* FASE ACCESOS/PARTIDOS: estilos para tutorial, edición de marcadores y validaciones */
+    .helper-text{display:block;margin-top:5px;color:#64748b;font-size:12px;font-weight:700}
+    .match-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:12px;min-height:32px;flex-wrap:wrap}
+    .edit-score-btn{position:static;background:#fff7ed;color:#92400e;border:1px solid #fbbf24;border-radius:999px;padding:7px 12px;font-size:12px;box-shadow:0 6px 18px rgba(146,64,14,.12)}
+    .edit-score-btn:hover{background:#fde68a}
+    .finalized-note{position:static;background:#e5e7eb;color:#475569;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}
+    .editing-note{position:static;font-size:12px;color:#b45309;font-weight:900;background:#fffbeb;border:1px solid #fde68a;border-radius:999px;padding:6px 10px}
+    .lock{position:static!important;font-size:12px;color:#16a34a;font-weight:900;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;padding:6px 10px}
+    .tutorial-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.62);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+    .tutorial-card{background:white;border-radius:28px;max-width:760px;width:100%;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid #dbeafe;max-height:85vh;overflow-y:auto}
+    .tutorial-card h2{color:var(--azul);margin-bottom:10px}
+    .tutorial-card ol{padding-left:22px;line-height:1.7;color:#334155;font-weight:700}
+    .tutorial-card li{margin-bottom:8px}
+    .tutorial-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap;position:sticky;bottom:-26px;background:white;padding-top:12px}
+
+    button{border:0;border-radius:14px;
+padding:12px 16px;
+font-weight:900;
+cursor:pointer;transition:.2s}.btn-main{background:linear-gradient(135deg,var(--azul2),var(--azul));
+color:white;width:100%;
+box-shadow:0 10px 24px rgba(11,94,215,.25)}.btn-main:hover,.btn:hover{transform:translateY(-2px)}.btn-link{background:transparent;
+color:var(--azul2);
+width:100%;
+margin-top:10px}.btn{background:var(--azul2);
+color:white}.btn-green{background:var(--verde);
+color:white}.btn-red{background:var(--rojo);color:white}.btn-gold{background:var(--oro);color:#3b2b00}.btn-light{background:#e2e8f0;
+color:#0f172a}.btn-purple{background:var(--morado);
+color:white}.msg{margin-top:12px;padding:12px;
+border-radius:12px;font-size:14px;
+line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fee2e2;color:#7f1d1d}.msg.info{background:#dbeafe;color:#1e3a8a}.msg.warn{background:#fff7ed;color:#7c2d12}
+    .app{min-height:100vh}header{background:linear-gradient(100deg,#052e73,#0756c5 45%,#00a86b);color:white;padding:20px 26px;border-bottom:5px solid var(--oro);box-shadow:0 12px 35px rgba(7,17,31,.18)}.top{max-width:1500px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.top h2{font-size:26px}.user-pill{background:rgba(255,255,255,.16);padding:9px 13px;border-radius:999px;font-weight:800;display:inline-block;margin-right:8px}
+    main{max-width:1500px;margin:auto;padding:22px}.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.tab{background:white;color:#0f172a;border:1px solid #e2e8f0;box-shadow:0 8px 20px rgba(15,23,42,.07)}.tab.active{background:var(--azul2);color:white}.hero{background:linear-gradient(135deg,#ffffff,#f8fbff);border:1px solid #dbeafe;border-radius:28px;padding:22px;margin-bottom:18px;box-shadow:0 14px 38px rgba(6,59,142,.09);display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}.hero h1{font-size:30px}.progress-wrap{min-width:280px;flex:1;max-width:560px}.progress-label{display:flex;justify-content:space-between;font-weight:900;margin-bottom:8px}.progress{height:18px;border-radius:999px;background:#dbeafe;overflow:hidden}.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--verde),var(--oro),var(--rojo));transition:.4s}.summary-cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:14px;margin-bottom:18px}.metric{background:white;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,23,42,.07);border:1px solid #edf2f7}.metric small{color:var(--gris);font-weight:900}.metric b{display:block;font-size:28px;margin-top:4px;color:var(--azul)}
+    .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.filters input,.filters select{border:1px solid #cbd5e1;background:white;border-radius:14px;padding:11px 12px;font-weight:700;color:#0f172a;min-width:180px}
+    .matches{display:grid;grid-template-columns:repeat(auto-fit,minmax(355px,1fr));gap:16px}.match{background:white;border-radius:24px;padding:18px;border:1px solid #e5eef9;box-shadow:0 12px 30px rgba(15,23,42,.08);position:relative;overflow:visible}.match.saved{background:#f8fafc}.match-head{display:flex;justify-content:space-between;color:#64748b;font-size:12px;font-weight:900;margin-bottom:12px}.round{color:var(--azul2)}.stadium{margin-top:8px;color:#64748b;font-size:12px;text-align:center}.versus{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.team{background:linear-gradient(180deg,#f8fafc,#eef6ff);border:1px solid #dbeafe;border-radius:18px;min-height:72px;display:grid;place-items:center;text-align:center;font-weight:900;padding:10px;position:relative}.team:hover .tip{display:block}.tip{display:none;position:absolute;z-index:20;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:250px;background:#07111f;color:white;border-radius:14px;padding:12px;font-size:12px;font-weight:600;text-align:left;box-shadow:0 16px 45px rgba(0,0,0,.3)}.score{display:flex;align-items:center;gap:5px}.score input{width:54px;text-align:center;font-size:20px;font-weight:900;border:2px solid #bfdbfe;border-radius:14px;padding:10px}.score input:disabled{background:#e2e8f0;color:#64748b;border-color:#cbd5e1}.lock{position:absolute;right:16px;bottom:14px;font-size:12px;color:#16a34a;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}.notice{background:#fff7ed;color:#7c2d12;border:1px solid #fed7aa;border-radius:18px;padding:14px;line-height:1.45;margin-top:14px}.empty{background:white;border:1px dashed #93c5fd;border-radius:20px;padding:24px;text-align:center;color:#1e3a8a;font-weight:800}
+    .dashboard{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.panel{background:white;border:1px solid #e5eef9;border-radius:24px;padding:20px;box-shadow:0 12px 30px rgba(15,23,42,.08)}.panel h3{color:var(--azul);margin-bottom:12px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px;border-bottom:1px solid #edf2f7;text-align:left}th{background:#f1f5f9;color:#1e3a8a;font-size:13px}.rank1{font-weight:900;color:#b45309}.status{padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900}.active-s{background:#dcfce7;color:#14532d}.inactive-s{background:#fee2e2;color:#7f1d1d}
+
+    /* FASE PREMIOS/INSTRUCCIONES: reseña informativa, bolsa acumulada y descarga de quiniela */
+    .info-access-row{display:flex;justify-content:center;margin:12px 0 4px}
+    .info-pill{background:#eef6ff;color:#003b8f;border:1px solid #bfdbfe;border-radius:999px;padding:9px 13px;font-size:13px;font-weight:900;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+    .info-pill:hover{background:#dbeafe;transform:translateY(-1px)}
+    .info-modal-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.62);z-index:1100;display:flex;align-items:center;justify-content:center;padding:20px}
+    .info-modal-card{background:white;border-radius:28px;max-width:760px;width:100%;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid #dbeafe}
+    .info-modal-card h2{color:var(--azul);margin-bottom:10px}.info-modal-card p,.info-modal-card li{color:#334155;line-height:1.6;font-weight:700}.info-modal-card ul{padding-left:22px;margin-top:10px}.info-modal-actions{display:flex;justify-content:flex-end;margin-top:18px}
+    .money-cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:14px;margin-bottom:18px}.money-card{background:linear-gradient(135deg,#ffffff,#f0fdf4);border:1px solid #bbf7d0;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,23,42,.07)}.money-card small{color:#14532d;font-weight:900}.money-card b{display:block;font-size:24px;margin-top:4px;color:#003b8f}.money-card .tiny{font-size:12px;color:#64748b;margin-top:4px;font-weight:800}
+    @media(max-width:900px){.money-cards{grid-template-columns:repeat(2,1fr)}}
+
+    @media(max-width:900px){.summary-cards{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.versus{grid-template-columns:1fr}.score{justify-content:center}.hero h1{font-size:24px}.matches{grid-template-columns:1fr}}
+  </style>
+
+</head>
+<body>
+<section id="loginScreen" class="center">
+  <div class="login-card">
+    <div class="brand"><div class="ball">⚽</div><div><h1>Quiniela Mundial 2026</h1><p class="sub">Acceso, registro y predicciones conectadas a Google Sheets y Apps Script.</p></div></div>
+    <div id="loginBox">
+      <div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username" placeholder="Ej. domie"></div>
+      <div class="field"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Ej. Domie2026!"></div>
+      <button type="button" class="btn-main" id="loginBtn">Entrar al Mundial</button>
+      <!-- FASE 1 CONTROL DE ACCESOS:
+           El acceso demo queda inactivo por configuración en JavaScript.
+           Para habilitarlo posteriormente cambia DEMO_LOGIN_ENABLED a true. -->
+      <button type="button" class="btn-link hidden" id="demoBtn">Entrar con experiencia demo</button>
+      <button type="button" class="btn-link" id="showRegBtn">Crear usuario nuevo</button>
+
+      <div id="demoInfo" class="demo-inspiration">
+        Vive la emoción del Mundial: cada pronóstico cuenta, cada marcador puede cambiar la tabla y cada participante compite por llegar a la cima.
+      </div>
+      <div class="info-access-row">
+        <button type="button" class="info-pill" id="infoQuinielaBtn">ℹ️ ¿Cómo funciona la quiniela?</button>
+      </div>
+
+    </div>
+
+    <div id="registerBox" class="hidden">
+      <div class="field changed-field"><label>Nombre completo</label><input id="regName" minlength="6" placeholder="Mínimo 6 caracteres"><span class="helper-text">Mínimo 6 caracteres.</span></div>
+      <div class="field changed-field"><label>Correo electrónico</label><input id="regEmail" type="email" placeholder="correo@ejemplo.com"><span class="helper-text">Correo alfanumérico válido.</span></div>
+      <!-- CAMBIO: nuevo campo solicitado para registrar el número de teléfono en la tabla Users -->
+
+      <div class="field changed-field"><label>Teléfono <span style="color:#6d28d9">(+52)</span></label><input id="regPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="Ej. 5501020304" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><span class="helper-text">Solo números, mínimo 10 dígitos.</span></div>
+      <div class="field changed-field"><label>Usuario</label><input id="regUser" minlength="6" placeholder="Mínimo 6 caracteres"><span class="helper-text">Debe tener mínimo 6 caracteres y no estar repetido.</span></div>
+      <div class="field changed-field"><label>Contraseña</label><input id="regPass" type="password" minlength="6" placeholder="Mínimo 6 caracteres"><span class="helper-text">Mínimo 6 caracteres.</span></div>
+      <button type="button" class="btn-main" id="regBtn">Solicitar registro</button>
+      <button type="button" class="btn-link" id="backLoginBtn">Volver al acceso</button>
+    </div>
+    <div id="authMsg"></div>
+  </div>
+</section>
+<section id="app" class="app hidden">
+  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
+  <main>
+    <div class="tabs"><button type="button" id="tabMatches" class="tab active">⚽ Partidos</button><button type="button" id="tabDash" class="tab">📊 Dashboard</button><button type="button" id="tabUsers" class="tab hidden">👥 Usuarios</button></div>
+    <section id="matchesView">
+      <div class="hero"><div><h1>Llena tu quiniela</h1><p class="sub">Captura tus marcadores. Al guardar, los partidos quedarán bloqueados.</p></div><div class="progress-wrap"><div class="progress-label"><span>Progreso de llenado</span><span id="progressText">0%</span></div><div class="progress"><div id="progressBar" class="progress-bar"></div></div></div></div>
+      <div class="summary-cards"><div class="metric"><small>Partidos</small><b id="mTotal">0</b></div><div class="metric"><small>Llenados</small><b id="mFilled">0</b></div><div class="metric"><small>Pendientes</small><b id="mPending">0</b></div><div class="metric"><small>Mis puntos</small><b id="mPoints">0</b></div></div>
+      <div class="filters"><input id="searchBox" placeholder="Buscar selección o estadio"><select id="roundFilter"><option value="">Todas las rondas / grupos</option></select><button type="button" class="btn-light" id="clearFiltersBtn">Limpiar filtros</button><button type="button" class="btn-purple" id="tutorialBtn">🎓 Ver tutorial</button><button type="button" class="btn-light" id="reloadBtn">🔄 Actualizar datos</button></div>
+      <div id="matchesContainer" class="matches"></div>
+      <div class="actions"><button type="button" class="btn-green" id="saveBtn">💾 Guardar quiniela</button><button type="button" class="btn-gold" id="dashBtn">📊 Ver dashboard</button><button type="button" class="btn-light" id="downloadBtn">⬇️ Descargar mi quiniela</button></div>
+      <div id="dataNotice" class="notice"><b>Conexión:</b> consultando datos desde Google Sheets.</div>
+    </section>
+    <section id="dashboardView" class="hidden">
+      <div class="hero"><div><h1>Ranking en vivo</h1><p class="sub">3 puntos por marcador exacto y 1 punto por ganador o empate correcto.</p></div><button type="button" class="btn" id="backMatchesBtn">⬅ Regresar a partidos</button></div>
+      <div class="money-cards">
+        <div class="money-card"><small>Acumulado en pagos</small><b id="poolTotal">$0</b><div class="tiny">Suma de la columna Pago.</div></div>
+        <div class="money-card"><small>Desarrollo plataforma 10%</small><b id="poolDev">$0</b><div class="tiny">Retención para desarrollo.</div></div>
+        <div class="money-card"><small>Bolsa a repartir 90%</small><b id="poolPrize">$0</b><div class="tiny">Disponible para ganadores.</div></div>
+        <div class="money-card"><small>Distribución premios</small><b id="poolSplit">50% · 30% · 10%</b><div class="tiny">1°, 2° y 3° lugar.</div></div>
+      </div>
+      <div class="dashboard"><div class="panel"><h3>🏆 Ranking general</h3><canvas id="rankingChart"></canvas></div><div class="panel"><h3>🎯 Tipos de acierto</h3><canvas id="accuracyChart"></canvas><div id="funFacts" class="notice"></div></div></div>
+      <div class="panel" style="margin-top:18px"><h3>Tabla de posiciones</h3><div class="table-wrap"><table><thead><tr><th>#</th><th>Usuario</th><th>Puntos</th><th>Exactos</th><th>Ganador/Empate</th></tr></thead><tbody id="rankingBody"></tbody></table></div></div>
+    </section>
+    <section id="usersView" class="hidden"><div class="hero"><div><h1>Usuarios</h1><p class="sub">Los nuevos registros se crean como Usuario e Inactivo.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono <span style="color:#ef476f">nuevo</span></th><th>Correo<span style="color:#ef476f"></th><th>Usuario<span style="color:#ef476f"></th><th>Rol</th><th>Estado</th></tr></thead><tbody id="usersBody"></tbody></table></div></div></section>
+  </main>
+</section>
+
+
+<div id="tutorialModal" class="tutorial-backdrop hidden">
+  <div class="tutorial-card">
+    <h2>🎓 Tutorial rápido</h2>
+    <p class="sub">Guía breve para usar la quiniela.</p>
+    <ol>
+      <li><b>Captura marcadores:</b> escribe los goles del equipo local y visitante.</li>
+      <li><b>Guarda avance:</b> los partidos guardados se bloquean; puedes editarlos con ✏️ antes de cerrar al 100%.</li>
+      <li><b>Filtra:</b> busca por selección, ciudad, estadio o grupo.</li>
+      <li><b>Puntuación:</b> marcador exacto = 3 puntos; ganador o empate correcto = 1 punto; sin acierto = 0.</li>
+      <li><b>Premios:</b> la inscripción es de $200; 10% va al desarrollo y 90% se reparte 50%/30%/10% para 1°, 2° y 3° lugar.</li>
+      <li><b>Descarga:</b> puedes descargar únicamente tus marcadores guardados.</li>
+    </ol>
+    <div class="tutorial-actions">
+      <button type="button" class="btn-light" id="closeTutorialBtn">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div id="infoQuinielaModal" class="info-modal-backdrop hidden">
+  <div class="info-modal-card">
+    <h2>ℹ️ ¿De qué va la quiniela?</h2>
+    <p>La quiniela consiste en pronosticar los marcadores de los partidos del Mundial 2026. En esta primera fase solo se contemplan los partidos de fase de ronda/grupos cargados en la plataforma.</p>
+    <ul>
+      <li><b>Marcador exacto:</b> 3 puntos.</li>
+      <li><b>Ganador correcto o empate correcto:</b> 1 punto.</li>
+      <li><b>Sin acierto:</b> 0 puntos.</li>
+      <li><b>Todos los partidos tienen el mismo valor.</b></li>
+      <li><b>Costo de inscripción:</b> $200 pesos.</li>
+      <li><b>Distribución:</b> 10% se destina al desarrollo de la plataforma y el 90% restante se divide entre los primeros tres lugares: 50% para 1°, 30% para 2° y 10% para 3°.</li>
+    </ul>
+    <div class="info-modal-actions"><button type="button" class="btn" id="closeInfoQuinielaBtn">Entendido</button></div>
+  </div>
+</div>
+
+<script>
+/*
+  =============================================================
+  BLOQUE 1. CONFIGURACIÓN PRINCIPAL
+  =============================================================
+  Aquí se colocan las rutas reales del proyecto.
+
+  API_URL:
+    Es tu Apps Script publicado como aplicación web.
+    Se usa para insertar registros en Google Sheets.
+
+  SHEET_CONFIG:
+    Son los IDs editables de cada Google Sheet.
+    Se usan para leer datos públicos con Google Visualization API.
+    Esta lectura se hace con JSONP para que funcione incluso abriendo
+    el index.html desde C:/Users/... sin servidor local.
+*/
+const API_URL = 'https://script.google.com/macros/s/AKfycbysclAvLZz3_ZrXKbe-ZHuliWrnlR06SgfqcYkEgQLFdcUCr8r4wh6f3FDRKhZTQIZGtw/exec';
+
+/*
+  NOTA DE SEGURIDAD:
+  Un archivo HTML abierto localmente no puede bloquearse realmente con contraseña,
+  porque el usuario siempre puede abrirlo como texto. Esta constante queda como
+  referencia para una futura protección real en hosting/backend.
+*/
+const CODIGO_PROTECCION_REFERENCIA = 'PACR930124HMCTRB01';
+
+const SHEET_CONFIG = {
+  matches: {
+    id: '1P7RlsnNrQCaI6SOHsI9_DojXrCtfAeSN8ChpgPC_8LQ',
+    sheet: 'matches'
+  },
+  Users: {
+    id: '15mNdsCNGs6MdLninjqkpt2V7VJ5yAVuPz8oK8H3Fgp0',
+    sheet: 'Users'
+  },
+  predictions: {
+    id: '1KGccDvWlCOd5UPKVQn2ttDw8NuHTq9kRvOKoL5ztvzU',
+    sheet: 'predictions'
+  },
+  results: {
+    id: '1bsUA11jS143EqFuy6f__9jqQiX011kOpGoUbzauspks',
+    sheet: 'results'
+  }
+};
+
+/*
+  También conservamos los IDs publicados 2PACX como respaldo.
+  Si algún navegador bloquea la lectura directa del Apps Script,
+  se intenta leer la tabla pública publicada mediante GViz JSONP.
+*/
+const PUBLISHED_CONFIG = {
+  matches: {
+    id: '2PACX-1vTrZa4Cx4k0QNYINQhII-yFXuiXbLVEzpkV81u80_frXKAkw9zVp9L47faLO3MTh2IPNsX9FcgCGyG3',
+    sheet: 'matches'
+  },
+  Users: {
+    id: '2PACX-1vTh40uHhUTbKiXuKr10aaLW4QavrWVl4meQ4y3xBrKdzGYOZ3f2u5kAOXLp1FWRczCaKhG46BGNAjGz',
+    sheet: 'Users'
+  },
+  predictions: {
+    id: '2PACX-1vSYalui_JVdYFNcxh_g5rKcHadm1wYfLHa4fB5J2Xl8vVpcSrvFWZ4h8gJ3BaAjxoTVj7rbRsngG_Lg',
+    sheet: 'predictions'
+  },
+  results: {
+    id: '2PACX-1vTr6F0hwzvKjNOpCRwB5Mbpy7In_vC7QWZwu4z06U_RY9oiONFmy-lJ7Z_56fcXcLrM-tdyV2aDLs3s',
+    sheet: 'results'
+  }
+};
+
+
+/*
+  Usuario demo local.
+  Sirve para entrar sin depender de la tabla Users.
+  Esto ayuda a probar navegación, partidos y dashboard mientras ajustas datos reales.
+*/
+const DEMO_USER = {
+  ID_Usuario:'DEMO',
+  Nombre_Completo:'Domie Testing',
+  Correo_Electronico:'domie@test.com',
+  Usuario:'domie',
+  Contrasena_Temporal:'Domie2026!',
+  Rol_Acceso:'Usuario',
+  Perfil_del_Usuario:'user',
+  Fecha_Alta:'2026-06-02',
+  Ultimo_Acceso:'',
+  Estado:'Activo',
+  Estatus:'activo',
+  Observaciones:'Usuario demo local sin conexión a tablas privadas'
+};
+
+/*
+  FASE 1 CONTROL DE ACCESOS - MODO DEMO
+  -------------------------------------------------------------
+  El usuario demo queda INACTIVO por defecto.
+  Para habilitarlo temporalmente cambia esta constante a true.
+  Usuario demo interno: domie
+  Contraseña demo interna: Domie2026!
+
+  Cuando el demo esté habilitado:
+    - NO lee Users reales.
+    - NO lee predictions reales.
+    - NO lee results reales.
+    - NO guarda predicciones en la tabla predictions.
+    - Usa usuarios/resultados simulados en memoria.
+    - Al cerrar sesión se limpian sus datos temporales.
+*/
+const DEMO_LOGIN_ENABLED = true;
+
+const DEMO_SCOREBOARD_USERS = [
+  {ID_Usuario:'D01',Usuario:'domie_azteca',Nombre_Completo:'Domie Azteca',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D02',Usuario:'domie_cancha',Nombre_Completo:'Domie Cancha',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D03',Usuario:'domie_gol',Nombre_Completo:'Domie Gol',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D04',Usuario:'domie_copa',Nombre_Completo:'Domie Copa',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D05',Usuario:'domie_var',Nombre_Completo:'Domie VAR',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D06',Usuario:'domie_estadio',Nombre_Completo:'Domie Estadio',Estatus:'activo',Perfil_del_Usuario:'user'},
+  {ID_Usuario:'D07',Usuario:'domie_estrella',Nombre_Completo:'Domie Estrella',Estatus:'activo',Perfil_del_Usuario:'user'}
+];
+
+/*
+  Estado global de la página.
+  Aquí guardamos los datos leídos y el usuario conectado.
+*/
+const state = {
+  currentUser:null,
+  isDemo:false,
+  users:[DEMO_USER],
+  matches:[],
+  predictions:[],
+  results:[],
+  ranking:[],
+  demoPredictions:[],
+  readStatus:{ matches:false, Users:false, predictions:false, results:false }
+};
+
+const charts = { ranking:null, accuracy:null };
+
+/*
+  =============================================================
+  BLOQUE 2. FUNCIONES BÁSICAS DE APOYO
+  =============================================================
+*/
+function el(id){ return document.getElementById(id); }
+
+function normalizeKey(k){
+  return String(k||'')
+    .trim()
+    .replaceAll(' ','_')
+    .replace(/[áàä]/gi,'a')
+    .replace(/[éèë]/gi,'e')
+    .replace(/[íìï]/gi,'i')
+    .replace(/[óòö]/gi,'o')
+    .replace(/[úùü]/gi,'u')
+    .replace(/[ñ]/gi,'n')
+    .replace(/[^a-zA-Z0-9_]/g,'');
+}
+
+function normalizeRows(rows){
+  return (rows||[]).map(r=>{
+    const o={};
+    Object.keys(r||{}).forEach(k=>{ o[normalizeKey(k)] = r[k]; });
+    return o;
+  });
+}
+
+function pick(o, keys, fallback=''){
+  o=o||{};
+  for(const k of keys){
+    const nk=normalizeKey(k);
+    if(o[nk]!==undefined && o[nk]!==null && String(o[nk]).trim()!=='') return o[nk];
+  }
+  return fallback;
+}
+
+function setMsg(text,type='info'){
+  el('authMsg').innerHTML = `<div class="msg ${type}">${text}</div>`;
+}
+
+function toggleAuth(mode){
+  el('loginBox').classList.toggle('hidden',mode==='register');
+  el('registerBox').classList.toggle('hidden',mode!=='register');
+  el('authMsg').innerHTML='';
+}
+
+function isDemoUser(user){
+  return String(pick(user,['Usuario'])).toLowerCase()==='domie';
+}
+
+function getUserStatus(u){
+  return String(pick(u,['Estatus','Estado','Estatus Perfil del Usuario','Estatus_Perfil_del_Usuario'],'')).trim().toLowerCase();
+}
+
+function getUserProfile(u){
+  return String(pick(u,['Perfil del Usuario','Perfil_del_Usuario','Rol_Acceso','Rol de Acceso','Rol'],'')).trim().toLowerCase();
+}
+
+function getUserPayment(u){
+  return Number(String(pick(u,['Pago'],'0')).replace(/[^0-9.]/g,''));
+}
+
+function getUserPaymentStatus(u){
+  return String(pick(u,['Estatus Pago','Estatus_Pago'],'')).trim().toLowerCase();
+}
+
+function formatDateDisplay(value){
+  const raw = String(value || '').trim();
+  if(!raw) return '';
+  const matchIso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(matchIso) return `${matchIso[3]}-${matchIso[2]}-${matchIso[1]}`;
+  const matchSlash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(matchSlash) return `${String(matchSlash[1]).padStart(2,'0')}-${String(matchSlash[2]).padStart(2,'0')}-${matchSlash[3]}`;
+  const d = new Date(raw);
+  if(!Number.isNaN(d.getTime())){
+    return `${String(d.getUTCDate()).padStart(2,'0')}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${d.getUTCFullYear()}`;
+  }
+  return raw;
+}
+
+function formatHourDisplay(value){
+  if(value instanceof Date && !Number.isNaN(value.getTime())){
+    return `${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
+  }
+
+  const raw = String(value || '').trim();
+  if(!raw) return '';
+
+  // Si Google Sheets entrega la hora como texto visible, por ejemplo 13:00 o 13:00:00.
+  const plainTime = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if(plainTime) return `${String(plainTime[1]).padStart(2,'0')}:${plainTime[2]}`;
+
+  // Si GViz entrega una fecha serializada, se usa el objeto Date.
+  const d = new Date(raw);
+  if(!Number.isNaN(d.getTime())){
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  // Último recurso: tomar el último HH:MM de la cadena, no el primero.
+  const matches = [...raw.matchAll(/(\d{1,2}):(\d{2})/g)];
+  if(matches.length){
+    const last = matches[matches.length - 1];
+    return `${String(last[1]).padStart(2,'0')}:${last[2]}`;
+  }
+
+  return raw;
+}
+
+function validateRegistration(nombre, correo, telefono, usuario, password, users){
+  if(usuario.length < 6) return 'El usuario debe tener mínimo 6 caracteres.';
+  if(password.length < 6) return 'La contraseña debe tener mínimo 6 caracteres.';
+  if(nombre.length < 6) return 'El nombre completo debe tener mínimo 6 caracteres.';
+  if(!/^\d{10,}$/.test(telefono)) return 'El teléfono debe contener solo números y mínimo 10 dígitos.';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return 'Ingresa un correo electrónico válido.';
+  const exists = (users || []).some(u => String(pick(u,['Usuario'])).toLowerCase() === usuario.toLowerCase());
+  if(exists) return 'Ese usuario ya existe. Cambia tu usuario e intenta nuevamente.';
+  return '';
+}
+
+
+function formatCurrencyMXN(value){
+  const n = Number(value || 0);
+  return n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+}
+
+function getPaymentSummary(){
+  const total = (state.users || []).reduce((sum,u)=>sum + getUserPayment(u),0);
+  const dev = total * 0.10;
+  const prize = total * 0.90;
+  return {total, dev, prize, first: prize*0.50, second: prize*0.30, third: prize*0.10};
+}
+
+function updatePaymentDashboard(){
+  const summary = getPaymentSummary();
+  if(el('poolTotal')) el('poolTotal').textContent = formatCurrencyMXN(summary.total);
+  if(el('poolDev')) el('poolDev').textContent = formatCurrencyMXN(summary.dev);
+  if(el('poolPrize')) el('poolPrize').textContent = formatCurrencyMXN(summary.prize);
+  if(el('poolSplit')) el('poolSplit').textContent = `${formatCurrencyMXN(summary.first)} · ${formatCurrencyMXN(summary.second)} · ${formatCurrencyMXN(summary.third)}`;
+}
+
+function openInfoQuiniela(){ el('infoQuinielaModal').classList.remove('hidden'); }
+function closeInfoQuiniela(){ el('infoQuinielaModal').classList.add('hidden'); }
+
+function downloadMyPredictions(){
+  const preds = currentUserPredictions();
+  if(!preds.length){
+    alert('Aún no tienes marcadores guardados para descargar.');
+    return;
+  }
+
+  const rows = preds.map(p=>{
+    const mid = String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']));
+    const match = state.matches.find(m=>String(matchId(m))===mid) || {};
+    return {
+      'Partido_ID': mid,
+      'Grupo': getRound(match),
+      'Fecha': formatDateDisplay(getDate(match)),
+      'Hora': formatHourDisplay(getHour(match)),
+      'Equipo_Local': getLocalTeam(match),
+      'Marcador_Local': pick(p,['Marcador_Local','Marcador Local','Participante_Local','Local'],''),
+      'Marcador_Visitante': pick(p,['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],''),
+      'Equipo_Visitante': getVisitTeam(match),
+      'Estadio': getStadium(match),
+      'Ciudad': getCity(match)
+    };
+  });
+
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(',')].concat(rows.map(row=>headers.map(h=>`"${String(row[h] ?? '').replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const user = String(pick(state.currentUser,['Usuario'],'usuario')).replace(/[^a-zA-Z0-9_-]/g,'_');
+  a.href=url;
+  a.download=`quiniela_${user}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function currentUserPredictions(){
+  return state.predictions.filter(p=>{
+    const uid=userId();
+    const uname=String(pick(state.currentUser,['Usuario']));
+    return String(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===uid || String(pick(p,['Usuario','Participante']))===uname;
+  });
+}
+
+function isQuinielaClosed(){
+  const total = state.matches.length || 0;
+  if(!total) return false;
+  const ids = new Set(currentUserPredictions().map(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))));
+  return ids.size >= total;
+}
+
+function enableScoreEdit(matchIdValue){
+  if(isQuinielaClosed()){
+    alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+    return;
+  }
+  const l = el(`l-${matchIdValue}`);
+  const v = el(`v-${matchIdValue}`);
+  if(l && v){
+    l.disabled=false;
+    v.disabled=false;
+    l.dataset.editing='true';
+    v.dataset.editing='true';
+    const note = el(`edit-note-${matchIdValue}`);
+    if(note) note.classList.remove('hidden');
+    l.focus();
+  }
+}
+
+function openTutorial(){ el('tutorialModal').classList.remove('hidden'); }
+function closeTutorial(){ el('tutorialModal').classList.add('hidden'); }
+
+/*
+  =============================================================
+  BLOQUE 3. LECTURA DE GOOGLE SHEETS SIN CORS
+  =============================================================
+  Problema anterior:
+    fetch() desde un archivo local file:// puede fallar por CORS.
+
+  Solución aplicada:
+    Usamos Google Visualization API con JSONP.
+    JSONP carga los datos como si fueran un script, por eso funciona
+    aunque abras el HTML directo desde tu computadora.
+
+  Flujo:
+    1. Se arma la URL pública del Google Sheet.
+    2. Se crea una función temporal callback.
+    3. Google responde ejecutando esa función con los datos.
+    4. Convertimos la tabla de Google en arreglo JSON.
+*/
+async function loadSheetJSONP(key){
+  /*
+    ADECUACIÓN: para la tabla matches se intenta leer primero desde la tabla pública
+    porque conserva mejor el formato visible de Hora (por ejemplo 13:00), evitando
+    que Apps Script convierta horas a fechas tipo 1899-12-30T...
+  */
+  if(key === 'matches'){
+    const fromEditableFirst = await loadFromEditableSheet(key);
+    if(fromEditableFirst.length){
+      console.log('Datos cargados desde Google Sheets editable/GViz:', key, fromEditableFirst.length);
+      return fromEditableFirst;
+    }
+    const fromPublicFirst = await loadFromPublishedSheet(key);
+    if(fromPublicFirst.length){
+      console.log('Datos cargados desde Google Sheets público:', key, fromPublicFirst.length);
+      return fromPublicFirst;
+    }
+  }
+
+  /*
+    PASO 1: Intentamos leer desde Apps Script.
+    Tu API ya devuelve respuestas tipo:
+      {
+        status:"ok",
+        data:[...]
+      }
+
+    Por eso aquí buscamos primero json.data.
+    Si en algún momento la API devuelve un arreglo directo, también lo aceptamos.
+  */
+  const fromApi = await loadFromAppsScript(key);
+
+  if(fromApi.length){
+    console.log('Datos cargados desde Apps Script:', key, fromApi.length);
+    return fromApi;
+  }
+
+  /*
+    PASO 2: Si Apps Script no responde o el navegador bloquea la lectura,
+    intentamos leer la tabla pública publicada por Google Sheets con JSONP.
+    Este respaldo es útil cuando abres index.html directo desde tu computadora.
+  */
+  const fromPublic = await loadFromPublishedSheet(key);
+
+  if(fromPublic.length){
+    console.log('Datos cargados desde Google Sheets público:', key, fromPublic.length);
+    return fromPublic;
+  }
+
+  /*
+    PASO 3: Si ambos métodos fallan, regresamos arreglo vacío.
+    Importante: ya NO regresamos partidos demo para que puedas detectar
+    inmediatamente cuando la conexión real no está funcionando.
+  */
+  console.warn('No se pudieron cargar datos reales para:', key);
+  return [];
+}
+
+async function loadFromAppsScript(key){
+  try{
+    const url = `${API_URL}?action=list&sheet=${encodeURIComponent(key)}&t=${Date.now()}`;
+    const response = await fetch(url, { method:'GET', cache:'no-store' });
+    const json = await response.json();
+
+    console.log('Respuesta API', key, json);
+
+    if(Array.isArray(json)){
+      return normalizeRows(json);
+    }
+
+    if(json && Array.isArray(json.data)){
+      return normalizeRows(json.data);
+    }
+
+    if(json && Array.isArray(json.rows)){
+      return normalizeRows(json.rows);
+    }
+
+    return [];
+  }catch(error){
+    console.warn('No se pudo leer desde Apps Script:', key, error);
+    return [];
+  }
+}
+
+function loadFromEditableSheet(key){
+  return new Promise((resolve)=>{
+    const cfg = SHEET_CONFIG[key];
+
+    if(!cfg){
+      console.warn('No existe configuración editable para:', key);
+      resolve([]);
+      return;
+    }
+
+    const callbackName = 'jsonp_editable_' + key.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now();
+    const script = document.createElement('script');
+
+    const timeout = setTimeout(()=>{
+      cleanup();
+      console.warn('Tiempo agotado leyendo Google Sheets editable:', key);
+      resolve([]);
+    }, 15000);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+      if(script && script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function(response){
+      try{
+        const rows = gvizResponseToRows(response);
+        cleanup();
+        resolve(normalizeRows(rows));
+      }catch(error){
+        console.error('Error convirtiendo GViz editable:', key, error);
+        cleanup();
+        resolve([]);
+      }
+    };
+
+    script.onerror = function(){
+      cleanup();
+      console.warn('No se pudo cargar GViz editable:', key);
+      resolve([]);
+    };
+
+    const sheetParam = cfg.sheet ? `&sheet=${encodeURIComponent(cfg.sheet)}` : '';
+    script.src = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq?tqx=out:json;responseHandler:${callbackName}${sheetParam}&t=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+
+function loadFromPublishedSheet(key){
+  return new Promise((resolve)=>{
+    const cfg = PUBLISHED_CONFIG[key];
+
+    if(!cfg){
+      console.warn('No existe configuración pública para:', key);
+      resolve([]);
+      return;
+    }
+
+    const callbackName = 'jsonp_' + key.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now();
+    const script = document.createElement('script');
+
+    const timeout = setTimeout(()=>{
+      cleanup();
+      console.warn('Tiempo agotado leyendo Google Sheets público:', key);
+      resolve([]);
+    }, 15000);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+      if(script && script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function(response){
+      try{
+        const rows = gvizResponseToRows(response);
+        cleanup();
+        resolve(normalizeRows(rows));
+      }catch(error){
+        console.error('Error convirtiendo GViz:', key, error);
+        cleanup();
+        resolve([]);
+      }
+    };
+
+    script.onerror = function(){
+      cleanup();
+      console.warn('No se pudo cargar GViz público:', key);
+      resolve([]);
+    };
+
+    /*
+      URL publicada:
+      /spreadsheets/d/e/2PACX.../gviz/tq
+      Esta es diferente al ID editable /d/ID/edit.
+    */
+    const sheetParam = cfg.sheet ? `&sheet=${encodeURIComponent(cfg.sheet)}` : '';
+    script.src = `https://docs.google.com/spreadsheets/d/e/${cfg.id}/gviz/tq?tqx=out:json;responseHandler:${callbackName}${sheetParam}&t=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+
+function gvizResponseToRows(response){
+  if(!response || !response.table || !response.table.cols || !response.table.rows) return [];
+
+  const headers = response.table.cols.map((col, index)=>{
+    const label = col.label || col.id || `Columna_${index+1}`;
+    return String(label).trim();
+  });
+
+  return response.table.rows.map(row=>{
+    const obj = {};
+    headers.forEach((header, index)=>{
+      const cell = row.c[index];
+      let value = '';
+      if(cell){
+        if(cell.f !== undefined && cell.f !== null) value = cell.f;
+        else if(cell.v !== undefined && cell.v !== null) value = cell.v;
+      }
+      obj[header] = value;
+    });
+    return obj;
+  }).filter(obj=>Object.values(obj).some(v=>String(v).trim()!==''));
+}
+
+/*
+  =============================================================
+  BLOQUE 4. ESCRITURA CON APPS SCRIPT
+  =============================================================
+  Aquí sí se usa Apps Script porque Google Sheets público solo permite leer.
+
+  Nota:
+    Se usa mode:'no-cors' para que el navegador permita enviar datos
+    desde un archivo local. En modo no-cors el navegador no nos deja leer
+    la respuesta, pero el Apps Script sí recibe la información.
+*/
+async function apiPost(action, sheet, payload){
+  try{
+    await fetch(API_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action, sheet, data:payload})
+    });
+    return {ok:true};
+  }catch(error){
+    console.warn('No se pudo guardar con Apps Script:', error);
+    return {ok:false,error:error.message};
+  }
+}
+
+/*
+  =============================================================
+  BLOQUE 5. CARGA GENERAL DE DATOS
+  =============================================================
+  Esta función actualiza todo:
+    - Users
+    - matches
+    - predictions
+    - results
+
+  Después de leer, repinta la pantalla.
+*/
+async function reloadAll(){
+  el('dataNotice').innerHTML='<b>Conexión:</b> cargando datos...';
+
+  /*
+    FASE 1 CONTROL DE ACCESOS:
+    Si el usuario conectado es demo, únicamente se carga la tabla matches.
+    Users, predictions y results reales NO se consultan ni se muestran.
+  */
+  if(state.isDemo){
+    const matches = await loadSheetJSONP('matches');
+    state.matches = matches;
+    setupDemoEnvironment();
+    buildRoundFilter();
+    safeRenderAll();
+    el('dataNotice').innerHTML = state.matches.length
+      ? `<b>Modo demo:</b> se cargaron <b>${state.matches.length}</b> partidos. El ranking y los resultados son simulados y se limpian al salir.`
+      : '<b>Modo demo:</b> no se pudieron cargar partidos. Revisa la tabla matches.';
+    return;
+  }
+
+  const [users, matches, predictions, results] = await Promise.all([
+    loadSheetJSONP('Users'),
+    loadSheetJSONP('matches'),
+    loadSheetJSONP('predictions'),
+    loadSheetJSONP('results')
+  ]);
+
+  state.readStatus.Users = users.length > 0;
+  state.readStatus.matches = matches.length > 0;
+  state.readStatus.predictions = predictions.length > 0;
+  state.readStatus.results = results.length > 0;
+
+  state.users = users.length ? users : [];
+  state.matches = matches;
+  state.predictions = predictions;
+  state.results = results;
+
+  buildRoundFilter();
+  safeRenderAll();
+
+  if(state.matches.length){
+    el('dataNotice').innerHTML = `<b>Conexión OK:</b> se cargaron <b>${state.matches.length}</b> partidos desde Google Sheets. Usuarios: <b>${state.users.length}</b>. Predicciones: <b>${state.predictions.length}</b>. Resultados: <b>${state.results.length}</b>.`;
+  }else{
+    el('dataNotice').innerHTML = '<b>Aviso:</b> no se pudieron leer partidos desde Google Sheets. Revisa que el archivo matches esté compartido o publicado.';
+  }
+}
+
+function setupDemoEnvironment(){
+  /*
+    Crea una experiencia demo en memoria:
+      - 7 usuarios ficticios precargados.
+      - Resultados simulados para algunos partidos.
+      - Predicciones simuladas para alimentar el dashboard.
+      - Predicciones temporales del usuario domie.
+  */
+  state.users = [DEMO_USER, ...DEMO_SCOREBOARD_USERS];
+  state.results = buildDemoResults(state.matches);
+  const simulatedPredictions = buildDemoPredictions(state.matches, state.results);
+  state.predictions = [...simulatedPredictions, ...state.demoPredictions];
+}
+
+function buildDemoResults(matches){
+  const scoreBank = [[2,1],[1,1],[0,2],[3,1],[1,0],[2,2],[0,1],[4,0],[1,2],[2,0]];
+  return (matches || []).slice(0,14).map((m,index)=>{
+    const id = matchId(m);
+    const score = scoreBank[index % scoreBank.length];
+    return normalizeRows([{
+      'Partido_ID': id,
+      'Marcador_Local': score[0],
+      'Marcador_Visitante': score[1],
+      'Local': getLocalTeam(m),
+      'Visitante': getVisitTeam(m)
+    }])[0];
+  });
+}
+
+function buildDemoPredictions(matches, results){
+  const rows=[];
+  const resultMap={};
+  results.forEach(r=>{ resultMap[String(pick(r,['Partido_ID']))]=r; });
+
+  DEMO_SCOREBOARD_USERS.forEach((user, userIndex)=>{
+    (matches || []).slice(0,14).forEach((m, matchIndex)=>{
+      const id=matchId(m);
+      const r=resultMap[id];
+      if(!r) return;
+      const rl=Number(pick(r,['Marcador_Local'],0));
+      const rv=Number(pick(r,['Marcador_Visitante'],0));
+      let pl=rl, pv=rv;
+
+      if((matchIndex + userIndex) % 4 === 0){
+        pl=rl; pv=rv; // exacto
+      }else if((matchIndex + userIndex) % 3 === 0){
+        pl = rl > rv ? Math.max(1, rl) : 0;
+        pv = rl > rv ? 0 : Math.max(1, rv);
+      }else{
+        pl = (rl + userIndex + 1) % 4;
+        pv = (rv + matchIndex + 1) % 3;
+      }
+
+      rows.push(normalizeRows([{
+        'Prediction_ID': `DEMO_${user.ID_Usuario}_${id}`,
+        'Partido_ID': id,
+        'ID_Usuario': user.ID_Usuario,
+        'Usuario': user.Usuario,
+        'Nombre_Completo': user.Nombre_Completo,
+        'Nombre_Usuario': user.Nombre_Completo,
+        'Marcador_Local': pl,
+        'Marcador_Visitante': pv
+      }])[0]);
+    });
+  });
+  return rows;
+}
+
+/*
+  =============================================================
+  BLOQUE 6. LOGIN Y REGISTRO
+  =============================================================
+*/
+function showApp(user){
+  state.currentUser=user;
+  state.isDemo=isDemoUser(user);
+  localStorage.setItem('quinielaUser',JSON.stringify(user));
+
+  el('loginScreen').classList.add('hidden');
+  el('app').classList.remove('hidden');
+  el('welcome').textContent=`👤 ${pick(user,['Nombre_Completo','Nombre Completo','Nombre','Usuario'])}`;
+
+  const isAdmin=!state.isDemo && getUserProfile(user)==='administrador';
+  el('tabUsers').classList.toggle('hidden',!isAdmin);
+
+  showTab('matches');
+  safeRenderAll();
+  reloadAll().then(()=>{ state.currentUser=user; safeRenderAll(); });
+}
+
+async function login(){
+  const user=el('loginUser').value.trim();
+  const pass=el('loginPass').value.trim();
+
+  if(user.toLowerCase()==='domie' && pass==='Domie2026!'){
+    if(DEMO_LOGIN_ENABLED){
+      state.demoPredictions=[];
+      showApp(DEMO_USER);
+    }else{
+      setMsg('El modo demo se encuentra inactivo por ahora. Regístrate para participar oficialmente en la quiniela.','warn');
+    }
+    return;
+  }
+
+  setMsg('Validando estatus del usuario...', 'info');
+  const users = await loadSheetJSONP('Users');
+  state.users = users.length ? users : [DEMO_USER];
+
+  const found=state.users.find(u=>
+    String(pick(u,['Usuario'])).toLowerCase()===user.toLowerCase() &&
+    String(pick(u,['Contrasena_Temporal','Contraseña_Temporal','Contraseña Temporal','Password','Contrasena','Contraseña']))===pass
+  );
+
+  if(!found){
+    setMsg('Usuario o contraseña incorrectos. Verifica tus datos o crea una cuenta nueva para participar.','err');
+    return;
+  }
+
+  const estatus = getUserStatus(found);
+  const pago = getUserPayment(found);
+  const estatusPago = getUserPaymentStatus(found);
+
+  if(estatus !== 'activo'){
+    setMsg('Tu usuario aún está Inactivo. Debe cambiarse a activo en la columna Estatus de la tabla Users.','err');
+    return;
+  }
+
+  if(pago !== 200 || estatusPago !== 'completo'){
+    setMsg('Tu acceso aún no está habilitado. Para ingresar se requiere Pago = 200 y Estatus Pago = completo.','err');
+    return;
+  }
+
+  showApp(found);
+}
+
+async function registerUser(){
+  const fecha = new Date().toISOString().slice(0,10);
+
+  const nombre = el('regName').value.trim();
+  const correo = el('regEmail').value.trim();
+  // CAMBIO: se toma el teléfono del nuevo campo del formulario de registro.
+  const telefono = el('regPhone').value.trim();
+  const usuario = el('regUser').value.trim();
+  const password = el('regPass').value.trim();
+  const btn = el('regBtn');
+
+  if(!nombre || !correo || !telefono || !usuario || !password){
+    setMsg('Completa todos los campos, incluyendo el teléfono.','err');
+    return;
+  }
+
+  /*
+    Antes de registrar, se consulta Users para evitar duplicados y validar reglas:
+    Usuario mínimo 6 caracteres, contraseña mínimo 6, nombre mínimo 6,
+    teléfono solo numérico mínimo 10 y correo válido.
+  */
+  btn.disabled = true;
+  btn.textContent = 'Validando...';
+
+  const users = await loadSheetJSONP('Users');
+  const validationError = validateRegistration(nombre, correo, telefono, usuario, password, users);
+
+  if(validationError){
+    btn.disabled = false;
+    btn.textContent = 'Solicitar registro';
+    setMsg(validationError,'err');
+    return;
+  }
+
+  btn.textContent = 'Registrando...';
+
+  /*
+    Payload alineado EXACTAMENTE a los encabezados visibles de tu tabla Users.
+    Así Apps Script puede mapear cada valor a la columna correcta.
+  */
+  const payload={
+    'Usuario':usuario,
+    'Contraseña':password,
+    'Nombre Completo':nombre,
+    // CAMBIO: se envía el teléfono usando el encabezado exacto de la tabla Users.
+    'Telefono':telefono,
+    'Correo Electrónico':correo,
+    'Estatus':'Inactivo',
+    'Perfil del Usuario':'user',
+    'Pago':'0',
+    'Estatus Pago':'pendiente'
+  };
+
+  await apiPost('insert','Users',payload);
+
+  state.users.push(normalizeRows([payload])[0]);
+
+  btn.disabled = false;
+  btn.textContent = 'Solicitar registro';
+
+  toggleAuth('login');
+  setMsg(`
+    <div><b>Registro enviado correctamente.</b></div>
+    <div>Tu usuario queda <b>Inactivo</b> y con perfil <b>user</b> hasta validar el pago de inscripción.</div>
+    <div>Después de realizar el pago, envía tu comprobante al número <b>55-71-66-22-07</b>.</div>
+    <div class="payment-box">
+      <b>Datos para depósito:</b><br>
+      Número de cuenta: <b>722969010319340514</b><br>
+      Nombre: <b>Roberto Daniel Patiño Cardoso</b><br>
+      Institución: <b>Mercado Pago W</b><br>
+      Cantidad: <b>$200</b>
+    </div>
+  `,'ok');
+}
+
+function logout(){
+  if(state.isDemo){
+    state.demoPredictions=[];
+    state.predictions=[];
+    state.results=[];
+    state.ranking=[];
+  }
+  localStorage.removeItem('quinielaUser');
+  location.reload();
+}
+
+/*
+  =============================================================
+  BLOQUE 7. NAVEGACIÓN DE PESTAÑAS
+  =============================================================
+*/
+function showTab(tab){
+  ['matches','dashboard','users'].forEach(t=>{
+    el(t+'View').classList.toggle('hidden',t!==tab);
+    const btn = t==='matches'?el('tabMatches'):t==='dashboard'?el('tabDash'):el('tabUsers');
+    btn.classList.toggle('active',t===tab);
+  });
+
+  if(tab==='dashboard') renderDashboard();
+}
+
+function safeRenderAll(){
+  try{
+    renderMatches();
+    renderUsers();
+    renderDashboard();
+  }catch(error){
+    console.error('Error de render:', error);
+  }
+}
+
+/*
+  =============================================================
+  BLOQUE 8. LECTURA FLEXIBLE DE COLUMNAS
+  =============================================================
+  Tus tablas pueden tener columnas llamadas:
+    Local / Equipo Local / Equipo_Local
+  Estas funciones buscan varios nombres posibles para evitar errores.
+*/
+function matchId(m){ return String(pick(m,['Partido_ID','Partido ID','ID_Partido','No_Partido','No. Partido','Partido'],'')); }
+function userId(u=state.currentUser){ return String(pick(u,['ID_Usuario','ID Usuario','Usuario_ID','ID','Usuario'],'')); }
+function getLocalTeam(m){ return pick(m,['Equipo_Local','Equipo Local','Local','Seleccion_Local','Selección_Local','Home'],'Equipo Local'); }
+function getVisitTeam(m){ return pick(m,['Equipo_Visitante','Equipo Visitante','Visitante','Seleccion_Visitante','Selección_Visitante','Away'],'Equipo Visitante'); }
+function getRound(m){ return pick(m,['Grupo','Ronda','Fase','Fase_Grupo'],'Mundial 2026'); }
+function getDate(m){ return pick(m,['Fecha','Horario','Fecha_Hora','Fecha y Hora','Date'],''); }
+function getHour(m){ return pick(m,['Hora','Hour'],''); }
+function getStadium(m){ return pick(m,['Estadio','Sede','Venue'],'Por confirmar'); }
+function getCity(m){ return pick(m,['Ciudad','City'],''); }
+function getTooltipLocal(m){ return pick(m,['Tooltip Local','Tooltip_Local','TooltipLocal'],''); }
+function getTooltipVisitante(m){ return pick(m,['Tooltip Visitante','Tooltip_Visitante','TooltipVisitante'],''); }
+
+function getUserPrediction(mid){
+  const uid=userId();
+  const uname=String(pick(state.currentUser,['Usuario']));
+
+  return [...state.predictions].reverse().find(p=>
+    String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===String(mid) &&
+    (
+      String(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===uid ||
+      String(pick(p,['Usuario','Participante']))===uname
+    )
+  );
+}
+
+/*
+  =============================================================
+  BLOQUE 9. FILTROS Y RENDER DE PARTIDOS
+  =============================================================
+*/
+function buildRoundFilter(){
+  const select=el('roundFilter');
+  const current=select.value;
+  select.innerHTML='<option value="">Todas las rondas / grupos</option>';
+
+  const rounds=[...new Set(state.matches.map(getRound).filter(Boolean))].sort();
+  rounds.forEach(r=>{
+    select.insertAdjacentHTML('beforeend',`<option value="${String(r).replaceAll('"','&quot;')}">${r}</option>`);
+  });
+  select.value=rounds.includes(current)?current:'';
+}
+
+function filteredMatches(){
+  const q=el('searchBox')?.value.toLowerCase().trim()||'';
+  const rf=el('roundFilter')?.value||'';
+
+  return state.matches.filter(m=>{
+    const text=[getLocalTeam(m),getVisitTeam(m),getStadium(m),getCity(m),getRound(m),getDate(m)].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (!rf || getRound(m)===rf);
+  });
+}
+
+function renderMatches(){
+  const c=el('matchesContainer');
+  if(!c) return;
+  c.innerHTML='';
+
+  let filled=0;
+  const shown=filteredMatches();
+
+  state.matches.forEach(m=>{
+    const id=matchId(m);
+    if(id && getUserPrediction(id)) filled++;
+  });
+
+  if(!state.matches.length){
+    c.innerHTML='<div class="empty">No hay partidos cargados. Presiona “Actualizar datos” o revisa que el archivo matches esté compartido/publicado correctamente.</div>';
+    updateProgress(0);
+    return;
+  }
+
+  if(!shown.length){
+    c.innerHTML='<div class="empty">No hay partidos para mostrar con el filtro seleccionado.</div>';
+    updateProgress(filled);
+    return;
+  }
+
+  shown.forEach(m=>{
+    const id=matchId(m);
+    if(!id) return;
+
+    const pred=getUserPrediction(id);
+    const saved=!!pred;
+    const local=getLocalTeam(m);
+    const visit=getVisitTeam(m);
+    const tooltipLocal=getTooltipLocal(m);
+    const tooltipVisitante=getTooltipVisitante(m);
+    const ml=pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
+    const mv=pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
+    const fecha = formatDateDisplay(getDate(m));
+    const hora = formatHourDisplay(getHour(m));
+    const fechaHora = hora ? `${fecha} · ${hora}` : fecha;
+
+    c.insertAdjacentHTML('beforeend',`
+      <div class="match ${saved?'saved':''}">
+        <div class="match-head"><span class="round">${getRound(m)}</span><span>${fechaHora}</span></div>
+        <div class="versus">
+          <div class="team">${local}<div class="tip"><b>${local}</b><br>${tooltipLocal ? tooltipLocal + '<br>' : ''}🏟️ ${getStadium(m)}<br>📍 ${getCity(m) || 'Ciudad por confirmar'}<br>${getRound(m)}</div></div>
+          <div class="score"><input min="0" type="number" id="l-${id}" value="${ml}" ${saved?'disabled':''}><b>VS</b><input min="0" type="number" id="v-${id}" value="${mv}" ${saved?'disabled':''}></div>
+          <div class="team">${visit}<div class="tip"><b>${visit}</b><br>${tooltipVisitante ? tooltipVisitante + '<br>' : ''}🏟️ ${getStadium(m)}<br>📍 ${getCity(m) || 'Ciudad por confirmar'}<br>${getRound(m)}</div></div>
+        </div>
+        <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
+        ${saved ? `<div class="match-actions">
+          ${!isQuinielaClosed()?`<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar marcador</button><div class="lock">🔒 Guardado</div>`:''}
+          ${isQuinielaClosed()?'<div class="finalized-note">🔒 Quiniela cerrada</div><div class="lock">Solo consulta</div>':''}
+          <div class="editing-note hidden" id="edit-note-${id}">Editando marcador</div>
+        </div>` : ''}
+      </div>
+    `);
+  });
+
+  updateProgress(filled);
+  calcRanking();
+}
+
+function updateProgress(filled){
+  const total=state.matches.length||0;
+  const pct=total?Math.round((filled/total)*100):0;
+  el('mTotal').textContent=total;
+  el('mFilled').textContent=filled;
+  el('mPending').textContent=Math.max(total-filled,0);
+  el('progressText').textContent=pct+'%';
+  el('progressBar').style.width=pct+'%';
+  el('mPoints').textContent=(state.ranking.find(r=>r.uid===userId())||{}).points||0;
+
+  if(total && total-filled===1){
+    el('dataNotice').innerHTML='<b>Atención:</b> estás a un partido de cerrar tu quiniela. Revisa tus marcadores antes de guardar el último resultado.';
+  }
+}
+
+/*
+  =============================================================
+  BLOQUE 10. GUARDADO DE PREDICCIONES
+  =============================================================
+  Solo se guardan partidos completos que todavía no estén guardados.
+  Después de guardar, se insertan localmente al estado para bloquearlos.
+*/
+async function saveAllPredictions(){
+  if(!state.currentUser) return;
+
+  if(isQuinielaClosed()){
+    alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+    return;
+  }
+
+  const rows=[];
+  const currentFilledIds = new Set(currentUserPredictions().map(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))));
+
+  state.matches.forEach(m=>{
+    const id=matchId(m);
+    const lInput=el(`l-${id}`);
+    const vInput=el(`v-${id}`);
+    const isEditing = (lInput && lInput.dataset.editing==='true') || (vInput && vInput.dataset.editing==='true');
+    if(!id || (getUserPrediction(id) && !isEditing)) return;
+
+    const l=lInput?.value;
+    const v=vInput?.value;
+
+    if(l!==undefined && v!==undefined && l!=='' && v!==''){
+      const now = new Date().toISOString();
+      const nombreUsuario = pick(state.currentUser,['Nombre_Completo','Nombre Completo','Nombre']);
+      const payload = {
+        'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
+        'Partido_ID': id,
+        'Partido ID': id,
+        'ID_Usuario': userId(),
+        'ID Usuario': userId(),
+        'Usuario': pick(state.currentUser,['Usuario']),
+        'Nombre_Completo': nombreUsuario,
+        'Nombre Completo': nombreUsuario,
+        'Nombre_Usuario': nombreUsuario,
+        // ADECUACIÓN: estas columnas guardan el marcador capturado por el usuario.
+        'Local': l,
+        'Visitante': v,
+        'Marcador_Local': l,
+        'Marcador Local': l,
+        'Marcador_Visitante': v,
+        'Marcador Visitante': v,
+        'Equipo_Local': getLocalTeam(m),
+        'Equipo Local': getLocalTeam(m),
+        'Equipo_Visitante': getVisitTeam(m),
+        'Equipo Visitante': getVisitTeam(m),
+        'Fecha_Registro': now,
+        'Fecha Registro': now
+      };
+      rows.push(payload);
+    }
+  });
+
+  if(!rows.length){
+    alert('No hay nuevos marcadores completos para guardar.');
+    return;
+  }
+
+  const newFilledIds = new Set(currentFilledIds);
+  rows.forEach(r=>newFilledIds.add(String(pick(normalizeRows([r])[0],['Partido_ID','Partido ID']))));
+  if(state.matches.length && newFilledIds.size >= state.matches.length){
+    const ok = confirm('Estás a punto de cerrar tu quiniela al 100%. Después de enviar ya no podrás editar ningún marcador. ¿Confirmas el cierre?');
+    if(!ok) return;
+  }
+
+  if(state.isDemo){
+    const normalizedRows = normalizeRows(rows);
+    normalizedRows.forEach(row=>{
+      const rid=String(pick(row,['Partido_ID','Partido ID']));
+      state.demoPredictions = state.demoPredictions.filter(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))!==rid);
+      state.demoPredictions.push(row);
+    });
+    setupDemoEnvironment();
+    renderMatches();
+    renderDashboard();
+    alert(isQuinielaClosed() ? 'Modo demo: quiniela cerrada al 100%. Al salir se limpiará la sesión.' : 'Modo demo: tus marcadores se guardaron temporalmente solo en esta sesión. Al salir se limpiarán y no se enviarán a la tabla predictions.');
+    return;
+  }
+
+  for(const r of rows){
+    /*
+      ADECUACIÓN: se envía acción upsert para que Apps Script actualice la fila
+      existente del mismo Usuario + Partido_ID en lugar de crear duplicados.
+      Si la fila no existe, debe insertarla.
+    */
+    await apiPost('upsertPrediction','predictions',r);
+  }
+
+  const normalizedRows = normalizeRows(rows);
+
+  normalizedRows.forEach(row=>{
+    const rid=String(pick(row,['Partido_ID','Partido ID']));
+
+    /*
+      ADECUACIÓN:
+      Se asegura que Nombre_Usuario permanezca siempre en el estado local
+      y también viaje en el payload hacia Apps Script / predictions.
+      Esto evita que al editar un marcador se pierda el nombre del participante.
+    */
+    const nombreUsuario = pick(state.currentUser,[
+      'Nombre_Usuario',
+      'Nombre_Completo',
+      'Nombre Completo',
+      'Nombre',
+      'Usuario'
+    ]);
+
+    row.Nombre_Usuario = row.Nombre_Usuario || nombreUsuario;
+    row.Nombre_Completo = row.Nombre_Completo || nombreUsuario;
+    row.Nombre_Completo = row.Nombre_Completo || nombreUsuario;
+
+    state.predictions = state.predictions.filter(p=>!(
+      String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===rid &&
+      (
+        String(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===userId() ||
+        String(pick(p,['Usuario','Participante']))===String(pick(state.currentUser,['Usuario']))
+      )
+    ));
+
+    state.predictions.push(row);
+  });
+
+  renderMatches();
+  alert(isQuinielaClosed() ? 'Quiniela cerrada al 100%. A partir de ahora solo podrás consultarla.' : 'Quiniela guardada. Los marcadores capturados quedaron bloqueados.');
+}
+
+/*
+  =============================================================
+  BLOQUE 11. USUARIOS
+  =============================================================
+*/
+function renderUsers(){
+  const b=el('usersBody');
+  if(!b) return;
+  b.innerHTML='';
+
+  state.users.forEach(u=>{
+    b.insertAdjacentHTML('beforeend',`
+      <tr>
+        <td>${pick(u,['ID_Usuario','ID Usuario','ID','Usuario'])}</td>
+        <td>${pick(u,['Nombre_Completo','Nombre Completo','Nombre'])}</td>
+        <td style="color:#6d28d9;font-weight:900">${pick(u,['Telefono','Teléfono','Telefono_','Phone'])}</td>
+        <td>${pick(u,['Correo_Electronico','Correo Electrónico','Correo'])}</td>
+        <td>${pick(u,['Usuario'])}</td>
+        <td>${pick(u,['Rol_Acceso','Rol de Acceso','Rol','Perfil de Usuario'])}</td>
+        <td><span class="status ${String(pick(u,['Estatus Perfil del Usuario','Estatus_Perfil_del_Usuario','Estatus'])).toLowerCase()==='activo'?'active-s':'inactive-s'}">${pick(u,['Estatus Perfil del Usuario','Estatus_Perfil_del_Usuario','Estatus'],'')}</span></td>
+      </tr>
+    `);
+  });
+}
+
+/*
+  =============================================================
+  BLOQUE 12. CÁLCULO DE RANKING
+  =============================================================
+  Compara predictions contra results usando Partido_ID.
+*/
+function calcRanking(){
+  const users=state.users.filter(u=>
+    getUserStatus(u)==='activo' ||
+    String(pick(u,['Usuario'])).toLowerCase()==='domie'
+  );
+
+  const byUser={};
+
+  users.forEach(u=>{
+    byUser[userId(u)]={
+      uid:userId(u),
+      name:pick(u,['Nombre_Completo','Nombre Completo','Nombre','Usuario']),
+      points:0,
+      exact:0,
+      winner:0
+    };
+  });
+
+  const resultMap={};
+  state.results.forEach(r=>{
+    const id=String(pick(r,['Partido_ID','Partido ID','ID_Partido','Partido']));
+    if(id) resultMap[id]=r;
+  });
+
+  state.predictions.forEach(p=>{
+    const uid=String(pick(p,['ID_Usuario','ID Usuario','Usuario_ID'])) || String(pick(p,['Usuario','Participante']));
+    if(!byUser[uid]){
+      byUser[uid]={uid,name:String(pick(p,['Nombre_Completo','Nombre Completo','Usuario','Participante'],uid)),points:0,exact:0,winner:0};
+    }
+
+    const mid=String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']));
+    const r=resultMap[mid];
+    if(!r) return;
+
+    const pl=Number(pick(p,['Marcador_Local','Marcador Local','Participante_Local','Local'],NaN));
+    const pv=Number(pick(p,['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],NaN));
+    const rl=Number(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],NaN));
+    const rv=Number(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],NaN));
+
+    if(Number.isNaN(pl)||Number.isNaN(pv)||Number.isNaN(rl)||Number.isNaN(rv)) return;
+
+    if(pl===rl && pv===rv){
+      byUser[uid].points+=3;
+      byUser[uid].exact++;
+    }else if(Math.sign(pl-pv)===Math.sign(rl-rv)){
+      byUser[uid].points+=1;
+      byUser[uid].winner++;
+    }
+  });
+
+  state.ranking=Object.values(byUser).sort((a,b)=>b.points-a.points);
+  return state.ranking;
+}
+
+function renderDashboard(){
+  calcRanking();
+  updatePaymentDashboard();
+  el('mPoints').textContent=(state.ranking.find(r=>r.uid===userId())||{}).points||0;
+
+  const labels=state.ranking.map(r=>r.name);
+  const pts=state.ranking.map(r=>r.points);
+  const exact=state.ranking.reduce((s,r)=>s+r.exact,0);
+  const win=state.ranking.reduce((s,r)=>s+r.winner,0);
+
+  const body=el('rankingBody');
+  if(body){
+    body.innerHTML='';
+    state.ranking.forEach((r,i)=>{
+      body.insertAdjacentHTML('beforeend',`<tr><td class="${i===0?'rank1':''}">${i===0?'👑 ':''}${i+1}</td><td>${r.name}</td><td><b>${r.points}</b></td><td>${r.exact}</td><td>${r.winner}</td></tr>`);
+    });
+  }
+
+  const facts=el('funFacts');
+  if(facts){
+    const leader=state.ranking[0];
+    const pool = getPaymentSummary();
+    facts.innerHTML=`<p>🏆 Líder actual: <b>${leader?leader.name:'Sin datos'}</b></p><p>⚽ Resultados cargados: <b>${state.results.length}</b></p><p>🎯 Marcadores exactos totales: <b>${exact}</b></p><p>🔥 Aciertos de ganador/empate: <b>${win}</b></p><p>💰 Bolsa estimada a repartir: <b>${formatCurrencyMXN(pool.prize)}</b></p>`;
+  }
+
+  if(typeof Chart==='undefined') return;
+
+  if(el('rankingChart')){
+    if(charts.ranking) charts.ranking.destroy();
+    charts.ranking=new Chart(el('rankingChart'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Puntos',data:pts,backgroundColor:'rgba(11,98,214,.65)',borderColor:'rgba(0,59,143,1)',borderWidth:1}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+
+    if(charts.accuracy) charts.accuracy.destroy();
+    charts.accuracy=new Chart(el('accuracyChart'),{
+      type:'doughnut',
+      data:{labels:['Exactos','Ganador/Empate'],datasets:[{data:[exact,win],backgroundColor:['rgba(0,168,107,.75)','rgba(255,209,102,.9)']}]},
+      options:{responsive:true}
+    });
+  }
+}
+
+/*
+  =============================================================
+  BLOQUE 13. EVENTOS DE BOTONES
+  =============================================================
+*/
+function bindEvents(){
+  el('loginBtn').addEventListener('click',login);
+
+  /* FASE 1 CONTROL DE ACCESOS: botón demo oculto mientras DEMO_LOGIN_ENABLED sea false. */
+  if(DEMO_LOGIN_ENABLED){
+    el('demoBtn').classList.remove('hidden');
+    el('demoInfo').innerHTML='Usa el modo demo para explorar la experiencia completa sin afectar las tablas reales.';
+  }else{
+    el('demoBtn').classList.add('hidden');
+  }
+
+  el('demoBtn').addEventListener('click',()=>{ el('loginUser').value='domie'; el('loginPass').value='Domie2026!'; login(); });
+  el('showRegBtn').addEventListener('click',()=>toggleAuth('register'));
+  el('backLoginBtn').addEventListener('click',()=>toggleAuth('login'));
+  el('regBtn').addEventListener('click',registerUser);
+  el('logoutBtn').addEventListener('click',logout);
+  el('tabMatches').addEventListener('click',()=>showTab('matches'));
+  el('tabDash').addEventListener('click',()=>showTab('dashboard'));
+  el('tabUsers').addEventListener('click',()=>showTab('users'));
+  el('saveBtn').addEventListener('click',saveAllPredictions);
+  el('dashBtn').addEventListener('click',()=>showTab('dashboard'));
+  el('backMatchesBtn').addEventListener('click',()=>showTab('matches'));
+  el('reloadBtn').addEventListener('click',reloadAll);
+  el('downloadBtn').addEventListener('click',downloadMyPredictions);
+  el('tutorialBtn').addEventListener('click',openTutorial);
+  el('closeTutorialBtn').addEventListener('click',closeTutorial);
+  el('tutorialModal').addEventListener('click',e=>{ if(e.target.id==='tutorialModal') closeTutorial(); });
+  el('infoQuinielaBtn').addEventListener('click',openInfoQuiniela);
+  el('closeInfoQuinielaBtn').addEventListener('click',closeInfoQuiniela);
+  el('infoQuinielaModal').addEventListener('click',e=>{ if(e.target.id==='infoQuinielaModal') closeInfoQuiniela(); });
+  el('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
+  el('searchBox').addEventListener('input',renderMatches);
+  el('roundFilter').addEventListener('change',renderMatches);
+  el('clearFiltersBtn').addEventListener('click',()=>{ el('searchBox').value=''; el('roundFilter').value=''; renderMatches(); });
+}
+
+/*
+  =============================================================
+  BLOQUE 14. ARRANQUE DE LA APLICACIÓN
+  =============================================================
+  Al abrir la página:
+    1. Se conectan los botones.
+    2. Se leen las tablas públicas.
+    3. Queda lista la pantalla de login.
+*/
+document.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('load',()=>{
+  bindEvents();
+  const savedUserRaw = localStorage.getItem('quinielaUser');
+  if(savedUserRaw){
+    try{
+      const savedUser = JSON.parse(savedUserRaw);
+      if(savedUser && pick(savedUser,['Usuario'])){
+        showApp(savedUser);
+        return;
+      }
+    }catch(error){
+      console.warn('No se pudo restaurar la sesión:', error);
+      localStorage.removeItem('quinielaUser');
+    }
+  }
+  reloadAll();
+});
+</script>
+</body>
+</html>
