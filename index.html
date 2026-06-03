@@ -94,9 +94,67 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
     .info-modal-card{background:white;border-radius:28px;max-width:760px;width:100%;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid #dbeafe}
     .info-modal-card h2{color:var(--azul);margin-bottom:10px}.info-modal-card p,.info-modal-card li{color:#334155;line-height:1.6;font-weight:700}.info-modal-card ul{padding-left:22px;margin-top:10px}.info-modal-actions{display:flex;justify-content:flex-end;margin-top:18px}
     .money-cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:14px;margin-bottom:18px}.money-card{background:linear-gradient(135deg,#ffffff,#f0fdf4);border:1px solid #bbf7d0;border-radius:20px;padding:18px;box-shadow:0 10px 26px rgba(15,23,42,.07)}.money-card small{color:#14532d;font-weight:900}.money-card b{display:block;font-size:24px;margin-top:4px;color:#003b8f}.money-card .tiny{font-size:12px;color:#64748b;margin-top:4px;font-weight:800}
+
+    /* ADECUACIÓN FINAL: tema claro/oscuro, banderas y vista de predicciones */
+    body.dark-mode{background:radial-gradient(circle at top left,#1e293b 0,#0f172a 45%,#020617 100%);color:#e5e7eb}
+    body.dark-mode .login-card,body.dark-mode .hero,body.dark-mode .metric,body.dark-mode .match,body.dark-mode .panel,body.dark-mode .tutorial-card,body.dark-mode .info-modal-card,body.dark-mode .participants-card{background:#0f172a;color:#e5e7eb;border-color:#334155}
+    body.dark-mode .sub,body.dark-mode .stadium,body.dark-mode .match-head,body.dark-mode .tiny{color:#cbd5e1}
+    body.dark-mode .team{background:linear-gradient(180deg,#1e293b,#0f172a);border-color:#334155;color:#f8fafc}
+    body.dark-mode .filters input,body.dark-mode .filters select,body.dark-mode .field input{background:#111827;color:#f8fafc;border-color:#334155}
+    body.dark-mode th{background:#1e293b;color:#bfdbfe}
+    body.dark-mode td{border-color:#334155}
+    .flag-img{width:28px;height:20px;object-fit:cover;border-radius:4px;margin-right:8px;vertical-align:-4px;box-shadow:0 1px 4px rgba(15,23,42,.18);background:#e2e8f0}.flag-fallback{font-size:1.2em;margin-right:6px;vertical-align:-1px}
+    .theme-toggle{background:rgba(255,255,255,.18);color:white;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:9px 13px;margin-right:8px}
+    .participants-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.62);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+    .participants-card{background:white;border-radius:28px;max-width:1100px;width:100%;max-height:85vh;overflow:auto;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid #dbeafe}
+    .participants-head{display:flex;justify-content:space-between;gap:12px;align-items:center;position:sticky;top:0;background:inherit;padding-bottom:12px;z-index:2}
+    .participants-table{font-size:13px}
+
     @media(max-width:900px){.money-cards{grid-template-columns:repeat(2,1fr)}}
 
+
+    /* ADECUACIÓN FINAL: tema claro/oscuro, banderas y vista de predicciones */
+    body.dark-mode{background:radial-gradient(circle at top left,#1e293b 0,#0f172a 45%,#020617 100%);color:#e5e7eb}
+    body.dark-mode .login-card,body.dark-mode .hero,body.dark-mode .metric,body.dark-mode .match,body.dark-mode .panel,body.dark-mode .tutorial-card,body.dark-mode .info-modal-card,body.dark-mode .participants-card{background:#0f172a;color:#e5e7eb;border-color:#334155}
+    body.dark-mode .sub,body.dark-mode .stadium,body.dark-mode .match-head,body.dark-mode .tiny{color:#cbd5e1}
+    body.dark-mode .team{background:linear-gradient(180deg,#1e293b,#0f172a);border-color:#334155;color:#f8fafc}
+    body.dark-mode .filters input,body.dark-mode .filters select,body.dark-mode .field input{background:#111827;color:#f8fafc;border-color:#334155}
+    body.dark-mode th{background:#1e293b;color:#bfdbfe}
+    body.dark-mode td{border-color:#334155}
+    .flag-img{width:28px;height:20px;object-fit:cover;border-radius:4px;margin-right:8px;vertical-align:-4px;box-shadow:0 1px 4px rgba(15,23,42,.18);background:#e2e8f0}.flag-fallback{font-size:1.2em;margin-right:6px;vertical-align:-1px}
+    .theme-toggle{background:rgba(255,255,255,.18);color:white;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:9px 13px;margin-right:8px}
+    .participants-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.62);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+    .participants-card{background:white;border-radius:28px;max-width:1100px;width:100%;max-height:85vh;overflow:auto;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.35);border:1px solid #dbeafe}
+    .participants-head{display:flex;justify-content:space-between;gap:12px;align-items:center;position:sticky;top:0;background:inherit;padding-bottom:12px;z-index:2}
+    .participants-table{font-size:13px}
+
     @media(max-width:900px){.summary-cards{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.versus{grid-template-columns:1fr}.score{justify-content:center}.hero h1{font-size:24px}.matches{grid-template-columns:1fr}}
+  
+
+    /* AJUSTE VISUAL FINAL: banderas reales + tarjetas de equipos tipo mundialista */
+    .team{display:flex!important;align-items:center;justify-content:center;gap:8px;line-height:1.15;min-height:86px;padding:12px;background:linear-gradient(180deg,#ffffff,#eef6ff);border:1px solid #cfe3ff;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+    .team-name{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;width:100%;font-weight:950;color:#07111f}
+    .flag-img{width:28px;height:20px;object-fit:cover;border-radius:4px;box-shadow:0 2px 7px rgba(15,23,42,.22);background:#e2e8f0;flex:0 0 auto}
+    .flag-svg{width:28px;height:20px;object-fit:cover;border-radius:4px;box-shadow:0 2px 7px rgba(15,23,42,.22);background:#e2e8f0;flex:0 0 auto}
+    .flag-emoji{font-size:22px;line-height:1;display:inline-block;filter:drop-shadow(0 1px 2px rgba(15,23,42,.2))}
+    .tip{display:none;position:absolute;z-index:40;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);width:min(260px,80vw);background:#ffffff;color:#1e293b;border:1px solid #dbeafe;border-radius:16px;padding:14px;font-size:12px;font-weight:700;text-align:left;box-shadow:0 18px 45px rgba(15,23,42,.20)}
+    .tip:after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border-width:8px;border-style:solid;border-color:#ffffff transparent transparent transparent}
+    .tip-title{display:flex;align-items:center;gap:8px;color:#003b8f;font-weight:950;font-size:14px;margin-bottom:8px;border-bottom:1px solid #e5eef9;padding-bottom:8px}
+    .tip-note{display:block;margin:7px 0 8px 0;padding:8px 10px;border-radius:12px;background:#fff7ed;color:#92400e;border:1px solid #fed7aa;font-weight:900}
+    .tip-row{display:block;margin-top:5px;color:#334155;line-height:1.35}
+    .tip-round{display:inline-block;margin-top:8px;padding:5px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:950}
+    .match{border:1px solid rgba(11,98,214,.12);box-shadow:0 14px 34px rgba(0,59,143,.08);background:linear-gradient(180deg,#ffffff,#fbfdff)}
+    .match-head{font-size:13px;color:#475569}.round{font-weight:950;color:#0756c5}.score b{color:#001b44;letter-spacing:.5px}.score input{background:#ffffff}
+    body.dark-mode .team{background:linear-gradient(180deg,#1e293b,#0f172a)!important;border-color:#334155;color:#f8fafc;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+    body.dark-mode .team-name{color:#f8fafc}
+    body.dark-mode .tip{background:#0f172a;color:#e2e8f0;border-color:#334155;box-shadow:0 18px 45px rgba(0,0,0,.55)}
+    body.dark-mode .tip:after{border-color:#0f172a transparent transparent transparent}
+    body.dark-mode .tip-title{color:#93c5fd;border-bottom-color:#334155}
+    body.dark-mode .tip-row{color:#cbd5e1}
+    body.dark-mode .tip-note{background:#422006;color:#fde68a;border-color:#92400e}
+    body.dark-mode .tip-round{background:#082f49;color:#bae6fd}
+    @media(max-width:700px){.tip{position:fixed;left:50%;top:auto;bottom:24px;transform:translateX(-50%);width:calc(100vw - 34px)}.tip:after{display:none}.team{min-height:78px}.flag-img,.flag-svg{width:24px;height:17px}}
+
   </style>
 
 </head>
@@ -138,19 +196,19 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
   </div>
 </section>
 <section id="app" class="app hidden">
-  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
+  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="theme-toggle" id="themeToggle">🌙 Vista obscura</button><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
   <main>
     <div class="tabs"><button type="button" id="tabMatches" class="tab active">⚽ Partidos</button><button type="button" id="tabDash" class="tab">📊 Dashboard</button><button type="button" id="tabUsers" class="tab hidden">👥 Usuarios</button></div>
     <section id="matchesView">
       <div class="hero"><div><h1>Llena tu quiniela</h1><p class="sub">Captura tus marcadores. Al guardar, los partidos quedarán bloqueados.</p></div><div class="progress-wrap"><div class="progress-label"><span>Progreso de llenado</span><span id="progressText">0%</span></div><div class="progress"><div id="progressBar" class="progress-bar"></div></div></div></div>
       <div class="summary-cards"><div class="metric"><small>Partidos</small><b id="mTotal">0</b></div><div class="metric"><small>Llenados</small><b id="mFilled">0</b></div><div class="metric"><small>Pendientes</small><b id="mPending">0</b></div><div class="metric"><small>Mis puntos</small><b id="mPoints">0</b></div></div>
-      <div class="filters"><input id="searchBox" placeholder="Buscar selección o estadio"><select id="roundFilter"><option value="">Todas las rondas / grupos</option></select><button type="button" class="btn-light" id="clearFiltersBtn">Limpiar filtros</button><button type="button" class="btn-purple" id="tutorialBtn">🎓 Ver tutorial</button><button type="button" class="btn-light" id="reloadBtn">🔄 Actualizar datos</button></div>
+      <div class="filters"><input id="searchBox" placeholder="Buscar selección o estadio"><select id="roundFilter"><option value="">Todas las rondas / grupos</option></select><button type="button" class="btn-light" id="clearFiltersBtn">Limpiar filtros</button><button type="button" class="btn-green" id="saveBtn">💾 Guardar quiniela</button><button type="button" class="btn-purple" id="tutorialBtn">🎓 Ver tutorial</button><button type="button" class="btn-light" id="reloadBtn">🔄 Actualizar datos</button></div>
       <div id="matchesContainer" class="matches"></div>
-      <div class="actions"><button type="button" class="btn-green" id="saveBtn">💾 Guardar quiniela</button><button type="button" class="btn-gold" id="dashBtn">📊 Ver dashboard</button><button type="button" class="btn-light" id="downloadBtn">⬇️ Descargar mi quiniela</button></div>
+      <div class="actions"><button type="button" class="btn-gold" id="dashBtn">📊 Ver dashboard</button><button type="button" class="btn-light" id="downloadBtn">⬇️ Descargar mi quiniela</button></div>
       <div id="dataNotice" class="notice"><b>Conexión:</b> consultando datos desde Google Sheets.</div>
     </section>
     <section id="dashboardView" class="hidden">
-      <div class="hero"><div><h1>Ranking en vivo</h1><p class="sub">3 puntos por marcador exacto y 1 punto por ganador o empate correcto.</p></div><button type="button" class="btn" id="backMatchesBtn">⬅ Regresar a partidos</button></div>
+      <div class="hero"><div><h1>Ranking en vivo</h1><p class="sub">3 puntos por marcador exacto y 1 punto por ganador o empate correcto.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="btn-purple" id="participantsBtn">👀 Ver quinielas cerradas</button><button type="button" class="btn" id="backMatchesBtn">⬅ Regresar a partidos</button></div></div>
       <div class="money-cards">
         <div class="money-card"><small>Acumulado en pagos</small><b id="poolTotal">$0</b><div class="tiny">Suma de la columna Pago.</div></div>
         <div class="money-card"><small>Desarrollo plataforma 10%</small><b id="poolDev">$0</b><div class="tiny">Retención para desarrollo.</div></div>
@@ -196,6 +254,17 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
       <li><b>Distribución:</b> 10% se destina al desarrollo de la plataforma y el 90% restante se divide entre los primeros tres lugares: 50% para 1°, 30% para 2° y 10% para 3°.</li>
     </ul>
     <div class="info-modal-actions"><button type="button" class="btn" id="closeInfoQuinielaBtn">Entendido</button></div>
+  </div>
+</div>
+
+<div id="participantsModal" class="participants-backdrop hidden">
+  <div class="participants-card">
+    <div class="participants-head">
+      <div><h2>👀 Marcadores de participantes</h2><p class="sub">Vista solo lectura. Se habilita para usuarios que ya cerraron su quiniela al 100%.</p></div>
+      <button type="button" class="btn-light" id="closeParticipantsBtn">Cerrar</button>
+    </div>
+    <div id="participantsMsg" class="notice">Cargando...</div>
+    <div class="table-wrap"><table class="participants-table"><thead><tr><th>Participante</th><th>Partido</th><th>Equipo Local</th><th>Marcador Local</th><th>Marcador Visitante</th><th>Equipo Visitante</th><th>Actualización</th></tr></thead><tbody id="participantsBody"></tbody></table></div>
   </div>
 </div>
 
@@ -573,24 +642,8 @@ function closeTutorial(){ el('tutorialModal').classList.add('hidden'); }
     4. Convertimos la tabla de Google en arreglo JSON.
 */
 async function loadSheetJSONP(key){
-  /*
-    ADECUACIÓN: para la tabla matches se intenta leer primero desde la tabla pública
-    porque conserva mejor el formato visible de Hora (por ejemplo 13:00), evitando
-    que Apps Script convierta horas a fechas tipo 1899-12-30T...
-  */
-  if(key === 'matches'){
-    const fromEditableFirst = await loadFromEditableSheet(key);
-    if(fromEditableFirst.length){
-      console.log('Datos cargados desde Google Sheets editable/GViz:', key, fromEditableFirst.length);
-      return fromEditableFirst;
-    }
-    const fromPublicFirst = await loadFromPublishedSheet(key);
-    if(fromPublicFirst.length){
-      console.log('Datos cargados desde Google Sheets público:', key, fromPublicFirst.length);
-      return fromPublicFirst;
-    }
-  }
-
+  /* ADECUACIÓN FINAL: ahora matches se lee primero desde Apps Script,
+     porque el backend usa getDisplayValues() y conserva la hora visible exacta. */
   /*
     PASO 1: Intentamos leer desde Apps Script.
     Tu API ya devuelve respuestas tipo:
@@ -1134,6 +1187,66 @@ function getCity(m){ return pick(m,['Ciudad','City'],''); }
 function getTooltipLocal(m){ return pick(m,['Tooltip Local','Tooltip_Local','TooltipLocal'],''); }
 function getTooltipVisitante(m){ return pick(m,['Tooltip Visitante','Tooltip_Visitante','TooltipVisitante'],''); }
 
+function normalizeTeamName(team){
+  return String(team||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+function escapeHtml(value){
+  return String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+function flagCode(team){
+  const key = normalizeTeamName(team);
+  const codes = {
+    'mexico':'mx','sudafrica':'za','corea del sur':'kr','republica checa':'cz','canada':'ca','bosnia y herzegovina':'ba',
+    'estados unidos':'us','paraguay':'py','haiti':'ht','australia':'au','turquia':'tr','brasil':'br','marruecos':'ma',
+    'catar':'qa','qatar':'qa','suiza':'ch','costa de marfil':'ci','alemania':'de','curazao':'cw','paises bajos':'nl',
+    'japon':'jp','suecia':'se','tunez':'tn','arabia saudita':'sa','uruguay':'uy','espana':'es','cabo verde':'cv',
+    'iran':'ir','nueva zelanda':'nz','belgica':'be','egipto':'eg','francia':'fr','senegal':'sn','irak':'iq','noruega':'no',
+    'argentina':'ar','argelia':'dz','austria':'at','jordania':'jo','inglaterra':'gb-eng','croacia':'hr','ghana':'gh',
+    'panama':'pa','portugal':'pt','rd congo':'cd','r.d. congo':'cd','republica democratica del congo':'cd',
+    'uzbekistan':'uz','colombia':'co','ecuador':'ec','escocia':'_scotland','burkina faso':'bf','emiratos arabes unidos':'ae',
+    'italia':'it','polonia':'pl','chile':'cl','peru':'pe','jamaica':'jm'
+  };
+  return codes[key] || '';
+}
+
+function flagHtml(team){
+  const code = flagCode(team);
+  const safeTeam = escapeHtml(team);
+  if(code === '_scotland'){
+    return `<img class="flag-svg" alt="Bandera de ${safeTeam}" src="https://upload.wikimedia.org/wikipedia/commons/1/10/Flag_of_Scotland.svg" loading="lazy">`;
+  }
+  if(code === 'gb-eng'){
+    return `<img class="flag-svg" alt="Bandera de ${safeTeam}" src="https://upload.wikimedia.org/wikipedia/en/b/be/Flag_of_England.svg" loading="lazy">`;
+  }
+  if(code){
+    return `<img class="flag-img" alt="Bandera de ${safeTeam}" src="https://flagcdn.com/w40/${code}.png" srcset="https://flagcdn.com/w80/${code}.png 2x" loading="lazy">`;
+  }
+  return `<span class="flag-emoji">🏳️</span>`;
+}
+
+function teamLabel(team){
+  return `<span class="team-name">${flagHtml(team)}<span>${escapeHtml(team)}</span></span>`;
+}
+
+function teamTooltip(team, note, match){
+  const safeTeam = escapeHtml(team);
+  const cleanNote = String(note || '').trim();
+  return `<div class="tip">
+    <div class="tip-title">${flagHtml(team)}<span>${safeTeam}</span></div>
+    ${cleanNote ? `<span class="tip-note">⭐ ${escapeHtml(cleanNote)}</span>` : ''}
+    <span class="tip-row">🏟️ ${escapeHtml(getStadium(match))}</span>
+    <span class="tip-row">📍 ${escapeHtml(getCity(match) || 'Ciudad por confirmar')}</span>
+    <span class="tip-round">${escapeHtml(getRound(match))}</span>
+  </div>`;
+}
+
 function getUserPrediction(mid){
   const uid=userId();
   const uname=String(pick(state.currentUser,['Usuario']));
@@ -1219,9 +1332,9 @@ function renderMatches(){
       <div class="match ${saved?'saved':''}">
         <div class="match-head"><span class="round">${getRound(m)}</span><span>${fechaHora}</span></div>
         <div class="versus">
-          <div class="team">${local}<div class="tip"><b>${local}</b><br>${tooltipLocal ? tooltipLocal + '<br>' : ''}🏟️ ${getStadium(m)}<br>📍 ${getCity(m) || 'Ciudad por confirmar'}<br>${getRound(m)}</div></div>
+          <div class="team">${teamLabel(local)}${teamTooltip(local, tooltipLocal, m)}</div>
           <div class="score"><input min="0" type="number" id="l-${id}" value="${ml}" ${saved?'disabled':''}><b>VS</b><input min="0" type="number" id="v-${id}" value="${mv}" ${saved?'disabled':''}></div>
-          <div class="team">${visit}<div class="tip"><b>${visit}</b><br>${tooltipVisitante ? tooltipVisitante + '<br>' : ''}🏟️ ${getStadium(m)}<br>📍 ${getCity(m) || 'Ciudad por confirmar'}<br>${getRound(m)}</div></div>
+          <div class="team">${teamLabel(visit)}${teamTooltip(visit, tooltipVisitante, m)}</div>
         </div>
         <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
         ${saved ? `<div class="match-actions">
@@ -1518,8 +1631,52 @@ function renderDashboard(){
   BLOQUE 13. EVENTOS DE BOTONES
   =============================================================
 */
+
+function applyTheme(theme){
+  document.body.classList.toggle('dark-mode', theme === 'dark');
+  const btn = el('themeToggle');
+  if(btn) btn.textContent = theme === 'dark' ? '☀️ Vista clara' : '🌙 Vista obscura';
+  localStorage.setItem('quinielaTheme', theme);
+}
+function toggleTheme(){
+  const next = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+  applyTheme(next);
+}
+function openParticipantsModal(){
+  el('participantsModal').classList.remove('hidden');
+  loadParticipantsPredictions();
+}
+function closeParticipantsModal(){ el('participantsModal').classList.add('hidden'); }
+async function loadParticipantsPredictions(){
+  const msg = el('participantsMsg');
+  const body = el('participantsBody');
+  msg.innerHTML = 'Consultando predicciones oficiales...';
+  body.innerHTML = '';
+
+  if(state.isDemo){
+    msg.innerHTML = '<b>Modo demo:</b> esta vista se habilita en modo real cuando tu quiniela esté cerrada al 100%.';
+    return;
+  }
+  if(!state.authToken){
+    msg.innerHTML = 'Sesión no válida. Vuelve a iniciar sesión.';
+    return;
+  }
+
+  const res = await apiGetJSONP({action:'participantesPrediccionesSeguro', token:state.authToken});
+  if(!res || res.status !== 'ok'){
+    msg.innerHTML = `<b>Aviso:</b> ${(res && res.message) ? res.message : 'No fue posible cargar la información.'}`;
+    return;
+  }
+  const rows = res.data || [];
+  msg.innerHTML = `<b>Vista solo lectura:</b> ${rows.length} marcadores cargados.`;
+  rows.forEach(r=>{
+    body.insertAdjacentHTML('beforeend', `<tr><td>${r.Nombre_Usuario || r.Usuario || ''}</td><td>${r.Partido_ID || ''}</td><td>${teamLabel(r.Equipo_Local || '')}</td><td><b>${r.Local ?? ''}</b></td><td><b>${r.Visitante ?? ''}</b></td><td>${teamLabel(r.Equipo_Visitante || '')}</td><td>${r.Fecha_Actualizacion || ''}</td></tr>`);
+  });
+}
+
 function bindEvents(){
   el('loginBtn').addEventListener('click',login);
+  el('themeToggle')?.addEventListener('click',toggleTheme);
 
   /* FASE 1 CONTROL DE ACCESOS: botón demo oculto mientras DEMO_LOGIN_ENABLED sea false. */
   if(DEMO_LOGIN_ENABLED){
@@ -1540,6 +1697,9 @@ function bindEvents(){
   el('saveBtn').addEventListener('click',saveAllPredictions);
   el('dashBtn').addEventListener('click',()=>showTab('dashboard'));
   el('backMatchesBtn').addEventListener('click',()=>showTab('matches'));
+  el('participantsBtn')?.addEventListener('click',openParticipantsModal);
+  el('closeParticipantsBtn')?.addEventListener('click',closeParticipantsModal);
+  el('participantsModal')?.addEventListener('click',e=>{ if(e.target.id==='participantsModal') closeParticipantsModal(); });
   el('reloadBtn').addEventListener('click',reloadAll);
   el('downloadBtn').addEventListener('click',downloadMyPredictions);
   el('tutorialBtn').addEventListener('click',openTutorial);
@@ -1564,7 +1724,374 @@ function bindEvents(){
     3. Queda lista la pantalla de login.
 */
 document.addEventListener('contextmenu', e => e.preventDefault());
+
+
+/* =============================================================
+   BLOQUE SEGURIDAD BACKEND - VERSION GITHUB PAGES
+   =============================================================
+   Estas funciones sobreescriben el flujo sensible para que Apps Script sea
+   la autoridad de login, guardado, cierre, ranking y bolsa.
+*/
+state.authToken = localStorage.getItem('quinielaToken') || '';
+state.secureDashboard = null;
+
+function apiGetJSONP(params){
+  return new Promise((resolve)=>{
+    const callbackName = 'api_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+    const script = document.createElement('script');
+    const timeout = setTimeout(()=>{
+      cleanup();
+      resolve({status:'error', message:'Tiempo agotado consultando API'});
+    }, 20000);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+      if(script && script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function(data){
+      cleanup();
+      resolve(data || {});
+    };
+
+    const query = new URLSearchParams({...params, callback:callbackName, t:Date.now()}).toString();
+    script.onerror = function(){ cleanup(); resolve({status:'error', message:'No se pudo consultar API'}); };
+    script.src = `${API_URL}?${query}`;
+    document.body.appendChild(script);
+  });
+}
+
+async function login(){
+  const user = el('loginUser').value.trim();
+  const pass = el('loginPass').value.trim();
+
+  if(user.toLowerCase()==='domie' && pass==='Domie2026!'){
+    if(DEMO_LOGIN_ENABLED){
+      state.authToken='';
+      state.demoPredictions=[];
+      showApp(DEMO_USER);
+    }else{
+      setMsg('El modo demo se encuentra inactivo por ahora. Regístrate para participar oficialmente en la quiniela.','warn');
+    }
+    return;
+  }
+
+  if(!user || !pass){
+    setMsg('Ingresa usuario y contraseña.','err');
+    return;
+  }
+
+  setMsg('Validando acceso seguro...', 'info');
+  const result = await apiGetJSONP({action:'loginSeguro', usuario:user, password:pass});
+
+  if(!result || result.status !== 'ok'){
+    setMsg(result.message || 'No fue posible iniciar sesión. Verifica usuario, contraseña, estatus, pago y estatus de pago.','err');
+    return;
+  }
+
+  state.authToken = result.token;
+  localStorage.setItem('quinielaToken', result.token);
+  showApp(normalizeRows([result.user])[0]);
+}
+
+function showApp(user){
+  state.currentUser=user;
+  state.isDemo=isDemoUser(user);
+  localStorage.setItem('quinielaUser',JSON.stringify(user));
+
+  el('loginScreen').classList.add('hidden');
+  el('app').classList.remove('hidden');
+  el('welcome').textContent=`👤 ${pick(user,['Nombre_Completo','Nombre Completo','Nombre_Usuario','Nombre','Usuario'])}`;
+
+  const isAdmin=!state.isDemo && getUserProfile(user)==='administrador';
+  el('tabUsers').classList.toggle('hidden',!isAdmin);
+
+  showTab('matches');
+  safeRenderAll();
+  reloadAll().then(()=>{ state.currentUser=user; safeRenderAll(); });
+}
+
+async function reloadAll(){
+  el('dataNotice').innerHTML='<b>Conexión:</b> cargando datos...';
+
+  if(state.isDemo){
+    const matches = await loadSheetJSONP('matches');
+    state.matches = matches;
+    setupDemoEnvironment();
+    buildRoundFilter();
+    safeRenderAll();
+    el('dataNotice').innerHTML = state.matches.length
+      ? `<b>Modo demo:</b> se cargaron <b>${state.matches.length}</b> partidos. El ranking y los resultados son simulados y se limpian al salir.`
+      : '<b>Modo demo:</b> no se pudieron cargar partidos. Revisa la tabla matches.';
+    return;
+  }
+
+  const [matches, mine, dashboard] = await Promise.all([
+    loadSheetJSONP('matches'),
+    state.authToken ? apiGetJSONP({action:'misPredicciones', token:state.authToken}) : Promise.resolve({data:[]}),
+    state.authToken ? apiGetJSONP({action:'dashboardSeguro', token:state.authToken}) : Promise.resolve(null)
+  ]);
+
+  state.matches = matches;
+  state.predictions = normalizeRows((mine && mine.data) ? mine.data : []);
+  state.results = [];
+  state.users = state.currentUser ? [state.currentUser] : [];
+  state.secureDashboard = dashboard && dashboard.status === 'ok' ? dashboard : null;
+  if(state.secureDashboard){
+    state.ranking = state.secureDashboard.ranking || [];
+  }
+
+  buildRoundFilter();
+  safeRenderAll();
+
+  if(state.matches.length){
+    el('dataNotice').innerHTML = `<b>Conexión segura OK:</b> se cargaron <b>${state.matches.length}</b> partidos y tus predicciones oficiales desde Apps Script.`;
+  }else{
+    el('dataNotice').innerHTML = '<b>Aviso:</b> no se pudieron leer partidos desde Google Sheets. Revisa la tabla matches.';
+  }
+}
+
+async function registerUser(){
+  const nombre = el('regName').value.trim();
+  const correo = el('regEmail').value.trim();
+  const telefono = el('regPhone').value.trim();
+  const usuario = el('regUser').value.trim();
+  const password = el('regPass').value.trim();
+  const btn = el('regBtn');
+
+  if(!nombre || !correo || !telefono || !usuario || !password){
+    setMsg('Completa todos los campos, incluyendo el teléfono.','err');
+    return;
+  }
+
+  const validationError = validateRegistration(nombre, correo, telefono, usuario, password, []);
+  if(validationError){
+    setMsg(validationError,'err');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+
+  await apiPost('registerUser','Users',{
+    'Usuario':usuario,
+    'Contraseña':password,
+    'Nombre Completo':nombre,
+    'Telefono':telefono,
+    'Correo Electrónico':correo,
+    'Estatus':'Inactivo',
+    'Perfil del Usuario':'user',
+    'Pago':'0',
+    'Estatus Pago':'pendiente'
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Solicitar registro';
+
+  toggleAuth('login');
+  setMsg(`
+    <div><b>Registro enviado correctamente.</b></div>
+    <div>Tu usuario queda <b>Inactivo</b> y con perfil <b>user</b> hasta validar el pago de inscripción.</div>
+    <div>Después de pagar, envía tu comprobante al número <b>55-71-66-22-07</b>.</div>
+    <div class="payment-box">
+      <b>Datos para depósito:</b><br>
+      Número de cuenta: <b>722969010319340514</b><br>
+      Nombre: <b>Roberto Daniel Patiño Cardoso</b><br>
+      Institución: <b>Mercado Pago W</b><br>
+      Cantidad: <b>$200</b>
+    </div>
+  `,'ok');
+}
+
+async function saveAllPredictions(){
+  if(!state.currentUser) return;
+
+  if(isQuinielaClosed()){
+    alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+    return;
+  }
+
+  const rows=[];
+  const currentFilledIds = new Set(currentUserPredictions().map(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))));
+
+  state.matches.forEach(m=>{
+    const id=matchId(m);
+    const lInput=el(`l-${id}`);
+    const vInput=el(`v-${id}`);
+    const isEditing = (lInput && lInput.dataset.editing==='true') || (vInput && vInput.dataset.editing==='true');
+    if(!id || (getUserPrediction(id) && !isEditing)) return;
+
+    const l=lInput?.value;
+    const v=vInput?.value;
+
+    if(l!==undefined && v!==undefined && l!=='' && v!==''){
+      const now = new Date().toISOString();
+      const nombreUsuario = pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+      const payload = {
+        'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
+        'Usuario': pick(state.currentUser,['Usuario']),
+        'Nombre_Usuario': nombreUsuario,
+        'Partido_ID': id,
+        'Local': l,
+        'Visitante': v,
+        'Fecha_Registro': now,
+        'Fecha_Actualizacion': now,
+        'Estatus_Prediccion':'Guardada',
+        'Cerrada':''
+      };
+      rows.push(payload);
+    }
+  });
+
+  if(!rows.length){
+    alert('No hay nuevos marcadores completos para guardar.');
+    return;
+  }
+
+  const newFilledIds = new Set(currentFilledIds);
+  rows.forEach(r=>newFilledIds.add(String(r.Partido_ID)));
+  if(state.matches.length && newFilledIds.size >= state.matches.length){
+    const ok = confirm('Estás a punto de cerrar tu quiniela al 100%. Después de enviar ya no podrás editar ningún marcador. ¿Confirmas el cierre?');
+    if(!ok) return;
+  }
+
+  if(state.isDemo){
+    const normalizedRows = normalizeRows(rows);
+    normalizedRows.forEach(row=>{
+      const rid=String(pick(row,['Partido_ID','Partido ID']));
+      state.demoPredictions = state.demoPredictions.filter(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))!==rid);
+      state.demoPredictions.push(row);
+    });
+    setupDemoEnvironment();
+    renderMatches();
+    renderDashboard();
+    alert(isQuinielaClosed() ? 'Modo demo: quiniela cerrada al 100%. Al salir se limpiará la sesión.' : 'Modo demo: tus marcadores se guardaron temporalmente solo en esta sesión.');
+    return;
+  }
+
+  if(!state.authToken){
+    alert('Tu sesión no tiene token activo. Vuelve a iniciar sesión.');
+    logout();
+    return;
+  }
+
+  for(const r of rows){
+    await apiPost('upsertPredictionSecure','predictions',{token:state.authToken, prediction:r});
+  }
+
+  await new Promise(resolve=>setTimeout(resolve, 900));
+  const mine = await apiGetJSONP({action:'misPredicciones', token:state.authToken});
+  if(mine && mine.status==='ok'){
+    state.predictions = normalizeRows(mine.data || []);
+  }else{
+    const normalizedRows = normalizeRows(rows);
+    normalizedRows.forEach(row=>{
+      const rid=String(pick(row,['Partido_ID','Partido ID']));
+      row.Nombre_Usuario = row.Nombre_Usuario || pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+      state.predictions = state.predictions.filter(p=>!(String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===rid && String(pick(p,['Usuario','Participante']))===String(pick(state.currentUser,['Usuario']))));
+      state.predictions.push(row);
+    });
+  }
+
+  const dashboard = await apiGetJSONP({action:'dashboardSeguro', token:state.authToken});
+  if(dashboard && dashboard.status==='ok'){
+    state.secureDashboard = dashboard;
+    state.ranking = dashboard.ranking || [];
+  }
+
+  renderMatches();
+  renderDashboard();
+  alert(isQuinielaClosed() ? 'Quiniela cerrada al 100%. A partir de ahora solo podrás consultarla.' : 'Quiniela guardada. Los marcadores capturados quedaron bloqueados.');
+}
+
+function getPaymentSummary(){
+  if(state.secureDashboard && state.secureDashboard.paymentSummary){
+    return state.secureDashboard.paymentSummary;
+  }
+  const total = (state.users || []).reduce((sum,u)=>sum + getUserPayment(u),0);
+  return {total, dev:total*.10, prize:total*.90, first:total*.50, second:total*.30, third:total*.10};
+}
+
+function renderDashboard(){
+  if(state.secureDashboard && Array.isArray(state.secureDashboard.ranking)){
+    state.ranking = state.secureDashboard.ranking;
+  }else{
+    calcRanking();
+  }
+  updatePaymentDashboard();
+  el('mPoints').textContent=(state.ranking.find(r=>String(r.uid)===userId() || String(r.usuario)===String(pick(state.currentUser,['Usuario'])))||{}).points||0;
+
+  const labels=state.ranking.map(r=>r.name || r.Nombre_Usuario || r.usuario || r.uid);
+  const pts=state.ranking.map(r=>r.points || 0);
+  const exact=state.ranking.reduce((s,r)=>s+(Number(r.exact)||0),0);
+  const win=state.ranking.reduce((s,r)=>s+(Number(r.winner)||0),0);
+
+  const body=el('rankingBody');
+  if(body){
+    body.innerHTML='';
+    state.ranking.forEach((r,i)=>{
+      const name = r.name || r.Nombre_Usuario || r.usuario || r.uid;
+      body.insertAdjacentHTML('beforeend',`<tr><td class="${i===0?'rank1':''}">${i===0?'👑 ':''}${i+1}</td><td>${name}</td><td><b>${r.points||0}</b></td><td>${r.exact||0}</td><td>${r.winner||0}</td></tr>`);
+    });
+  }
+
+  const facts=el('funFacts');
+  if(facts){
+    const leader=state.ranking[0];
+    const pool = getPaymentSummary();
+    facts.innerHTML=`<p>🏆 Líder actual: <b>${leader?(leader.name || leader.Nombre_Usuario || leader.usuario):'Sin datos'}</b></p><p>🎯 Marcadores exactos totales: <b>${exact}</b></p><p>🔥 Aciertos de ganador/empate: <b>${win}</b></p><p>💰 Bolsa oficial a repartir: <b>${formatCurrencyMXN(pool.prize)}</b></p>`;
+  }
+
+  if(typeof Chart==='undefined') return;
+
+  if(el('rankingChart')){
+    if(charts.ranking) charts.ranking.destroy();
+    charts.ranking=new Chart(el('rankingChart'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Puntos',data:pts,backgroundColor:'rgba(11,98,214,.65)',borderColor:'rgba(0,59,143,1)',borderWidth:1}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+
+    if(charts.accuracy) charts.accuracy.destroy();
+    charts.accuracy=new Chart(el('accuracyChart'),{
+      type:'doughnut',
+      data:{labels:['Exactos','Ganador/Empate'],datasets:[{data:[exact,win],backgroundColor:['rgba(0,168,107,.75)','rgba(255,209,102,.9)']}]},
+      options:{responsive:true}
+    });
+  }
+}
+
+async function restoreSessionIfPossible(){
+  const savedToken = localStorage.getItem('quinielaToken');
+  const savedUser = localStorage.getItem('quinielaUser');
+  if(!savedToken || !savedUser) return;
+  try{
+    const parsedUser = JSON.parse(savedUser);
+    const result = await apiGetJSONP({action:'validarSesion', token:savedToken});
+    if(result && result.status==='ok'){
+      state.authToken = savedToken;
+      showApp(normalizeRows([result.user || parsedUser])[0]);
+    }
+  }catch(e){
+    console.warn('No se pudo restaurar sesión', e);
+  }
+}
+
+function logout(){
+  if(state.isDemo){
+    state.demoPredictions=[];
+    state.predictions=[];
+    state.results=[];
+    state.ranking=[];
+  }
+  localStorage.removeItem('quinielaUser');
+  localStorage.removeItem('quinielaToken');
+  location.reload();
+}
+
 window.addEventListener('load',()=>{
+  applyTheme(localStorage.getItem('quinielaTheme') || 'light');
   bindEvents();
   const savedUserRaw = localStorage.getItem('quinielaUser');
   if(savedUserRaw){
