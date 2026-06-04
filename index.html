@@ -110,6 +110,16 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
     .participants-head{display:flex;justify-content:space-between;gap:12px;align-items:center;position:sticky;top:0;background:inherit;padding-bottom:12px;z-index:2}
     .participants-table{font-size:13px}
 
+
+    /* ADMIN USERS: tabla completa y acciones rápidas */
+    .admin-users-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .admin-chip{background:#eef6ff;border:1px solid #bfdbfe;color:#003b8f;border-radius:999px;padding:10px 14px;font-weight:900}
+    .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn-mini{padding:7px 10px;border-radius:10px;font-size:12px;font-weight:900}
+    .btn-mini.ok{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+    .btn-mini.warn{background:#fff7ed;color:#92400e;border:1px solid #fbbf24}
+    .btn-mini.pay{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd}
+    .users-table th,.users-table td{white-space:nowrap;vertical-align:middle}
     @media(max-width:900px){.money-cards{grid-template-columns:repeat(2,1fr)}}
 
 
@@ -128,6 +138,16 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
     .participants-head{display:flex;justify-content:space-between;gap:12px;align-items:center;position:sticky;top:0;background:inherit;padding-bottom:12px;z-index:2}
     .participants-table{font-size:13px}
 
+
+    /* ADMIN USERS: tabla completa y acciones rápidas */
+    .admin-users-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .admin-chip{background:#eef6ff;border:1px solid #bfdbfe;color:#003b8f;border-radius:999px;padding:10px 14px;font-weight:900}
+    .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn-mini{padding:7px 10px;border-radius:10px;font-size:12px;font-weight:900}
+    .btn-mini.ok{background:#dcfce7;color:#14532d;border:1px solid #86efac}
+    .btn-mini.warn{background:#fff7ed;color:#92400e;border:1px solid #fbbf24}
+    .btn-mini.pay{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd}
+    .users-table th,.users-table td{white-space:nowrap;vertical-align:middle}
     @media(max-width:900px){.summary-cards{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.versus{grid-template-columns:1fr}.score{justify-content:center}.hero h1{font-size:24px}.matches{grid-template-columns:1fr}}
   
 
@@ -155,6 +175,32 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
     body.dark-mode .tip-round{background:#082f49;color:#bae6fd}
     @media(max-width:700px){.tip{position:fixed;left:50%;top:auto;bottom:24px;transform:translateX(-50%);width:calc(100vw - 34px)}.tip:after{display:none}.team{min-height:78px}.flag-img,.flag-svg{width:24px;height:17px}}
 
+  
+    /* MEJORAS UX LANZAMIENTO: cuenta regresiva, paginación móvil, registro destacado y filtros */
+    .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .countdown-pill{background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.32);color:#fff;border-radius:999px;padding:9px 13px;font-weight:950;display:inline-flex;gap:6px;align-items:center}
+    .countdown-card{margin:14px 0;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg,#eff6ff,#fff7ed);border:1px solid #bfdbfe;text-align:center;color:#003b8f}
+    .countdown-card span{display:block;font-weight:900;font-size:13px;color:#64748b;margin-bottom:5px}.countdown-card b{font-size:18px}
+    .countdown-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 18px 0;padding:13px 18px;border-radius:20px;background:linear-gradient(135deg,#003b8f,#0b62d6,#00a86b);color:#fff;box-shadow:0 12px 30px rgba(0,59,143,.18)}
+    .countdown-strip span{font-weight:900}.countdown-strip b{font-size:18px}
+    #showRegBtn{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border-radius:18px;margin-top:14px;box-shadow:0 12px 28px rgba(0,168,107,.25);font-size:16px}
+    #showRegBtn:before{content:"🚀 ";}.filters select#statusFilter{background:linear-gradient(135deg,#ffffff,#eff6ff);border:2px solid #bfdbfe;color:#003b8f}
+    .match-nav-controls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 8px}.match-nav-controls .btn{min-width:190px}
+    .suggest-btn{background:#eef6ff;color:#003b8f;border:1px solid #bfdbfe;border-radius:999px;padding:7px 12px;font-size:12px;box-shadow:0 6px 18px rgba(0,59,143,.10)}
+    .suggest-btn:hover{background:#dbeafe}.admin-readonly-note{background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}
+    body.dark-mode .countdown-card{background:linear-gradient(135deg,#111827,#1e293b);border-color:#334155;color:#bfdbfe}
+    body.dark-mode .countdown-card span{color:#cbd5e1}body.dark-mode .countdown-strip{background:linear-gradient(135deg,#0f172a,#1e3a8a,#065f46)}
+    body.dark-mode .filters select#statusFilter{background:#111827;color:#bfdbfe;border-color:#334155}
+    @media(max-width:700px){
+      .countdown-strip{display:block;text-align:center}.countdown-strip span{display:block;margin-bottom:5px}
+      .filters{position:sticky;top:0;z-index:50;background:rgba(238,246,255,.92);backdrop-filter:blur(10px);padding:10px;border-radius:18px;border:1px solid #dbeafe}
+      body.dark-mode .filters{background:rgba(15,23,42,.92);border-color:#334155}
+      .filters input,.filters select,.filters button{width:100%;min-width:0}
+      .match-nav-controls{position:sticky;bottom:10px;z-index:45;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);padding:10px;border-radius:18px;border:1px solid #dbeafe}
+      body.dark-mode .match-nav-controls{background:rgba(15,23,42,.9);border-color:#334155}
+      .match-nav-controls button{flex:1;min-width:130px}
+    }
+
   </style>
 
 </head>
@@ -174,6 +220,10 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
 
       <div id="demoInfo" class="demo-inspiration">
         Vive la emoción del Mundial: cada pronóstico cuenta, cada marcador puede cambiar la tabla y cada participante compite por llegar a la cima.
+      </div>
+      <div class="countdown-card login-countdown">
+        <span>⏳ Faltan para el inicio del Mundial</span>
+        <b id="countdownLogin">Calculando...</b>
       </div>
       <div class="info-access-row">
         <button type="button" class="info-pill" id="infoQuinielaBtn">ℹ️ ¿Cómo funciona la quiniela?</button>
@@ -196,14 +246,16 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
   </div>
 </section>
 <section id="app" class="app hidden">
-  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="theme-toggle" id="themeToggle">🌙 Vista obscura</button><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
+  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div class="header-actions"><span id="countdownHeader" class="countdown-pill">⏳ Calculando...</span><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="theme-toggle" id="themeToggle">🌙 Vista obscura</button><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
   <main>
     <div class="tabs"><button type="button" id="tabMatches" class="tab active">⚽ Partidos</button><button type="button" id="tabDash" class="tab">📊 Dashboard</button><button type="button" id="tabUsers" class="tab hidden">👥 Usuarios</button></div>
     <section id="matchesView">
       <div class="hero"><div><h1>Llena tu quiniela</h1><p class="sub">Captura tus marcadores. Al guardar, los partidos quedarán bloqueados.</p></div><div class="progress-wrap"><div class="progress-label"><span>Progreso de llenado</span><span id="progressText">0%</span></div><div class="progress"><div id="progressBar" class="progress-bar"></div></div></div></div>
+      <div class="countdown-strip"><span>⏳ Cuenta regresiva al Mundial</span><b id="countdownMatches">Calculando...</b></div>
       <div class="summary-cards"><div class="metric"><small>Partidos</small><b id="mTotal">0</b></div><div class="metric"><small>Llenados</small><b id="mFilled">0</b></div><div class="metric"><small>Pendientes</small><b id="mPending">0</b></div><div class="metric"><small>Mis puntos</small><b id="mPoints">0</b></div></div>
       <div class="filters"><input id="searchBox" placeholder="Buscar selección o estadio"><select id="roundFilter"><option value="">Todas las rondas / grupos</option></select><select id="statusFilter"><option value="">Todos los partidos</option><option value="pending">Pendientes por llenar</option><option value="saved">Guardados</option></select><button type="button" class="btn-light" id="clearFiltersBtn">Limpiar filtros</button><button type="button" class="btn-green" id="saveBtn">💾 Guardar quiniela</button><button type="button" class="btn-purple" id="tutorialBtn">🎓 Ver tutorial</button><button type="button" class="btn-light" id="reloadBtn">🔄 Actualizar datos</button><span id="autosaveStatus" class="auto-save-status">Autoguardado cada 2 partidos completos</span></div>
       <div id="matchesContainer" class="matches"></div>
+      <div class="match-nav-controls"><button type="button" class="btn-light" id="topMatchesBtn">⬆️ Ir arriba</button><button type="button" class="btn" id="loadMoreMatchesBtn">⬇️ Ver más partidos</button></div>
       <div class="actions"><button type="button" class="btn-gold" id="dashBtn">📊 Ver dashboard</button><button type="button" class="btn-light" id="downloadBtn">⬇️ Descargar mi quiniela</button></div>
       <div id="dataNotice" class="notice"><b>Conexión:</b> consultando datos desde Google Sheets.</div>
     </section>
@@ -218,7 +270,7 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
       <div class="dashboard"><div class="panel"><h3>🏆 Ranking general</h3><canvas id="rankingChart"></canvas></div><div class="panel"><h3>🎯 Tipos de acierto</h3><canvas id="accuracyChart"></canvas><div id="funFacts" class="notice"></div></div></div>
       <div class="panel" style="margin-top:18px"><h3>Tabla de posiciones</h3><div class="table-wrap"><table><thead><tr><th>#</th><th>Usuario</th><th>Puntos</th><th>Exactos</th><th>Ganador/Empate</th></tr></thead><tbody id="rankingBody"></tbody></table></div></div>
     </section>
-    <section id="usersView" class="hidden"><div class="hero"><div><h1>Usuarios</h1><p class="sub">Los nuevos registros se crean como Usuario e Inactivo.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Teléfono <span style="color:#ef476f">nuevo</span></th><th>Correo<span style="color:#ef476f"></th><th>Usuario<span style="color:#ef476f"></th><th>Rol</th><th>Estado</th></tr></thead><tbody id="usersBody"></tbody></table></div></div></section>
+    <section id="usersView" class="hidden"><div class="hero"><div><h1>Usuarios</h1><p class="sub">Administración completa de usuarios, estatus y pagos.</p></div><button type="button" class="btn-light" id="reloadUsersBtn">🔄 Actualizar usuarios</button></div><div class="panel"><div id="usersAdminSummary" class="admin-users-summary"></div><div class="table-wrap"><table class="users-table"><thead id="usersHead"><tr><th>Usuario</th><th>Nombre</th><th>Estatus</th><th>Perfil</th><th>Pago</th><th>Estatus Pago</th><th>Acciones</th></tr></thead><tbody id="usersBody"></tbody></table></div></div></section>
   </main>
 </section>
 
@@ -400,7 +452,9 @@ const state = {
   results:[],
   ranking:[],
   demoPredictions:[],
-  readStatus:{ matches:false, Users:false, predictions:false, results:false }
+  readStatus:{ matches:false, Users:false, predictions:false, results:false },
+  adminUsers:[],
+  adminHeaders:[]
 };
 
 const charts = { ranking:null, accuracy:null };
@@ -1684,7 +1738,7 @@ function bindEvents(){
   /* FASE 1 CONTROL DE ACCESOS: botón demo oculto mientras DEMO_LOGIN_ENABLED sea false. */
   if(DEMO_LOGIN_ENABLED){
     el('demoBtn').classList.remove('hidden');
-    el('demoInfo').innerHTML='Usa el modo demo para explorar la experiencia completa sin afectar las tablas reales.';
+    el('demoInfo').innerHTML='Usa el modo demo para disfrutar de la experiencia completa.';
   }else{
     el('demoBtn').classList.add('hidden');
   }
@@ -1704,6 +1758,7 @@ function bindEvents(){
   el('closeParticipantsBtn')?.addEventListener('click',closeParticipantsModal);
   el('participantsModal')?.addEventListener('click',e=>{ if(e.target.id==='participantsModal') closeParticipantsModal(); });
   el('reloadBtn').addEventListener('click',reloadAll);
+  el('reloadUsersBtn')?.addEventListener('click',loadAdminUsers);
   el('downloadBtn').addEventListener('click',downloadMyPredictions);
   el('tutorialBtn').addEventListener('click',openTutorial);
   el('closeTutorialBtn').addEventListener('click',closeTutorial);
@@ -2161,16 +2216,454 @@ function logout(){
   location.reload();
 }
 
+
+
+/* =============================================================
+   ADMIN USERS + RANKING COMPACTO - ADECUACIONES FINALES
+   ============================================================= */
+function displayHeaderLabel(header){
+  return String(header || '').replaceAll('_',' ');
+}
+function isCurrentAdmin(){
+  return !!state.currentUser && !state.isDemo && getUserProfile(state.currentUser)==='administrador';
+}
+async function loadAdminUsers(){
+  if(!isCurrentAdmin() || !state.authToken) return;
+  const summary = el('usersAdminSummary');
+  const body = el('usersBody');
+  if(summary) summary.innerHTML = '<span class="admin-chip">Cargando usuarios...</span>';
+  if(body) body.innerHTML = '';
+  const res = await apiGetJSONP({action:'listUsersAdminSeguro', token:state.authToken});
+  if(!res || res.status !== 'ok'){
+    if(summary) summary.innerHTML = `<span class="admin-chip">No fue posible cargar usuarios: ${(res && res.message) || 'Error'}</span>`;
+    return;
+  }
+  state.adminUsers = normalizeRows(res.data || []);
+  state.adminHeaders = (res.headers || []).map(h=>normalizeKey(h));
+  renderUsers();
+}
+
+async function updateAdminUser(usuario, updates){
+  if(!isCurrentAdmin() || !state.authToken) return;
+  if(!usuario) return;
+  await apiPost('updateUserAdminSeguro','Users',{token:state.authToken, usuario, updates});
+  const target = state.adminUsers.find(u=>String(pick(u,['Usuario']))===String(usuario));
+  if(target){
+    Object.keys(updates).forEach(k=>{ target[normalizeKey(k)] = updates[k]; });
+  }
+  renderUsers();
+}
+function adminSetStatus(usuario, status){
+  updateAdminUser(usuario, {'Estatus': status});
+}
+function adminConfirmPayment(usuario){
+  updateAdminUser(usuario, {'Pago':'200','Estatus Pago':'completo'});
+}
+function adminMarkPending(usuario){
+  updateAdminUser(usuario, {'Pago':'0','Estatus Pago':'pendiente'});
+}
+
+function renderUsers(){
+  const head=el('usersHead');
+  const body=el('usersBody');
+  const summary=el('usersAdminSummary');
+  if(!head || !body) return;
+  const rows = isCurrentAdmin() ? (state.adminUsers || []) : (state.users || []);
+  let headers = isCurrentAdmin() ? (state.adminHeaders || []) : [];
+
+  if(!rows.length && isCurrentAdmin()){
+    summary.innerHTML = '<span class="admin-chip">Sin usuarios cargados. Presiona Actualizar usuarios.</span>';
+    head.innerHTML = '<tr><th>Usuario</th><th>Nombre</th><th>Estatus</th><th>Perfil</th><th>Pago</th><th>Estatus Pago</th><th>Acciones</th></tr>';
+    body.innerHTML = '';
+    return;
+  }
+
+  if(!headers.length){
+    const set = new Set();
+    rows.forEach(r=>Object.keys(r||{}).forEach(k=>set.add(k)));
+    headers = Array.from(set);
+  }
+
+  const preferred = ['Usuario','Nombre_Completo','Nombre_Completo','Nombre_Completo','Nombre_Completo','Contrasena','Contrasena_Temporal','Telefono','Correo_Electronico','Estatus','Perfil_del_Usuario','Pago','Estatus_Pago'];
+  const ordered = [];
+  preferred.forEach(h=>{ if(headers.includes(h) && !ordered.includes(h)) ordered.push(h); });
+  headers.forEach(h=>{ if(!ordered.includes(h)) ordered.push(h); });
+  headers = ordered;
+
+  if(summary){
+    const total = rows.length;
+    const cols = headers.length;
+    const active = rows.filter(u=>getUserStatus(u)==='activo').length;
+    const paid = rows.filter(u=>Number(String(pick(u,['Pago'],'0')).replace(/[^0-9.]/g,''))>=200).length;
+    summary.innerHTML = `<span class="admin-chip">Usuarios: ${total}</span><span class="admin-chip">Columnas: ${cols}</span><span class="admin-chip">Activos: ${active}</span><span class="admin-chip">Pagados: ${paid}</span>`;
+  }
+
+  head.innerHTML = '<tr>' + headers.map(h=>`<th>${displayHeaderLabel(h)}</th>`).join('') + '<th>Acciones</th></tr>';
+  body.innerHTML='';
+
+  rows.forEach(u=>{
+    const usuario = pick(u,['Usuario']);
+    const status = getUserStatus(u);
+    const isAdminUser = getUserProfile(u)==='administrador';
+    const cells = headers.map(h=>{
+      let val = u[h] !== undefined ? u[h] : '';
+      if(h==='Estatus' || h==='Estado' || h==='Estatus_Perfil_del_Usuario'){
+        const cls = String(val).toLowerCase()==='activo' ? 'active-s' : 'inactive-s';
+        val = `<span class="status ${cls}">${val || ''}</span>`;
+      }
+      if(h==='Telefono' || h==='Telefono_') val = `<span style="color:#6d28d9;font-weight:900">${val || ''}</span>`;
+      return `<td>${val ?? ''}</td>`;
+    }).join('');
+    const actions = isCurrentAdmin() ? `<td><div class="admin-actions">
+      <button class="btn-mini ok" type="button" onclick="adminSetStatus('${String(usuario).replaceAll("'","\\'")}','activo')">Activar</button>
+      <button class="btn-mini warn" type="button" onclick="adminSetStatus('${String(usuario).replaceAll("'","\\'")}','Inactivo')">Inactivar</button>
+      ${!isAdminUser ? `<button class="btn-mini pay" type="button" onclick="adminConfirmPayment('${String(usuario).replaceAll("'","\\'")}')">Confirmar pago</button><button class="btn-mini warn" type="button" onclick="adminMarkPending('${String(usuario).replaceAll("'","\\'")}')">Pago pendiente</button>` : '<span class="status active-s">Admin sin pago</span>'}
+    </div></td>` : '<td></td>';
+    body.insertAdjacentHTML('beforeend', `<tr>${cells}${actions}</tr>`);
+  });
+}
+
+function rankingDisplayName(r){
+  return r.usuario || r.Usuario || r.uid || r.name || r.Nombre_Usuario || 'Usuario';
+}
+
+function renderDashboard(){
+  if(state.secureDashboard && Array.isArray(state.secureDashboard.ranking)){
+    state.ranking = state.secureDashboard.ranking;
+  }else{
+    calcRanking();
+  }
+  updatePaymentDashboard();
+  el('mPoints').textContent=(state.ranking.find(r=>String(r.uid)===userId() || String(r.usuario)===String(pick(state.currentUser,['Usuario'])))||{}).points||0;
+
+  const labels=state.ranking.map(r=>rankingDisplayName(r));
+  const pts=state.ranking.map(r=>r.points || 0);
+  const exact=state.ranking.reduce((s,r)=>s+(Number(r.exact)||0),0);
+  const win=state.ranking.reduce((s,r)=>s+(Number(r.winner)||0),0);
+
+  const body=el('rankingBody');
+  if(body){
+    body.innerHTML='';
+    state.ranking.forEach((r,i)=>{
+      const name = rankingDisplayName(r);
+      body.insertAdjacentHTML('beforeend',`<tr><td class="${i===0?'rank1':''}">${i===0?'👑 ':''}${i+1}</td><td>${name}</td><td><b>${r.points||0}</b></td><td>${r.exact||0}</td><td>${r.winner||0}</td></tr>`);
+    });
+  }
+
+  const facts=el('funFacts');
+  if(facts){
+    const leader=state.ranking[0];
+    const pool = getPaymentSummary();
+    facts.innerHTML=`<p>🏆 Líder actual: <b>${leader?rankingDisplayName(leader):'Sin datos'}</b></p><p>🎯 Marcadores exactos totales: <b>${exact}</b></p><p>🔥 Aciertos de ganador/empate: <b>${win}</b></p><p>💰 Bolsa oficial a repartir: <b>${formatCurrencyMXN(pool.prize)}</b></p>`;
+  }
+
+  if(typeof Chart==='undefined') return;
+  if(el('rankingChart')){
+    if(charts.ranking) charts.ranking.destroy();
+    charts.ranking=new Chart(el('rankingChart'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Puntos',data:pts,backgroundColor:'rgba(11,98,214,.65)',borderColor:'rgba(0,59,143,1)',borderWidth:1}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+    if(charts.accuracy) charts.accuracy.destroy();
+    charts.accuracy=new Chart(el('accuracyChart'),{
+      type:'doughnut',
+      data:{labels:['Exactos','Ganador/Empate'],datasets:[{data:[exact,win],backgroundColor:['rgba(0,168,107,.75)','rgba(255,209,102,.9)']}]},
+      options:{responsive:true}
+    });
+  }
+}
+
+const originalShowTabForAdminUsers = showTab;
+showTab = function(tab){
+  originalShowTabForAdminUsers(tab);
+  if(tab==='users' && isCurrentAdmin()) loadAdminUsers();
+};
+
+
+/* =============================================================
+   MEJORAS UX + ADMIN + CUENTA REGRESIVA - NO RESTAURA DEMO
+   ============================================================= */
+state.visibleMatches = 12;
+state.lastFilterSignature = '';
+
+function isAdminCurrent(){
+  return !!state.currentUser && !state.isDemo && getUserProfile(state.currentUser)==='administrador';
+}
+
+function worldCupCountdownText(){
+  const start = new Date('2026-06-11T13:00:00-06:00');
+  const now = new Date();
+  let diff = start.getTime() - now.getTime();
+  if(diff <= 0) return '¡El Mundial ya comenzó!';
+  const days = Math.floor(diff / 86400000); diff %= 86400000;
+  const hours = Math.floor(diff / 3600000); diff %= 3600000;
+  const mins = Math.floor(diff / 60000); diff %= 60000;
+  const secs = Math.floor(diff / 1000);
+  return `${days} días · ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
+}
+
+function updateCountdowns(){
+  const text = worldCupCountdownText();
+  if(el('countdownLogin')) el('countdownLogin').textContent = text;
+  if(el('countdownHeader')) el('countdownHeader').textContent = `⏳ ${text}`;
+  if(el('countdownMatches')) el('countdownMatches').textContent = text;
+}
+
+function filterSignature(){
+  return JSON.stringify({
+    q: el('searchBox')?.value || '',
+    r: el('roundFilter')?.value || '',
+    s: el('statusFilter')?.value || ''
+  });
+}
+
+function renderMatches(){
+  const c=el('matchesContainer');
+  if(!c) return;
+  c.innerHTML='';
+
+  const currentSig = filterSignature();
+  if(state.lastFilterSignature !== currentSig){
+    state.visibleMatches = 12;
+    state.lastFilterSignature = currentSig;
+  }
+
+  let filled=0;
+  const allShown=filteredMatches();
+  const shown=allShown.slice(0, state.visibleMatches);
+  const admin = isAdminCurrent();
+
+  state.matches.forEach(m=>{
+    const id=matchId(m);
+    if(id && getUserPrediction(id)) filled++;
+  });
+
+  if(!state.matches.length){
+    c.innerHTML='<div class="empty">No hay partidos cargados. Presiona “Actualizar datos” o revisa que el archivo matches esté compartido/publicado correctamente.</div>';
+    updateProgress(0);
+    updateLoadMoreButton(0,0);
+    return;
+  }
+
+  if(!shown.length){
+    c.innerHTML='<div class="empty">No hay partidos para mostrar con el filtro seleccionado.</div>';
+    updateProgress(filled);
+    updateLoadMoreButton(0,0);
+    return;
+  }
+
+  shown.forEach(m=>{
+    const id=matchId(m);
+    if(!id) return;
+
+    const pred=getUserPrediction(id);
+    const saved=!!pred;
+    const local=getLocalTeam(m);
+    const visit=getVisitTeam(m);
+    const tooltipLocal=getTooltipLocal(m);
+    const tooltipVisitante=getTooltipVisitante(m);
+    const ml=pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
+    const mv=pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
+    const fecha = formatDateDisplay(getDate(m));
+    const hora = formatHourDisplay(getHour(m));
+    const fechaHora = hora ? `${fecha} · ${hora}` : fecha;
+    const disabled = admin || saved;
+
+    c.insertAdjacentHTML('beforeend',`
+      <div class="match ${saved?'saved':''}">
+        <div class="match-head"><span class="round">${getRound(m)}</span><span>${fechaHora}</span></div>
+        <div class="versus">
+          <div class="team">${teamLabel(local)}${teamTooltip(local, tooltipLocal, m)}</div>
+          <div class="score"><input min="0" type="number" id="l-${id}" value="${ml}" ${disabled?'disabled':''}><b>VS</b><input min="0" type="number" id="v-${id}" value="${mv}" ${disabled?'disabled':''}></div>
+          <div class="team">${teamLabel(visit)}${teamTooltip(visit, tooltipVisitante, m)}</div>
+        </div>
+        <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
+        <div class="match-actions">
+          ${!admin && !saved ? `<button type="button" class="suggest-btn" onclick="autoFillMatchSuggestion('${id}')">✨ Sugerir marcador</button>` : ''}
+          ${admin ? '<div class="admin-readonly-note">👁️ Administrador: solo lectura</div>' : ''}
+          ${saved && !admin ? `${!isQuinielaClosed()?`<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar marcador</button><div class="lock">🔒 Guardado</div>`:''}${isQuinielaClosed()?'<div class="finalized-note">🔒 Quiniela cerrada</div><div class="lock">Solo consulta</div>':''}<div class="editing-note hidden" id="edit-note-${id}">Editando marcador</div>` : ''}
+        </div>
+      </div>
+    `);
+  });
+
+  updateProgress(filled);
+  updateLoadMoreButton(shown.length, allShown.length);
+  calcRanking();
+}
+
+function updateLoadMoreButton(visible,total){
+  const btn = el('loadMoreMatchesBtn');
+  const topBtn = el('topMatchesBtn');
+  if(!btn) return;
+  btn.classList.toggle('hidden', visible >= total);
+  btn.textContent = visible < total ? `⬇️ Ver más partidos (${visible}/${total})` : 'Todos los partidos visibles';
+  if(topBtn) topBtn.classList.toggle('hidden', total <= 12);
+}
+
+function loadMoreMatches(){
+  state.visibleMatches += 12;
+  renderMatches();
+  setTimeout(()=>window.scrollBy({top:420, behavior:'smooth'}), 60);
+}
+
+function scrollMatchesTop(){
+  const target = el('matchesView');
+  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function saveAllPredictions(){
+  if(isAdminCurrent()){
+    alert('El perfil administrador solo puede consultar partidos y usar filtros. No participa en la quiniela.');
+    return;
+  }
+  return persistPredictionRows(collectPendingPredictionRows(), {silent:false});
+}
+
+function collectPendingPredictionRows(){
+  if(isAdminCurrent()) return [];
+  const rows=[];
+
+  state.matches.forEach(m=>{
+    const id=matchId(m);
+    const lInput=el(`l-${id}`);
+    const vInput=el(`v-${id}`);
+    const isEditing = (lInput && lInput.dataset.editing==='true') || (vInput && vInput.dataset.editing==='true');
+    if(!id || (getUserPrediction(id) && !isEditing)) return;
+
+    const l=lInput?.value;
+    const v=vInput?.value;
+
+    if(l!==undefined && v!==undefined && l!=='' && v!==''){
+      const now = new Date().toISOString();
+      const nombreUsuario = pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+      rows.push({
+        'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
+        'Usuario': pick(state.currentUser,['Usuario']),
+        'Nombre_Usuario': nombreUsuario,
+        'Partido_ID': id,
+        'Local': l,
+        'Visitante': v,
+        'Fecha_Registro': now,
+        'Fecha_Actualizacion': now,
+        'Estatus_Prediccion':'Guardada',
+        'Cerrada':''
+      });
+    }
+  });
+
+  return rows;
+}
+
+function teamRecentScores(team){
+  const normalized = normalizeTeamName(team);
+  const rows = (state.results || []).filter(r=>{
+    const local = normalizeTeamName(pick(r,['Equipo_Local','Equipo Local','Local_Equipo','Local']));
+    const visit = normalizeTeamName(pick(r,['Equipo_Visitante','Equipo Visitante','Visitante_Equipo','Visitante']));
+    const hasScores = pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],'') !== '' &&
+                      pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],'') !== '';
+    return hasScores && (local===normalized || visit===normalized);
+  }).slice(-5);
+
+  return rows.map(r=>{
+    const local = normalizeTeamName(pick(r,['Equipo_Local','Equipo Local','Local_Equipo','Local']));
+    const ml = Number(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],0));
+    const mv = Number(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],0));
+    return local===normalized ? {gf:ml, ga:mv} : {gf:mv, ga:ml};
+  });
+}
+
+function averageGoals(scores, fallback){
+  if(!scores.length) return fallback;
+  const avg = scores.reduce((s,x)=>s+x.gf,0) / scores.length;
+  return Math.max(0, Math.min(4, Math.round(avg)));
+}
+
+function autoFillMatchSuggestion(id){
+  if(isAdminCurrent()) return;
+  const m = state.matches.find(x=>String(matchId(x))===String(id));
+  if(!m) return;
+  if(getUserPrediction(id)){
+    alert('Este partido ya está guardado. Usa editar marcador si necesitas cambiarlo.');
+    return;
+  }
+
+  const local = getLocalTeam(m);
+  const visit = getVisitTeam(m);
+  const localScores = teamRecentScores(local);
+  const visitScores = teamRecentScores(visit);
+
+  let localGoals = averageGoals(localScores, 1);
+  let visitGoals = averageGoals(visitScores, 1);
+
+  if(!localScores.length && !visitScores.length){
+    // No hay históricos reales cargados. Se propone un marcador conservador editable.
+    localGoals = 1;
+    visitGoals = 1;
+  }
+
+  const li = el(`l-${id}`);
+  const vi = el(`v-${id}`);
+  if(li && vi){
+    li.value = localGoals;
+    vi.value = visitGoals;
+    li.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+}
+
+function updateRoleUI(){
+  const admin = isAdminCurrent();
+  ['saveBtn','downloadBtn','autosaveStatus'].forEach(id=>{
+    const node = el(id);
+    if(node) node.classList.toggle('hidden', admin);
+  });
+  const notice = el('dataNotice');
+  if(admin && notice){
+    notice.innerHTML = '<b>Administrador:</b> puedes consultar partidos, usar filtros, revisar dashboard y administrar usuarios. Este perfil no participa en la quiniela.';
+  }
+}
+
+const previousShowAppUx = showApp;
+showApp = function(user){
+  previousShowAppUx(user);
+  setTimeout(updateRoleUI, 200);
+};
+
+const previousShowTabUx = showTab;
+showTab = function(tab){
+  previousShowTabUx(tab);
+  updateRoleUI();
+  if(tab==='users' && isCurrentAdmin()) loadAdminUsers();
+};
+
+
 window.addEventListener('load',()=>{
   applyTheme(localStorage.getItem('quinielaTheme') || 'light');
   bindEvents();
+
+  updateCountdowns();
+  setInterval(updateCountdowns, 1000);
+
+  el('loadMoreMatchesBtn')?.addEventListener('click', loadMoreMatches);
+  el('topMatchesBtn')?.addEventListener('click', scrollMatchesTop);
+
   const savedUserRaw = localStorage.getItem('quinielaUser');
   if(savedUserRaw){
     try{
       const savedUser = JSON.parse(savedUserRaw);
-      if(savedUser && pick(savedUser,['Usuario'])){
+      /*
+        Ajuste solicitado:
+        No restaurar automáticamente la sesión demo.
+        El demo solo entra cuando el usuario presiona el botón.
+      */
+      if(savedUser && pick(savedUser,['Usuario']) && String(pick(savedUser,['Usuario'])).toLowerCase() !== 'domie'){
         showApp(savedUser);
         return;
+      }
+      if(String(pick(savedUser,['Usuario'])).toLowerCase() === 'domie'){
+        localStorage.removeItem('quinielaUser');
+        localStorage.removeItem('quinielaToken');
       }
     }catch(error){
       console.warn('No se pudo restaurar la sesión:', error);
