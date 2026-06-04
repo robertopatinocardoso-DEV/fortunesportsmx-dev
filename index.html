@@ -201,6 +201,86 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
       .match-nav-controls button{flex:1;min-width:130px}
     }
 
+  
+
+    /* =============================================================
+       UI/UX PRO FINAL - MOVIL, HOVER, CARDS, TOOLTIP CONTROLADO
+       ============================================================= */
+    :root{--shadow-soft:0 16px 38px rgba(0,59,143,.10);--shadow-hover:0 20px 48px rgba(0,59,143,.18)}
+    html{scroll-behavior:smooth}
+    button,.tab,.metric,.match,.panel,.money-card,.login-card,.field input,.filters input,.filters select{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, filter .18s ease}
+    button:hover,.tab:hover,.info-pill:hover{transform:translateY(-2px);filter:saturate(1.05);box-shadow:var(--shadow-hover)}
+    button:active{transform:scale(.98)}
+    .metric:hover,.match:hover,.panel:hover,.money-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+
+    /* Balón estilo mundialista sin depender de assets externos */
+    .ball{position:relative;font-size:0!important;background:radial-gradient(circle at 35% 30%,#fff 0 18%,#dbeafe 19% 38%,#0b62d6 39% 43%,#fff 44% 100%)!important;box-shadow:inset 0 0 0 3px #0b62d6,0 10px 24px rgba(0,59,143,.20)!important;overflow:hidden}
+    .ball:before{content:'⚽';font-size:32px;position:absolute;inset:0;display:grid;place-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.20))}
+    .ball:after{content:'2026';position:absolute;right:5px;bottom:5px;background:#003b8f;color:#fff;border-radius:999px;padding:2px 5px;font-size:9px;font-weight:950;letter-spacing:.3px}
+
+    /* Login más claro: Demo y Registro con jerarquía visual */
+    .login-card{max-width:560px}
+    #loginBtn{margin-top:4px}
+    #demoBtn{margin-top:14px;background:linear-gradient(135deg,#eef6ff,#e0f2fe)!important;color:#003b8f!important;border:1px solid #bfdbfe;border-radius:18px;padding:14px 16px;font-size:15px;box-shadow:0 10px 25px rgba(11,98,214,.10)}
+    #demoBtn:before{content:'🎮 ';}
+    #showRegBtn{margin-top:12px!important;background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:white!important;border-radius:18px!important;padding:15px 18px!important;font-size:16px!important;box-shadow:0 16px 34px rgba(0,168,107,.24)!important}
+    #showRegBtn:after{content:'  ➜'}
+    .countdown-card{background:linear-gradient(135deg,#003b8f,#0b62d6,#00a86b)!important;color:#fff!important;border:0!important;box-shadow:0 16px 34px rgba(0,59,143,.22)}
+    .countdown-card span{color:#dbeafe!important}.countdown-card b{font-size:20px;color:#fff}
+    .demo-inspiration{font-size:15px;background:linear-gradient(135deg,#fff7ed,#eef6ff);box-shadow:0 10px 24px rgba(0,59,143,.07)}
+
+    /* Layout de partidos: menos fricción, más espacio útil */
+    .filters{background:rgba(255,255,255,.68);border:1px solid rgba(191,219,254,.70);border-radius:24px;padding:12px;box-shadow:var(--shadow-soft);backdrop-filter:blur(10px)}
+    .filters input,.filters select{height:48px}.filters button{height:48px}
+    .matches{align-items:start}.match{overflow:hidden}.match-head{font-size:14px;margin-bottom:14px}.stadium{font-size:13px;margin-top:12px}.score input{height:56px;width:58px}.score b{font-size:18px}
+    .team-name span:last-child{font-size:18px;line-height:1.18}
+    .tip{pointer-events:none}
+
+    /* Botones de carga no deben tapar la pantalla en móvil */
+    .match-nav-controls{position:static!important;background:transparent!important;border:0!important;box-shadow:none!important;margin:18px 0!important;padding:0!important}
+    .match-nav-controls button{border-radius:18px}
+
+    /* Dashboard más elegante y legible */
+    .dashboard .panel,.panel{background:rgba(255,255,255,.94);border:1px solid rgba(219,234,254,.95)}
+    .panel h3{font-size:22px}.money-card b{font-size:26px}.money-card{position:relative;overflow:hidden}.money-card:before{content:'';position:absolute;inset:auto -20px -28px auto;width:90px;height:90px;border-radius:999px;background:rgba(0,168,107,.10)}
+    #rankingBody td:nth-child(2){font-weight:900;color:#003b8f}
+
+    /* Usuarios admin: tabla más usable en móvil */
+    .users-table th{position:sticky;top:0;z-index:2}.admin-chip{box-shadow:0 8px 18px rgba(0,59,143,.08)}
+    .btn-mini:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,59,143,.12)}
+
+    @media(max-width:700px){
+      body{background:linear-gradient(180deg,#e8f7ff 0,#fff7cc 55%,#e8f7ff 100%)}
+      .center{align-items:flex-start;padding:12px;background:linear-gradient(180deg,#dff2ff,#fff7d6)}
+      .login-card{border-radius:26px;padding:22px;margin-top:10px;box-shadow:0 18px 48px rgba(0,59,143,.16)}
+      .brand{align-items:flex-start}.brand h1{font-size:25px;line-height:1.08}.brand .sub{font-size:14px}.ball{width:54px;height:54px;min-width:54px}
+      .countdown-card{margin:12px 0!important;padding:12px!important;border-radius:18px}.countdown-card b{font-size:17px}
+      .demo-inspiration{padding:12px;font-size:14px}.info-pill{width:100%;justify-content:center}
+
+      header{padding:14px 16px;border-bottom-width:4px}.top{display:block}.top h2{font-size:24px;margin-bottom:12px}.header-actions{justify-content:flex-start;gap:8px}.countdown-pill{order:-1;width:100%;justify-content:center;border-radius:18px;font-size:14px;background:rgba(255,255,255,.24)}.user-pill,.theme-toggle,#logoutBtn{margin:0;font-size:13px;padding:9px 10px}
+      main{padding:14px}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tab{border-radius:18px;min-height:54px}.tab:not(.hidden):last-child:nth-child(3){grid-column:1/-1}
+      .hero{border-radius:26px;padding:18px;margin-bottom:14px}.hero h1{font-size:28px}.progress-wrap{min-width:100%;max-width:100%}.progress{height:16px}.summary-cards{grid-template-columns:repeat(2,1fr);gap:12px}.metric{border-radius:20px;padding:16px}.metric b{font-size:30px}
+      .countdown-strip{border-radius:18px;margin:0 0 14px 0;padding:12px}.countdown-strip b{font-size:16px}
+
+      /* Quitar paneles fijos para recuperar visibilidad */
+      .filters{position:static!important;display:grid;grid-template-columns:1fr;gap:10px;padding:12px;margin-bottom:14px;border-radius:22px;background:rgba(255,255,255,.86)}
+      .filters input,.filters select,.filters button,.auto-save-status{width:100%;min-width:0;justify-content:center;text-align:center}
+      .filters #saveBtn,.filters #tutorialBtn{font-size:15px}.auto-save-status{padding:12px;font-size:13px}
+      .matches{grid-template-columns:1fr;gap:14px}.match{border-radius:24px;padding:14px}.match-head{font-size:13px}.versus{grid-template-columns:1fr auto 1fr!important;gap:8px}.team{min-height:74px!important;padding:9px!important;border-radius:18px}.team-name{gap:5px}.team-name span:last-child{font-size:15px}.flag-img,.flag-svg{width:24px;height:17px}.score{gap:5px}.score input{width:48px;height:52px;font-size:18px;padding:6px;border-radius:16px}.score b{font-size:16px}.stadium{font-size:12px;line-height:1.25}
+      .team:hover .tip{display:none!important}.team:focus .tip{display:none!important}.tip{display:none!important}
+      .match-actions{justify-content:center}.edit-score-btn,.lock,.finalized-note,.editing-note{font-size:11px;padding:6px 9px}
+      .match-nav-controls{display:grid!important;grid-template-columns:1fr;gap:10px;margin:16px 0 10px!important}.match-nav-controls button{width:100%;min-height:52px}.actions{display:grid;grid-template-columns:1fr;gap:10px}.actions button{width:100%;min-height:52px}
+
+      .dashboard{grid-template-columns:1fr}.panel{border-radius:24px;padding:16px}.panel h3{font-size:24px}.money-cards{grid-template-columns:1fr 1fr;gap:10px}.money-card{padding:14px;border-radius:18px}.money-card b{font-size:20px}.table-wrap{border-radius:18px;border:1px solid #e5eef9;max-height:65vh;overflow:auto}
+      th,td{padding:10px;font-size:13px}.users-table th,.users-table td{font-size:12px}.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.btn-mini{font-size:11px;padding:7px 8px}
+    }
+
+    @media(min-width:701px){
+      .team:hover .tip{display:block}.filters{position:relative}.filters:hover{box-shadow:var(--shadow-hover)}
+    }
+
+    body.dark-mode .filters{background:rgba(15,23,42,.74);border-color:#334155}body.dark-mode .dashboard .panel,body.dark-mode .panel{background:rgba(15,23,42,.96)}body.dark-mode #rankingBody td:nth-child(2){color:#93c5fd}
+
   </style>
 
 </head>
@@ -2671,6 +2751,85 @@ window.addEventListener('load',()=>{
     }
   }
   reloadAll();
+});
+
+
+/* =============================================================
+   UI/UX PRO FINAL - AJUSTES DE EXPERIENCIA SIN ALTERAR BACKEND
+   ============================================================= */
+function isMobileViewport(){ return window.matchMedia('(max-width:700px)').matches; }
+
+/* Evita restaurar automáticamente la sesión demo al abrir el sitio público. */
+const originalShowApp_UX = showApp;
+showApp = function(user){
+  if(isDemoUser(user)){
+    localStorage.removeItem('quinielaToken');
+  }
+  originalShowApp_UX(user);
+  applyAdminReadOnlyUX();
+};
+
+/* Administrador puede consultar partidos y filtros, pero no capturar/guardar quiniela. */
+function applyAdminReadOnlyUX(){
+  const isAdmin = isCurrentAdmin && isCurrentAdmin();
+  const save = el('saveBtn');
+  const autosave = el('autosaveStatus');
+  if(save){
+    save.style.display = isAdmin ? 'none' : '';
+  }
+  if(autosave && isAdmin){
+    autosave.textContent = 'Vista administrador: solo consulta y filtros';
+    autosave.className = 'auto-save-status';
+  }
+}
+
+const originalRenderMatches_UX = renderMatches;
+renderMatches = function(){
+  originalRenderMatches_UX();
+  applyAdminReadOnlyUX();
+  if(isCurrentAdmin && isCurrentAdmin()){
+    state.matches.forEach(m=>{
+      const id = matchId(m);
+      const l = el(`l-${id}`); const v = el(`v-${id}`);
+      if(l) l.disabled = true;
+      if(v) v.disabled = true;
+    });
+  }
+};
+
+/* Menú móvil: al usar filtros se mantiene arriba y no tapa partidos. */
+['searchBox','roundFilter','statusFilter'].forEach(id=>{
+  setTimeout(()=>{
+    const node = el(id);
+    if(node) node.addEventListener('change',()=>{ if(isMobileViewport()) window.scrollTo({top:0, behavior:'smooth'}); });
+  },0);
+});
+
+/* Botón Ver más: baja al siguiente bloque sin dejar controles fijos tapando pantalla. */
+const originalLoadMoreMatches_UX = typeof loadMoreMatches === 'function' ? loadMoreMatches : null;
+if(originalLoadMoreMatches_UX){
+  loadMoreMatches = function(){
+    originalLoadMoreMatches_UX();
+    setTimeout(()=>{
+      const cards = document.querySelectorAll('.match');
+      const index = Math.max(0, Math.min(cards.length-1, (state.visibleMatches||12)-12));
+      if(cards[index]) cards[index].scrollIntoView({behavior:'smooth', block:'start'});
+    },100);
+  };
+}
+
+/* Limpia la sesión demo guardada si alguien abre el link desde otro dispositivo. */
+window.addEventListener('DOMContentLoaded',()=>{
+  try{
+    const raw = localStorage.getItem('quinielaUser');
+    if(raw){
+      const u = JSON.parse(raw);
+      if(isDemoUser(u)){
+        localStorage.removeItem('quinielaUser');
+        localStorage.removeItem('quinielaToken');
+      }
+    }
+  }catch(e){}
 });
 </script>
 </body>
