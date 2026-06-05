@@ -29,7 +29,241 @@
     =============================================================
   -->
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+
+/* =============================================================
+   ACTUALIZACIÓN UX SOLICITADA - ACCESOS, TEMAS, SPINNER,
+   GUARDADO POR PARTIDO Y CARGA PROGRESIVA AUTOMÁTICA
+   ============================================================= */
+const UX_WORLD_CUP_START = new Date('2026-06-11T13:00:00-06:00');
+const TEAM_EXPERIENCES = {
+  'default': {label:'🌎 Experiencia Mundial', cls:'', flag:'🌎', culture:'Vive la pasión global del fútbol.'},
+  'mx': {label:'🇲🇽 México', cls:'team-mx', flag:'🇲🇽', culture:'Pasión, mariachi, estadio lleno y corazón tricolor.'},
+  'ar': {label:'🇦🇷 Argentina', cls:'team-ar', flag:'🇦🇷', culture:'Garra, asado, tango y una hinchada que nunca deja de cantar.'},
+  'br': {label:'🇧🇷 Brasil', cls:'team-br', flag:'🇧🇷', culture:'Samba, jogo bonito y alegría en cada pronóstico.'},
+  'es': {label:'🇪🇸 España', cls:'team-es', flag:'🇪🇸', culture:'Toque, técnica y pasión roja para competir hasta el final.'},
+  'fr': {label:'🇫🇷 Francia', cls:'team-fr', flag:'🇫🇷', culture:'Elegancia, velocidad y espíritu campeón.'},
+  'us': {label:'🇺🇸 Estados Unidos', cls:'team-us', flag:'🇺🇸', culture:'Energía de estadio, espectáculo y competencia total.'}
+};
+let uxVisibleAutoLoadEnabled = true;
+
+function ensureUxLoader(){
+  if(document.getElementById('uxLoader')) return;
+  document.body.insertAdjacentHTML('beforeend', `<div id="uxLoader" class="ux-loader"><div class="ux-loader-card"><div class="cup-spin">🏆</div><b id="uxLoaderTitle">Cargando experiencia</b><span id="uxLoaderText">Preparando la plataforma...</span></div></div>`);
+}
+function showUxLoader(title='Cargando experiencia', text='Preparando la plataforma...'){
+  ensureUxLoader();
+  const box=document.getElementById('uxLoader');
+  const t=document.getElementById('uxLoaderTitle');
+  const s=document.getElementById('uxLoaderText');
+  if(t) t.textContent=title;
+  if(s) s.textContent=text;
+  if(box) box.classList.add('active');
+}
+function hideUxLoader(){ const box=document.getElementById('uxLoader'); if(box) box.classList.remove('active'); }
+
+function makeSafeSlug(text){
+  return String(text||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12);
+}
+function randomDigits(n=4){ return String(Math.floor(Math.random()*Math.pow(10,n))).padStart(n,'0'); }
+function generateAccessData(){
+  const name=el('regName')?.value||'';
+  const phone=el('regPhone')?.value||'';
+  const userInput=el('regUser');
+  const passInput=el('regPass');
+  if(!userInput || !passInput) return;
+  const base = makeSafeSlug(name.split(/\s+/).slice(0,2).join('')) || 'fortune';
+  const suffix = phone.length>=4 ? phone.slice(-4) : randomDigits(4);
+  if(userInput.dataset.manual !== 'true') userInput.value = `${base}${suffix}`.slice(0,18);
+  if(passInput.dataset.manual !== 'true') passInput.value = `FS2026-${suffix}`;
+}
+function enhanceAccessModule(){
+  const regBox=el('registerBox');
+  if(regBox && !document.getElementById('regAutoHint')){
+    regBox.insertAdjacentHTML('afterbegin', `<div id="regAutoHint" class="reg-access-hint">🚀 Registro rápido: escribe tu nombre y WhatsApp. Generaremos tu usuario y contraseña automáticamente, pero puedes editarlos antes de enviar.</div>`);
+  }
+  const regUser=el('regUser'), regPass=el('regPass');
+  if(regUser && !document.getElementById('userAutoNote')) regUser.insertAdjacentHTML('afterend','<span id="userAutoNote" class="ux-field-note">Usuario sugerido automático; editable antes de enviar.</span>');
+  if(regPass && !document.getElementById('passAutoNote')) regPass.insertAdjacentHTML('afterend','<span id="passAutoNote" class="ux-field-note">Contraseña temporal sugerida; editable antes de enviar.</span>');
+  ['regName','regPhone'].forEach(id=>{ const node=el(id); if(node && !node.dataset.uxAuto){ node.dataset.uxAuto='1'; node.addEventListener('input',generateAccessData); }});
+  [regUser, regPass].forEach(node=>{ if(node && !node.dataset.uxManualBind){ node.dataset.uxManualBind='1'; node.addEventListener('input',()=>{ node.dataset.manual='true'; }); }});
+  const showReg=el('showRegBtn'); if(showReg) showReg.textContent='🚀 Registrarme en 1 minuto';
+  const demo=el('demoBtn'); if(demo) demo.textContent='🎮 Probar experiencia demo';
+}
+
+function ensureTeamExperienceSelectors(){
+  const opts=Object.entries(TEAM_EXPERIENCES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+  const headerActions=document.querySelector('.header-actions');
+  if(headerActions && !document.getElementById('teamExperienceSelect')){
+    headerActions.insertAdjacentHTML('afterbegin', `<div class="team-exp-wrap"><select id="teamExperienceSelect" class="team-exp-select" title="Cambiar experiencia visual">${opts}</select><span id="teamCultureBadge" class="team-culture-badge">🌎 Mundial</span></div>`);
+  }
+  const brand=document.querySelector('.login-card .brand');
+  if(brand && !document.getElementById('loginTeamExperience')){
+    brand.insertAdjacentHTML('afterend', `<div class="login-team-exp"><select id="loginTeamExperience" title="Elige una experiencia visual">${opts}</select><div id="loginCulture" class="login-culture">🌎 Vive la pasión global del fútbol.</div></div>`);
+  }
+  ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{
+    const node=document.getElementById(id);
+    if(node && !node.dataset.bound){
+      node.dataset.bound='1';
+      node.addEventListener('change',()=>applyTeamExperience(node.value));
+    }
+  });
+  applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
+}
+function applyTeamExperience(key){
+  key = TEAM_EXPERIENCES[key] ? key : 'default';
+  const cfg=TEAM_EXPERIENCES[key];
+  Object.values(TEAM_EXPERIENCES).forEach(x=>{ if(x.cls) document.body.classList.remove(x.cls); });
+  if(cfg.cls) document.body.classList.add(cfg.cls);
+  const header=document.querySelector('header');
+  if(header) header.classList.add('team-exp-visual');
+  const badge=document.getElementById('teamCultureBadge');
+  if(badge) badge.textContent=`${cfg.flag} ${cfg.culture}`;
+  const loginCulture=document.getElementById('loginCulture');
+  if(loginCulture) loginCulture.textContent=`${cfg.flag} ${cfg.culture}`;
+  ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{ const n=document.getElementById(id); if(n) n.value=key; });
+  localStorage.setItem('teamExperience', key);
+}
+
+function worldCupHasStarted(){ return Date.now() >= UX_WORLD_CUP_START.getTime(); }
+const uxOriginalOpenParticipantsModal = typeof openParticipantsModal === 'function' ? openParticipantsModal : null;
+openParticipantsModal = function(){
+  if(!isCurrentAdmin?.() && !worldCupHasStarted()){
+    const msg = '👀 La vista de quinielas de otros participantes estará disponible cuando comience el primer partido del Mundial. Así mantenemos la experiencia justa y transparente para todos.';
+    if(el('participantsModal')){
+      el('participantsModal').classList.remove('hidden');
+      if(el('participantsMsg')) el('participantsMsg').innerHTML = `<div class="participants-locked-msg">${msg}</div>`;
+      if(el('participantsBody')) el('participantsBody').innerHTML='';
+    } else alert(msg);
+    return;
+  }
+  if(uxOriginalOpenParticipantsModal) uxOriginalOpenParticipantsModal();
+};
+
+function collectPredictionRowForMatch(id){
+  if(isCurrentAdmin?.()) return [];
+  const m = state.matches.find(x=>String(matchId(x))===String(id));
+  if(!m) return [];
+  const lInput=el(`l-${id}`), vInput=el(`v-${id}`);
+  if(!lInput || !vInput || lInput.value==='' || vInput.value==='') return [];
+  const saved=getUserPrediction(id);
+  const isEditing = lInput.dataset.editing==='true' || vInput.dataset.editing==='true';
+  if(saved && !isEditing) return [];
+  const now = new Date().toISOString();
+  const nombreUsuario = pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+  return [{
+    'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
+    'Usuario': pick(state.currentUser,['Usuario']),
+    'Nombre_Usuario': nombreUsuario,
+    'Partido_ID': id,
+    'Local': lInput.value,
+    'Visitante': vInput.value,
+    'Fecha_Registro': now,
+    'Fecha_Actualizacion': now,
+    'Estatus_Prediccion':'Guardada',
+    'Cerrada':''
+  }];
+}
+async function saveSingleMatchPrediction(id){
+  const rows=collectPredictionRowForMatch(id);
+  if(!rows.length){ alert('Completa el marcador local y visitante, o usa editar si ya estaba guardado.'); return; }
+  showUxLoader('Guardando partido','Registrando tu marcador...');
+  try{ await persistPredictionRows(rows,{silent:false}); }
+  finally{ hideUxLoader(); }
+}
+function addSingleSaveButtons(){
+  if(!state.matches || !state.matches.length) return;
+  state.matches.forEach(m=>{
+    const id=matchId(m); if(!id) return;
+    const l=el(`l-${id}`); if(!l) return;
+    const matchCard=l.closest('.match'); if(!matchCard || matchCard.querySelector(`[data-save-one="${id}"]`)) return;
+    const actions=matchCard.querySelector('.match-actions') || matchCard;
+    const saved=!!getUserPrediction(id);
+    if(!isCurrentAdmin?.() && !isQuinielaClosed() && !saved){
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar este partido</button>`);
+    }
+  });
+}
+const uxOriginalRenderMatches2 = typeof renderMatches === 'function' ? renderMatches : null;
+if(uxOriginalRenderMatches2){
+  renderMatches = function(){
+    uxOriginalRenderMatches2();
+    addSingleSaveButtons();
+    applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
+  };
+}
+
+function autoLoadMoreWhenLastVisibleFilled(target){
+  if(!uxVisibleAutoLoadEnabled || !target || !target.matches('input[type="number"]')) return;
+  const card=target.closest('.match'); if(!card) return;
+  const cards=[...document.querySelectorAll('#matchesContainer .match')];
+  if(!cards.length || cards[cards.length-1] !== card) return;
+  const inputs=[...card.querySelectorAll('input[type="number"]')];
+  if(inputs.length<2 || inputs.some(i=>i.value==='')) return;
+  const moreBtn=el('loadMoreMatchesBtn');
+  if(moreBtn && !moreBtn.classList.contains('hidden')){
+    setTimeout(()=>{ loadMoreMatches(); }, 450);
+  }
+}
+
+const uxOriginalLogin = typeof login === 'function' ? login : null;
+if(uxOriginalLogin){
+  login = async function(){
+    showUxLoader('Validando acceso','Preparando tu estadio digital...');
+    try{ await uxOriginalLogin(); }
+    finally{ setTimeout(hideUxLoader, 450); }
+  };
+}
+const uxOriginalReloadAll = typeof reloadAll === 'function' ? reloadAll : null;
+if(uxOriginalReloadAll){
+  reloadAll = async function(){
+    showUxLoader('Actualizando datos','Consultando partidos, ranking y progreso...');
+    try{ return await uxOriginalReloadAll(); }
+    finally{ setTimeout(hideUxLoader, 350); }
+  };
+}
+const uxOriginalPersist = typeof persistPredictionRows === 'function' ? persistPredictionRows : null;
+if(uxOriginalPersist){
+  persistPredictionRows = async function(rows, options={}){
+    if(!options.silent) showUxLoader('Guardando quiniela','Protegiendo tus pronósticos oficiales...');
+    try{ return await uxOriginalPersist(rows, options); }
+    finally{ if(!options.silent) setTimeout(hideUxLoader, 350); }
+  };
+}
+const uxOriginalShowTab = typeof showTab === 'function' ? showTab : null;
+if(uxOriginalShowTab){
+  showTab = function(tab){
+    showUxLoader('Cambiando vista','Cargando la experiencia...');
+    try{ return uxOriginalShowTab(tab); }
+    finally{ setTimeout(hideUxLoader, 250); }
+  };
+}
+const uxOriginalRegister = typeof registerUser === 'function' ? registerUser : null;
+if(uxOriginalRegister){
+  registerUser = async function(){
+    generateAccessData();
+    showUxLoader('Creando registro','Generando tus accesos de Fortune Sports MX...');
+    try{ await uxOriginalRegister(); }
+    finally{ setTimeout(hideUxLoader, 450); }
+  };
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  ensureUxLoader();
+  enhanceAccessModule();
+  ensureTeamExperienceSelectors();
+  document.addEventListener('input',e=>autoLoadMoreWhenLastVisibleFilled(e.target));
+  setTimeout(()=>{
+    ensureTeamExperienceSelectors();
+    enhanceAccessModule();
+  },500);
+});
+window.addEventListener('load',()=>{
+  ensureTeamExperienceSelectors();
+  enhanceAccessModule();
+});
+
+</script>
 
   <style>
     :root{
@@ -281,7 +515,32 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
 
     body.dark-mode .filters{background:rgba(15,23,42,.74);border-color:#334155}body.dark-mode .dashboard .panel,body.dark-mode .panel{background:rgba(15,23,42,.96)}body.dark-mode #rankingBody td:nth-child(2){color:#93c5fd}
 
-  </style>
+  
+
+/* =============================================================
+   ACTUALIZACIÓN UX - ACCESOS SIMPLIFICADOS, TEMA POR SELECCIÓN,
+   SPINNER, GUARDADO POR PARTIDO Y MEJORA MÓVIL
+   ============================================================= */
+.ux-field-note{font-size:12px;color:#0f766e;font-weight:900;margin-top:6px;display:block}
+.reg-access-hint{margin:12px 0 16px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#ecfeff,#f0fdf4);border:1px solid #99f6e4;color:#075985;font-weight:900;line-height:1.45;text-align:center}
+#showRegBtn{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border-radius:18px;padding:14px 18px;box-shadow:0 14px 30px rgba(0,168,107,.25);margin-top:14px}
+#demoBtn{background:linear-gradient(135deg,#fef3c7,#fff7ed)!important;color:#92400e!important;border:1px solid #fbbf24;border-radius:18px;padding:13px 18px;box-shadow:0 10px 24px rgba(251,191,36,.20)}
+.btn-main,.btn,.btn-green,.btn-purple,.btn-gold,.btn-light,.btn-red,.tab,.info-pill,.theme-toggle{position:relative;overflow:hidden;will-change:transform;transition:transform .18s ease, box-shadow .18s ease, filter .18s ease!important}
+.btn-main:hover,.btn:hover,.btn-green:hover,.btn-purple:hover,.btn-gold:hover,.btn-light:hover,.btn-red:hover,.tab:hover,.info-pill:hover,.theme-toggle:hover{transform:translateY(-3px) scale(1.01)!important;filter:saturate(1.08);box-shadow:0 18px 35px rgba(0,59,143,.18)!important}
+.btn-main:active,.btn:active,.btn-green:active,.btn-purple:active,.btn-gold:active,.btn-light:active,.btn-red:active,.tab:active{transform:translateY(0) scale(.99)!important}
+.ball{background:radial-gradient(circle at 35% 30%,#fff 0 24%,#dbeafe 25% 42%,#0b62d6 43% 46%,#fff 47% 65%,#00a86b 66% 78%,#ef476f 79% 100%)!important;box-shadow:inset 0 0 0 3px #0b62d6,0 10px 25px rgba(11,98,214,.25)!important;color:transparent!important;position:relative}.ball:after{content:'⚽';position:absolute;inset:0;display:grid;place-items:center;color:#07111f;font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.16))}
+.team-exp-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.team-exp-select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:10px 12px;font-weight:900;max-width:220px;outline:none}.team-exp-select option{color:#0f172a;background:#fff}.login-team-exp{margin:4px 0 16px}.login-team-exp select{width:100%;border:1px solid #bfdbfe;background:#f8fbff;color:#003b8f;border-radius:16px;padding:12px 14px;font-weight:900}.team-culture-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font-weight:900;border:1px solid rgba(255,255,255,.25)}.login-culture{margin-top:8px;color:#075985;background:#ecfeff;border:1px solid #a5f3fc;border-radius:14px;padding:9px 12px;text-align:center;font-weight:900}
+body.team-mx{--azul:#006341;--azul2:#006847;--verde:#00a86b;--oro:#ce1126;--rojo:#ce1126}body.team-ar{--azul:#0099d6;--azul2:#5eb6e4;--verde:#75aadb;--oro:#f6b40e;--rojo:#f6b40e}body.team-br{--azul:#002776;--azul2:#009c3b;--verde:#009c3b;--oro:#ffdf00;--rojo:#002776}body.team-es{--azul:#aa151b;--azul2:#c60b1e;--verde:#f1bf00;--oro:#ffc400;--rojo:#c60b1e}body.team-fr{--azul:#002395;--azul2:#0055a4;--verde:#ffffff;--oro:#ed2939;--rojo:#ed2939}body.team-us{--azul:#3c3b6e;--azul2:#0052a5;--verde:#b22234;--oro:#ffffff;--rojo:#b22234}
+.team-exp-visual{background:linear-gradient(135deg,var(--azul2),var(--verde));border-bottom-color:var(--oro)!important}.team-exp-visual .countdown-pill,.team-exp-visual .user-pill,.team-exp-visual .theme-toggle,.team-exp-visual .team-culture-badge{backdrop-filter:blur(8px)}
+body.dark-mode .flag-img,body.dark-mode .flag-svg{background:#ffffff!important;border:1px solid rgba(255,255,255,.75);box-shadow:0 0 0 2px rgba(255,255,255,.14),0 6px 18px rgba(0,0,0,.45);opacity:1!important;filter:none!important}
+body.dark-mode .match{background:linear-gradient(180deg,#111827,#0f172a)!important;border-color:#334155!important}body.dark-mode .score input{background:#0b1220!important;color:#f8fafc!important;border-color:#60a5fa!important}body.dark-mode .btn-light{background:#1e293b;color:#e5e7eb;border:1px solid #334155}
+.match-save-one{background:linear-gradient(135deg,#06b6d4,#0b62d6);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950;box-shadow:0 10px 20px rgba(6,182,212,.20)}
+.match-save-one:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
+.ux-loader{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;background:rgba(7,17,31,.64);backdrop-filter:blur(6px);padding:20px}.ux-loader.active{display:flex}.ux-loader-card{width:min(340px,90vw);background:linear-gradient(135deg,#fff,#eff6ff);border:1px solid #bfdbfe;border-radius:28px;padding:28px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35);color:#003b8f}.cup-spin{width:86px;height:86px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#fff 0 52%,#ffd166 53% 64%,#0b62d6 65% 100%);font-size:46px;animation:cupPulse 1.05s ease-in-out infinite;box-shadow:0 15px 35px rgba(11,98,214,.25)}@keyframes cupPulse{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.08) rotate(6deg)}}.ux-loader-card b{display:block;font-size:18px;margin-bottom:6px}.ux-loader-card span{color:#64748b;font-weight:800}
+.participants-locked-msg{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:18px;padding:16px;font-weight:900;line-height:1.45}
+@media(max-width:700px){.login-card{padding:26px 20px;border-radius:26px}.brand{align-items:flex-start}.brand h1{font-size:24px}.field input{font-size:16px;padding:15px}.filters{position:static!important;display:grid!important;grid-template-columns:1fr!important;gap:12px;padding:14px;border-radius:24px;background:rgba(255,255,255,.72);border:1px solid #dbeafe;box-shadow:0 10px 30px rgba(15,23,42,.08)}.filters input,.filters select,.filters button,.filters .auto-save-status{width:100%;min-width:0;justify-content:center;text-align:center}.matches{gap:18px}.match{padding:18px 14px;border-radius:26px}.versus{grid-template-columns:1fr!important;gap:12px}.score{justify-content:center}.team{min-height:76px}.match-actions{justify-content:center}.match-save-one,.suggest-btn,.edit-score-btn{width:100%;padding:11px}.top{align-items:flex-start}.header-actions{width:100%;display:flex;gap:8px;flex-wrap:wrap}.team-exp-select{width:100%;max-width:none}.team-culture-badge{width:100%;justify-content:center}.countdown-pill{width:100%;justify-content:center;text-align:center}.user-pill,.theme-toggle,.btn-red{flex:1;text-align:center}.dashboard{grid-template-columns:1fr!important}.panel canvas{max-height:260px}.users-table{font-size:12px}.users-table th,.users-table td{padding:9px}.match-nav-controls{position:static!important;display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}.actions{display:grid;grid-template-columns:1fr}.summary-cards{grid-template-columns:repeat(2,1fr)!important}.money-cards{grid-template-columns:1fr!important}}
+
+</style>
 
 </head>
 <body>
