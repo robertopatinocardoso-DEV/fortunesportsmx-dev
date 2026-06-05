@@ -2644,6 +2644,198 @@ window.addEventListener('load',()=>{
   window.addEventListener('load',()=>{ bindUx(); setTimeout(()=>{ installMatchLimit(); if(typeof renderMatches==='function') renderMatches(); },600); });
 })();
 
+
+
+/* =============================================================
+   PATCH UX FINAL - PRONÓSTICO SUGERIDO + TARJETAS TIPO ESPN
+   ============================================================= */
+(function(){
+  function ready(fn){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fn); else fn(); }
+  function safeEl(id){ return document.getElementById(id); }
+  function isAdminUserNow(){ return typeof isCurrentAdmin==='function' && isCurrentAdmin(); }
+  function isUserProfileNow(){ return !!state.currentUser && !state.isDemo && getUserProfile(state.currentUser)==='user'; }
+  function asNum(v){ const n=Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return Number.isFinite(n)?n:NaN; }
+  function clean(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function resultScore(row, keys){ return asNum(pick(row, keys, '')); }
+
+  function rowMatchFromResult(r){
+    const mid = String(pick(r,['Partido_ID','Partido ID','ID_Partido','Partido'],''));
+    return state.matches.find(m=>String(matchId(m))===mid) || null;
+  }
+  function teamStats(team){
+    const target = clean(team);
+    const rows=[];
+    (state.results||[]).forEach((r,idx)=>{
+      const m = rowMatchFromResult(r) || r;
+      const localTeam = getLocalTeam(m) || pick(r,['Equipo_Local','Equipo Local','Local_Team','Local Equipo'],'');
+      const visitTeam = getVisitTeam(m) || pick(r,['Equipo_Visitante','Equipo Visitante','Visitante_Team','Visitante Equipo'],'');
+      const lScore = resultScore(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Goles_Local','Goles Local','Local']);
+      const vScore = resultScore(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Goles_Visitante','Goles Visitante','Visitante']);
+      if(Number.isNaN(lScore)||Number.isNaN(vScore)) return;
+      if(clean(localTeam)===target) rows.push({gf:lScore,ga:vScore,idx});
+      if(clean(visitTeam)===target) rows.push({gf:vScore,ga:lScore,idx});
+    });
+    const last = rows.slice(-5);
+    if(!last.length) return null;
+    return {
+      played:last.length,
+      gf:last.reduce((s,x)=>s+x.gf,0)/last.length,
+      ga:last.reduce((s,x)=>s+x.ga,0)/last.length
+    };
+  }
+  function deterministicFallback(local, visit){
+    const seed = (clean(local)+clean(visit)).split('').reduce((s,ch)=>s+ch.charCodeAt(0),0);
+    const l = seed % 3;
+    const v = Math.floor(seed/3) % 3;
+    return [l===0?1:l, v===0?1:v];
+  }
+  function suggestedScoreForMatch(m){
+    const local = getLocalTeam(m), visit = getVisitTeam(m);
+    const ls = teamStats(local), vs = teamStats(visit);
+    if(!ls && !vs) return deterministicFallback(local, visit);
+    const baseL = ls ? ls.gf : 1.2;
+    const baseV = vs ? vs.gf : 1.0;
+    const defL = ls ? ls.ga : 1.0;
+    const defV = vs ? vs.ga : 1.2;
+    let l = Math.round(((baseL + defV) / 2) + 0.18);
+    let v = Math.round((baseV + defL) / 2);
+    l = Math.max(0, Math.min(5,l));
+    v = Math.max(0, Math.min(5,v));
+    if(l===0 && v===0){ l=1; v=1; }
+    return [l,v];
+  }
+  window.applySuggestedPrediction = function(id){
+    if(!isUserProfileNow()){
+      alert('El pronóstico sugerido solo está disponible para participantes con perfil user.');
+      return;
+    }
+    const m = (state.matches||[]).find(x=>String(matchId(x))===String(id));
+    if(!m) return;
+    const lInput=safeEl(`l-${id}`), vInput=safeEl(`v-${id}`);
+    if(!lInput || !vInput) return;
+    if(lInput.disabled || vInput.disabled){ alert('Este marcador ya está guardado. Usa editar marcador antes de cambiarlo.'); return; }
+    const [l,v] = suggestedScoreForMatch(m);
+    lInput.value = l; vInput.value = v;
+    lInput.dispatchEvent(new Event('input',{bubbles:true}));
+    vInput.dispatchEvent(new Event('input',{bubbles:true}));
+    if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('✨ Pronóstico sugerido aplicado. Puedes ajustarlo antes de guardar.','ok');
+  };
+
+  function renderMatchCard(m, previousDate){
+    const id=matchId(m);
+    if(!id) return '';
+    const pred=getUserPrediction(id);
+    const saved=!!pred;
+    const local=getLocalTeam(m);
+    const visit=getVisitTeam(m);
+    const ml=pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
+    const mv=pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
+    const fecha=formatDateDisplay(getDate(m));
+    const hora=formatHourDisplay(getHour(m));
+    const isAdmin=isAdminUserNow();
+    const canSuggest=isUserProfileNow() && !saved && !isQuinielaClosed();
+    const canSave=!isAdmin && !saved && !isQuinielaClosed();
+    const canEdit=!isAdmin && saved && !isQuinielaClosed();
+    const dateLabel = fecha && fecha!==previousDate ? `<div class="match-day-label">📅 ${fecha}</div>` : '';
+    return `${dateLabel}<div class="match match-espn ${saved?'saved':''}" data-match-id="${id}">
+      <div class="match-head espn-head"><span class="round">${getRound(m)}</span><span class="match-time">${hora || 'Hora por confirmar'}</span></div>
+      <div class="versus espn-versus">
+        <div class="team espn-team">${teamLabel(local)}${teamTooltip(local,getTooltipLocal(m),m)}</div>
+        <div class="score espn-score"><input min="0" inputmode="numeric" type="number" id="l-${id}" value="${ml}" ${saved||isAdmin?'disabled':''}><b>VS</b><input min="0" inputmode="numeric" type="number" id="v-${id}" value="${mv}" ${saved||isAdmin?'disabled':''}></div>
+        <div class="team espn-team">${teamLabel(visit)}${teamTooltip(visit,getTooltipVisitante(m),m)}</div>
+      </div>
+      <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
+      <div class="match-actions espn-actions">
+        ${canSuggest?`<button type="button" class="predict-btn" onclick="applySuggestedPrediction('${id}')">✨ Pronóstico sugerido</button>`:''}
+        ${canSave?`<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`:''}
+        ${canEdit?`<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar marcador</button><div class="lock">🔒 Guardado</div>`:''}
+        ${isAdmin?`<div class="finalized-note">👁️ Vista administrador</div>`:''}
+        ${isQuinielaClosed()?'<div class="finalized-note">🔒 Quiniela cerrada</div>':''}
+        <div class="editing-note hidden" id="edit-note-${id}">Editando marcador</div>
+      </div>
+    </div>`;
+  }
+
+  const previousRenderMatches = window.renderMatches || renderMatches;
+  window.renderMatches = renderMatches = function(){
+    const c=safeEl('matchesContainer');
+    if(!c) return previousRenderMatches();
+    c.innerHTML='';
+    let filled=0;
+    const shown=filteredMatches();
+    (state.matches||[]).forEach(m=>{ const id=matchId(m); if(id && getUserPrediction(id)) filled++; });
+    if(!state.matches.length){
+      c.innerHTML='<div class="empty">No hay partidos cargados. Presiona “Actualizar datos” o revisa la conexión.</div>';
+      updateProgress(0); return;
+    }
+    if(!shown.length){
+      c.innerHTML='<div class="empty">No hay partidos para mostrar con el filtro seleccionado.</div>';
+      updateProgress(filled); return;
+    }
+    let prevDate='';
+    shown.forEach(m=>{
+      const fecha=formatDateDisplay(getDate(m));
+      c.insertAdjacentHTML('beforeend', renderMatchCard(m, prevDate));
+      if(fecha) prevDate=fecha;
+    });
+    updateProgress(filled);
+    calcRanking();
+    try{ if(typeof renderLoadMoreControls==='function') renderLoadMoreControls(); }catch(e){}
+  };
+
+  function enrichFilters(){
+    const status=safeEl('statusFilter');
+    if(status && !status.dataset.tooltipReady){
+      status.dataset.tooltipReady='1';
+      status.title='Filtro de experiencia: cambia entre todos, pendientes o guardados para avanzar más rápido en tu quiniela.';
+      const chip=document.createElement('span');
+      chip.className='ux-filter-tip';
+      chip.textContent='💡 Filtros de experiencia: usa pendientes para llenar más rápido';
+      status.insertAdjacentElement('afterend', chip);
+    }
+  }
+
+  function enrichTutorial(){
+    const card=document.querySelector('#tutorialModal .tutorial-card');
+    if(!card || card.dataset.enrichedFinal) return;
+    card.dataset.enrichedFinal='1';
+    card.innerHTML=`
+      <h2>🎓 Tutorial rápido de Fortune Sports MX</h2>
+      <p class="sub">Estas son las funciones principales para llenar tu quiniela sin complicarte.</p>
+      <ol>
+        <li><b>Captura marcadores:</b> escribe los goles del equipo local y visitante en cada tarjeta.</li>
+        <li><b>Guardar partido:</b> usa el botón “Guardar partido” para guardar un marcador individual sin esperar a completar muchos partidos.</li>
+        <li><b>Autoguardado:</b> cada 2 partidos completos la plataforma intenta guardar tu avance automáticamente.</li>
+        <li><b>Pronóstico sugerido:</b> botón exclusivo para usuarios participantes. Genera una propuesta basada en resultados disponibles de los últimos 5 partidos de cada selección.</li>
+        <li><b>Editar marcador:</b> si un partido ya fue guardado y aún no cerraste tu quiniela al 100%, puedes editarlo con ✏️.</li>
+        <li><b>Filtros:</b> usa búsqueda, ronda/grupo y “Pendientes por llenar” para avanzar por bloques y no perderte entre los 72 partidos.</li>
+        <li><b>Ver más partidos:</b> se activa al bajar o al completar el último partido visible; también puedes presionarlo manualmente.</li>
+        <li><b>Dashboard:</b> consulta ranking, bolsa acumulada y resultados cuando existan datos oficiales cargados.</li>
+        <li><b>Puntuación:</b> marcador exacto = 3 puntos; ganador o empate correcto = 1 punto; sin acierto = 0.</li>
+        <li><b>Cierre:</b> al llegar al 100% se cierra tu quiniela y ya solo podrás consultarla.</li>
+      </ol>
+      <div class="tutorial-actions"><button type="button" class="btn-light" id="closeTutorialBtn2">Entendido</button></div>`;
+    const close=safeEl('closeTutorialBtn2'); if(close) close.addEventListener('click',()=>safeEl('tutorialModal').classList.add('hidden'));
+  }
+
+  function applyFinalStyles(){
+    if(document.getElementById('finalEspnUxStyle')) return;
+    const css=`
+      .ux-filter-tip{display:inline-flex;align-items:center;padding:11px 14px;border-radius:14px;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;font-weight:900;font-size:13px;line-height:1.2}
+      .match-day-label{grid-column:1/-1;font-weight:950;color:#0f172a;font-size:18px;margin:14px 4px 0;padding:4px 0}
+      .match-espn{border-radius:26px!important;padding:16px!important;overflow:visible!important;background:#fff!important;border:1.5px solid #d6d9ec!important;box-shadow:0 12px 32px rgba(15,23,42,.08)!important}
+      .match-espn:before{display:none!important}.espn-head{font-size:16px!important;margin-bottom:12px!important;color:#111827!important}.match-time{font-size:20px;font-weight:950;color:#111827}.espn-versus{grid-template-columns:1fr auto 1fr!important;align-items:center!important;gap:14px!important}.espn-team{min-height:108px!important;background:#fff!important;border:1.5px solid #d6d9ec!important;border-radius:20px!important;box-shadow:none!important}.espn-team .team-name{flex-direction:column;gap:8px;font-size:18px;color:#111827!important}.espn-team .flag-img,.espn-team .flag-svg{width:58px!important;height:42px!important;border-radius:10px!important;object-fit:cover;background:#fff!important;padding:0!important}.espn-team .flag-emoji{font-size:42px!important}.espn-score{gap:12px!important}.espn-score input{width:64px!important;height:64px!important;border-radius:18px!important;border:2px solid #9ca3c7!important;font-size:24px!important}.espn-score b{font-size:22px!important;color:#111827!important}.espn-actions{justify-content:center!important;margin-top:14px!important}.predict-btn{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#7c2d12;border:1px solid #f59e0b;border-radius:999px;padding:9px 13px;font-size:12px;font-weight:950;box-shadow:0 10px 22px rgba(245,158,11,.18)}.predict-btn:hover{transform:translateY(-2px);filter:saturate(1.07)}
+      body.dark-mode .match-day-label{color:#f8fafc}body.dark-mode .match-espn{background:#101827!important;border-color:#334155!important;box-shadow:0 12px 32px rgba(0,0,0,.28)!important}body.dark-mode .espn-head,body.dark-mode .match-time,body.dark-mode .espn-score b{color:#f8fafc!important}body.dark-mode .espn-team{background:#0f172a!important;border-color:#475569!important}body.dark-mode .espn-team .team-name{color:#f8fafc!important}body.dark-mode .espn-team .flag-img,body.dark-mode .espn-team .flag-svg{background:#fff!important;filter:none!important;opacity:1!important}body.dark-mode .ux-filter-tip{background:#082f49;color:#bae6fd;border-color:#0e7490}
+      @media(max-width:700px){.matches{display:block!important}.match-day-label{font-size:18px;margin:18px 0 8px}.match-espn{margin-bottom:18px!important;border-radius:24px!important;padding:16px!important}.espn-head{font-size:16px!important}.match-time{font-size:20px}.espn-versus{grid-template-columns:1fr auto 1fr!important;gap:8px!important}.espn-team{min-height:128px!important;padding:12px 8px!important}.espn-team .team-name{font-size:18px!important}.espn-team .flag-img,.espn-team .flag-svg{width:58px!important;height:44px!important}.espn-score{gap:7px!important}.espn-score input{width:58px!important;height:58px!important}.espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%;font-size:14px;padding:12px 14px}.ux-filter-tip{width:100%;justify-content:center;text-align:center}.tip{display:none!important}}
+    `;
+    const style=document.createElement('style'); style.id='finalEspnUxStyle'; style.textContent=css; document.head.appendChild(style);
+  }
+
+  function init(){ applyFinalStyles(); enrichFilters(); enrichTutorial(); setTimeout(()=>{ try{ renderMatches(); }catch(e){} },250); }
+  ready(init);
+  window.addEventListener('load',init);
+})();
+
 </script>
 </body>
 </html>
