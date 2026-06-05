@@ -216,6 +216,47 @@ body.dark-mode .tip{background:#0f172a!important;color:#e2e8f0!important;border-
 .match-more-controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}.match-more-controls .btn{min-width:220px}.participants-locked-msg{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:18px;padding:18px;font-weight:900;line-height:1.5}
 @media(max-width:700px){.login-card{padding:24px}.matches{grid-template-columns:1fr!important}.versus{grid-template-columns:1fr!important}.team{min-height:74px!important}.score input{width:54px!important;height:54px!important}.filters{position:static!important;background:rgba(255,255,255,.84);padding:14px;border-radius:22px;border:1px solid #dbeafe}.filters input,.filters select,.filters button,.auto-save-status{width:100%;min-width:100%}.match-actions{justify-content:center}.match-save-one,.edit-score-btn{width:100%}.tip{display:none!important}.team:active .tip{display:block!important;position:fixed!important;left:16px!important;right:16px!important;bottom:20px!important;transform:none!important;width:auto!important}.hero{padding:18px}.summary-cards{grid-template-columns:repeat(2,1fr)!important}.team-experience-bar select{min-width:100%;width:100%}.team-culture{font-size:13px}}
 
+  
+
+/* AJUSTE FINAL: guardar partido visible durante edición */
+.match-actions .match-save-one{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;opacity:1!important;visibility:visible!important;pointer-events:auto!important;}
+.match.saved .match-actions .match-save-one{background:#00a86b;color:#fff;border:0;box-shadow:0 10px 22px rgba(0,168,107,.22);}
+
+
+
+/* PATCH FINAL: ajuste responsive de tarjetas tipo ESPN para que nunca salgan del cuadro */
+.matches{width:100%;max-width:100%;overflow:visible!important;}
+.match.match-espn{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
+.espn-versus{width:100%!important;min-width:0!important;}
+.espn-team{min-width:0!important;max-width:100%!important;overflow:hidden!important;}
+.espn-team .team-name span:last-child{max-width:100%;overflow-wrap:anywhere;word-break:normal;}
+.predict-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;}
+@media(max-width:700px){
+  main{padding-left:14px!important;padding-right:14px!important;}
+  .matches{display:block!important;width:100%!important;}
+  .match.match-espn{margin:0 0 16px 0!important;padding:14px!important;border-radius:22px!important;}
+  .espn-versus{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:7px!important;align-items:center!important;}
+  .espn-team{min-height:96px!important;padding:10px 6px!important;border-radius:18px!important;}
+  .espn-team .team-name{font-size:14px!important;line-height:1.12!important;gap:6px!important;}
+  .espn-team .flag-img,.espn-team .flag-svg{width:42px!important;height:31px!important;border-radius:8px!important;}
+  .espn-team .flag-emoji{font-size:32px!important;}
+  .espn-score{gap:5px!important;min-width:108px!important;}
+  .espn-score input{width:45px!important;height:50px!important;border-radius:15px!important;font-size:20px!important;padding:4px!important;}
+  .espn-score b{font-size:17px!important;}
+  .espn-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:12px!important;}
+  .espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;min-height:44px!important;}
+  .match-day-label{margin:14px 2px 8px!important;font-size:17px!important;}
+}
+@media(max-width:380px){
+  .espn-versus{gap:4px!important;}
+  .espn-team{padding:8px 4px!important;}
+  .espn-team .team-name{font-size:13px!important;}
+  .espn-team .flag-img,.espn-team .flag-svg{width:36px!important;height:27px!important;}
+  .espn-score{min-width:98px!important;}
+  .espn-score input{width:41px!important;height:48px!important;}
+  .espn-score b{font-size:15px!important;}
+}
+
   </style>
 
 </head>
@@ -677,6 +718,29 @@ function enableScoreEdit(matchIdValue){
     v.disabled=false;
     l.dataset.editing='true';
     v.dataset.editing='true';
+
+    /*
+      AJUSTE EDICIÓN DE MARCADOR:
+      Cuando un partido ya estaba guardado, el botón "Guardar partido" no se
+      mostraba porque la tarjeta estaba en estado saved. Al activar edición,
+      se vuelve a insertar el botón para que el usuario pueda guardar ese
+      mismo Partido_ID después de modificarlo.
+    */
+    const card = l.closest('.match');
+    let actions = card ? card.querySelector('.match-actions') : null;
+    if(card && !actions){
+      actions = document.createElement('div');
+      actions.className = 'match-actions';
+      card.appendChild(actions);
+    }
+    if(actions && !actions.querySelector(`[data-save-one="${matchIdValue}"]`)){
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="match-save-one" data-save-one="${matchIdValue}" onclick="saveSingleMatchPrediction('${matchIdValue}')">💾 Guardar partido</button>`);
+    }
+    /* Al editar, también se muestra el botón de pronóstico/simulación para usuario participante. */
+    if(actions && typeof applySuggestedPrediction === 'function' && getUserProfile(state.currentUser)==='user' && !actions.querySelector(`[data-predict-one="${matchIdValue}"]`)){
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="predict-btn" data-predict-one="${matchIdValue}" onclick="applySuggestedPrediction('${matchIdValue}')">✨ Simular marcador</button>`);
+    }
+
     const note = el(`edit-note-${matchIdValue}`);
     if(note) note.classList.remove('hidden');
     l.focus();
@@ -2746,7 +2810,7 @@ window.addEventListener('load',()=>{
       </div>
       <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
       <div class="match-actions espn-actions">
-        ${canSuggest?`<button type="button" class="predict-btn" onclick="applySuggestedPrediction('${id}')">✨ Pronóstico sugerido</button>`:''}
+        ${canSuggest?`<button type="button" class="predict-btn" data-predict-one="${id}" onclick="applySuggestedPrediction('${id}')">✨ Simular marcador</button>`:''}
         ${canSave?`<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`:''}
         ${canEdit?`<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar marcador</button><div class="lock">🔒 Guardado</div>`:''}
         ${isAdmin?`<div class="finalized-note">👁️ Vista administrador</div>`:''}
@@ -2836,6 +2900,222 @@ window.addEventListener('load',()=>{
   window.addEventListener('load',init);
 })();
 
+
+
+/* =============================================================
+   PATCH FINAL UI/UX RESPONSIVE + SIMULAR MARCADOR + TUTORIAL ACCESO
+   Objetivo:
+   1) Evitar que las tarjetas de partidos se salgan del contenedor en móvil.
+   2) Mantener visibles Guardar partido, Editar marcador y Simular marcador.
+   3) Simular marcador con base en últimos 5 resultados disponibles.
+   4) Agregar tooltip al selector de experiencia/selección.
+   5) Reactivar tutorial informativo en la pantalla de acceso.
+   ============================================================= */
+(function(){
+  function ready(fn){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fn); else fn(); }
+  function $(id){ return document.getElementById(id); }
+  function nrm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function num(v){ const x=Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return Number.isFinite(x)?x:NaN; }
+  function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+  function userCanPredict(){
+    if(!state.currentUser) return false;
+    const profile = getUserProfile(state.currentUser);
+    return profile === 'user' || String(pick(state.currentUser,['Usuario'])).toLowerCase()==='domie';
+  }
+  function adminNow(){ return typeof isCurrentAdmin === 'function' && isCurrentAdmin(); }
+
+  function injectFinalResponsiveStyles(){
+    if(document.getElementById('patchResponsiveCardsFinal')) return;
+    const css = `
+      /* Botones de experiencia */
+      .team-experience-help{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:999px;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;font-size:12px;font-weight:950;cursor:help;line-height:1.2}
+      body.dark-mode .team-experience-help{background:#082f49;color:#bae6fd;border-color:#0e7490}
+
+      /* Tarjeta tipo ESPN: estable y sin desbordes */
+      #matchesContainer{width:100%;max-width:100%;overflow:visible}
+      .match-espn,.match{max-width:100%;box-sizing:border-box}
+      .match-espn{overflow:hidden!important}
+      .espn-versus{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+      .espn-team{min-width:0!important;max-width:100%!important;box-sizing:border-box;overflow:hidden!important}
+      .espn-team .team-name{min-width:0!important;max-width:100%!important;overflow:hidden!important}
+      .espn-team .team-name span:last-child{max-width:100%!important;display:block;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere;line-height:1.12}
+      .espn-team .flag-img,.espn-team .flag-svg{flex:0 0 auto;background:#fff!important;filter:none!important;opacity:1!important}
+      .espn-score{min-width:0;box-sizing:border-box}
+      .espn-actions{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:14px!important}
+      .match-save-one,.edit-score-btn,.predict-btn{border-radius:999px!important;white-space:nowrap;min-height:38px;display:inline-flex!important;align-items:center;justify-content:center;gap:6px}
+      .match-save-one{padding:8px 12px!important;font-size:12px!important;min-width:auto!important;box-shadow:0 8px 18px rgba(0,168,107,.16)!important}
+      .edit-score-btn{padding:8px 12px!important;font-size:12px!important;min-width:auto!important}
+      .predict-btn{padding:8px 12px!important;font-size:12px!important;min-width:auto!important;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#7c2d12;border:1px solid #f59e0b;box-shadow:0 8px 18px rgba(245,158,11,.16)}
+      .predict-btn:hover,.match-save-one:hover,.edit-score-btn:hover{transform:translateY(-2px);filter:saturate(1.08)}
+      .lock,.editing-note,.finalized-note{font-size:11px!important;padding:6px 9px!important;white-space:nowrap}
+
+      /* Móvil: tres columnas reales, pero compactas para no salirse */
+      @media(max-width:700px){
+        main{padding-left:10px!important;padding-right:10px!important;overflow-x:hidden!important}
+        .matches{display:block!important;width:100%!important;max-width:100%!important;overflow:visible!important}
+        .match-espn{width:100%!important;margin:0 0 16px 0!important;padding:14px!important;border-radius:22px!important;overflow:hidden!important}
+        .espn-head{font-size:14px!important;margin-bottom:12px!important}.match-time{font-size:18px!important}
+        .espn-versus{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(98px,auto) minmax(0,1fr)!important;gap:6px!important;align-items:center!important}
+        .espn-team{min-height:98px!important;padding:8px 4px!important;border-radius:16px!important}
+        .espn-team .team-name{font-size:13.5px!important;gap:6px!important;line-height:1.05!important;flex-direction:column!important;flex-wrap:nowrap!important}
+        .espn-team .team-name span:last-child{max-height:34px!important;white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important}
+        .espn-team .flag-img,.espn-team .flag-svg{width:38px!important;height:28px!important;border-radius:7px!important;object-fit:cover!important}
+        .espn-team .flag-emoji{font-size:28px!important}
+        .espn-score{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important}
+        .espn-score input{width:42px!important;height:48px!important;border-radius:14px!important;font-size:20px!important;padding:4px!important}
+        .espn-score b{font-size:17px!important;margin:0 1px!important}
+        .stadium{font-size:11px!important;line-height:1.3;margin-top:10px!important;padding:0 4px}
+        .espn-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;align-items:center!important}
+        .espn-actions .match-save-one,.espn-actions .edit-score-btn,.espn-actions .predict-btn{width:100%!important;min-width:0!important;padding:9px 7px!important;font-size:11.5px!important;min-height:40px!important}
+        .espn-actions .lock,.espn-actions .editing-note,.espn-actions .finalized-note{grid-column:1/-1;text-align:center;justify-content:center;width:100%}
+        .match-day-label{font-size:16px!important;margin:14px 4px 8px!important}
+        .tip{display:none!important}
+        .team-experience-help{width:100%;justify-content:center;text-align:center}
+      }
+
+      @media(max-width:380px){
+        .match-espn{padding:12px!important}.espn-versus{grid-template-columns:minmax(0,1fr) minmax(86px,auto) minmax(0,1fr)!important;gap:4px!important}
+        .espn-team{min-height:90px!important;padding:7px 3px!important}.espn-team .team-name{font-size:12.5px!important}.espn-team .flag-img,.espn-team .flag-svg{width:34px!important;height:25px!important}
+        .espn-score input{width:38px!important;height:44px!important}.espn-score b{font-size:15px!important}
+        .espn-actions{grid-template-columns:1fr!important}.espn-actions .match-save-one,.espn-actions .edit-score-btn,.espn-actions .predict-btn{font-size:12px!important}
+      }
+    `;
+    const style=document.createElement('style'); style.id='patchResponsiveCardsFinal'; style.textContent=css; document.head.appendChild(style);
+  }
+
+  function addExperienceTooltip(){
+    const bar=document.getElementById('teamExperienceBar');
+    if(bar && !document.getElementById('teamExperienceHelp')){
+      const help=document.createElement('span');
+      help.id='teamExperienceHelp';
+      help.className='team-experience-help';
+      help.title='Personaliza la experiencia visual con colores, bandera y ambiente inspirado en tu selección favorita. No cambia tus pronósticos.';
+      help.textContent='💡 Personaliza colores con tu selección favorita';
+      bar.appendChild(help);
+    }
+    const loginSelect=document.getElementById('loginTeamExperience');
+    if(loginSelect && !loginSelect.title){
+      loginSelect.title='Elige una selección para personalizar colores y ambiente visual de la plataforma.';
+    }
+  }
+
+  function resultRowsForTeam(team){
+    const target=nrm(team);
+    const rows=[];
+    (state.results||[]).forEach((r,idx)=>{
+      const mid=String(pick(r,['Partido_ID','Partido ID','ID_Partido','Partido'],''));
+      const m=(state.matches||[]).find(x=>String(matchId(x))===mid) || r;
+      const lt=getLocalTeam(m) || pick(r,['Equipo_Local','Equipo Local','Local_Team','Local Equipo'],'');
+      const vt=getVisitTeam(m) || pick(r,['Equipo_Visitante','Equipo Visitante','Visitante_Team','Visitante Equipo'],'');
+      const ls=num(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Goles_Local','Goles Local','Local'],''));
+      const vs=num(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Goles_Visitante','Goles Visitante','Visitante'],''));
+      if(!Number.isFinite(ls)||!Number.isFinite(vs)) return;
+      if(nrm(lt)===target) rows.push({gf:ls,ga:vs,idx});
+      if(nrm(vt)===target) rows.push({gf:vs,ga:ls,idx});
+    });
+    return rows.slice(-5);
+  }
+  function fallbackScore(local,visit){
+    const seed=(nrm(local)+'|'+nrm(visit)).split('').reduce((s,c)=>s+c.charCodeAt(0),0);
+    return [seed%3, Math.floor(seed/7)%3];
+  }
+  function scoreSuggestion(match){
+    const local=getLocalTeam(match), visit=getVisitTeam(match);
+    const lr=resultRowsForTeam(local), vr=resultRowsForTeam(visit);
+    if(!lr.length && !vr.length) return fallbackScore(local,visit);
+    const avg=(arr,key,def)=>arr.length?arr.reduce((s,x)=>s+x[key],0)/arr.length:def;
+    const lgf=avg(lr,'gf',1.2), lga=avg(lr,'ga',1.0), vgf=avg(vr,'gf',1.1), vga=avg(vr,'ga',1.1);
+    let l=Math.round((lgf+vga)/2 + .12);
+    let v=Math.round((vgf+lga)/2);
+    l=Math.max(0,Math.min(5,l)); v=Math.max(0,Math.min(5,v));
+    if(l===0 && v===0){ l=1; v=1; }
+    return [l,v];
+  }
+
+  window.applySuggestedPrediction=function(id){
+    if(!userCanPredict() || adminNow()){
+      alert('El pronóstico sugerido solo está disponible para usuarios participantes.');
+      return;
+    }
+    const m=(state.matches||[]).find(x=>String(matchId(x))===String(id));
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(!m||!l||!v) return;
+    if(l.disabled || v.disabled){
+      alert('Este marcador ya está guardado. Presiona “Editar marcador” antes de simular un nuevo pronóstico.');
+      return;
+    }
+    const [sl,sv]=scoreSuggestion(m);
+    l.value=sl; v.value=sv;
+    l.dispatchEvent(new Event('input',{bubbles:true}));
+    v.dispatchEvent(new Event('input',{bubbles:true}));
+    if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('✨ Pronóstico sugerido aplicado con base en resultados recientes. Puedes ajustarlo antes de guardar.','ok');
+  };
+
+  function ensureActionsForCard(card){
+    if(!card) return;
+    const l=card.querySelector('input[id^="l-"]');
+    if(!l) return;
+    const id=l.id.replace('l-','');
+    const v=$(`v-${id}`);
+    let actions=card.querySelector('.match-actions');
+    if(!actions){ actions=document.createElement('div'); actions.className='match-actions espn-actions'; card.appendChild(actions); }
+    else actions.classList.add('espn-actions');
+    const saved=!!getUserPrediction(id);
+    const editing=(l&&l.dataset.editing==='true')||(v&&v.dataset.editing==='true');
+    const closed=typeof isQuinielaClosed==='function' && isQuinielaClosed();
+    if(adminNow()) return;
+
+    if(userCanPredict() && !closed && (!saved || editing) && l && !l.disabled && !actions.querySelector(`[data-predict-one="${id}"]`)){
+      actions.insertAdjacentHTML('afterbegin',`<button type="button" class="predict-btn" data-predict-one="${id}" onclick="applySuggestedPrediction('${id}')">✨ Simular marcador</button>`);
+    }
+    if(!closed && (!saved || editing) && !actions.querySelector(`[data-save-one="${id}"]`)){
+      actions.insertAdjacentHTML('beforeend',`<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`);
+    }
+  }
+
+  function enhanceAllMatchCards(){
+    document.querySelectorAll('#matchesContainer .match').forEach(card=>ensureActionsForCard(card));
+  }
+
+  const oldEnable=window.enableScoreEdit || enableScoreEdit;
+  window.enableScoreEdit = enableScoreEdit = function(id){
+    const ret=oldEnable(id);
+    const l=$(`l-${id}`);
+    const card=l?l.closest('.match'):null;
+    if(card){ setTimeout(()=>ensureActionsForCard(card),20); }
+    return ret;
+  };
+
+  const oldRender=window.renderMatches || renderMatches;
+  window.renderMatches = renderMatches = function(){
+    const ret=oldRender();
+    setTimeout(()=>{ enhanceAllMatchCards(); addExperienceTooltip(); },30);
+    return ret;
+  };
+
+  function enableAccessTutorial(){
+    const info=$('infoQuinielaBtn');
+    const modal=$('infoQuinielaModal');
+    if(info && modal && !info.dataset.patchTutorial){
+      info.dataset.patchTutorial='1';
+      info.addEventListener('click',()=>modal.classList.remove('hidden'));
+    }
+    const close=$('closeInfoQuinielaBtn');
+    if(close && modal && !close.dataset.patchTutorial){
+      close.dataset.patchTutorial='1';
+      close.addEventListener('click',()=>modal.classList.add('hidden'));
+    }
+  }
+
+  function initPatch(){
+    injectFinalResponsiveStyles();
+    addExperienceTooltip();
+    enableAccessTutorial();
+    setTimeout(()=>{ try{ enhanceAllMatchCards(); }catch(e){} },250);
+  }
+  ready(initPatch);
+  window.addEventListener('load',initPatch);
+})();
 </script>
 </body>
 </html>
