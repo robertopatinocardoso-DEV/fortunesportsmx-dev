@@ -3116,6 +3116,245 @@ window.addEventListener('load',()=>{
   ready(initPatch);
   window.addEventListener('load',initPatch);
 })();
+
+
+/* =============================================================
+   PATCH QA FINAL - FILTROS, AUTOGUARDADO Y EXPERIENCIA DE COLOR
+   Fecha: actualización de estabilidad antes de siguiente fase
+   Objetivo:
+   - Corregir filtros por grupo/estatus/ronda sin afectar el código base.
+   - Agregar filtro específico por Ronda 1, 2 y 3.
+   - Reparar autoguardado cada 2 partidos completos.
+   - Mejorar selector de experiencia por selección en login y app.
+   - Mantener compatibilidad con modo claro/oscuro y GitHub Pages.
+   ============================================================= */
+(function(){
+  const PATCH_ID = 'qaFinalFiltersAutosavePatch';
+  if(window[PATCH_ID]) return;
+  window[PATCH_ID] = true;
+
+  let qaVisibleLimit = 12;
+  let qaAutosaveBusy = false;
+  let qaAutosaveTimer = null;
+  let qaLastAutosaveSignature = '';
+
+  function $(id){ return document.getElementById(id); }
+  function safeText(v){ return String(v ?? '').trim(); }
+  function norm(v){ return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function esc(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+  function isAdminProfile(){ try{return typeof isCurrentAdmin==='function' && isCurrentAdmin();}catch(e){return false;} }
+  function isUserLike(){ try{ const p=getUserProfile(state.currentUser); return p==='user' || String(pick(state.currentUser,['Usuario'])).toLowerCase()==='domie'; }catch(e){return false;} }
+  function mId(m){ try{return String(matchId(m));}catch(e){return '';} }
+  function pFor(id){ try{return getUserPrediction(id);}catch(e){return null;} }
+  function matchRonda(m){
+    const raw = pick(m,['Ronda','Jornada','Fecha_Ronda','Round_Number','Round'],'');
+    const n = parseInt(String(raw).replace(/[^0-9]/g,''),10);
+    if(Number.isFinite(n) && n>0) return String(n);
+    return '';
+  }
+
+  function injectQaStyles(){
+    if($('qaFinalStyle')) return;
+    const css = `
+      /* Experiencia por selección: más clara e informativa */
+      .team-experience-bar,.login-team-experience{position:relative}
+      .team-experience-bar{background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(239,246,255,.92));backdrop-filter:blur(10px);border:1px solid rgba(147,197,253,.7);box-shadow:0 14px 32px rgba(0,59,143,.09)}
+      .team-experience-bar select,.login-team-experience select{transition:.25s ease;box-shadow:0 6px 16px rgba(0,59,143,.06)}
+      .team-experience-bar select:hover,.login-team-experience select:hover{transform:translateY(-1px);border-color:#0b62d6;box-shadow:0 10px 24px rgba(11,98,214,.18)}
+      .team-experience-help,.login-experience-help{display:flex;align-items:center;gap:8px;border-radius:999px;padding:9px 13px;font-size:12px;font-weight:950;line-height:1.25;background:linear-gradient(135deg,#eff6ff,#fff7ed);color:#1e3a8a;border:1px solid #bfdbfe;box-shadow:0 6px 16px rgba(30,58,138,.07)}
+      .login-experience-help{margin-top:8px;justify-content:center;text-align:center;border-radius:16px}
+      .team-culture,#loginCulture{border-left:4px solid var(--azul2);padding-left:10px}
+      body.dark-mode .team-experience-bar{background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(2,6,23,.92));border-color:#334155;box-shadow:0 14px 34px rgba(0,0,0,.35)}
+      body.dark-mode .team-experience-help,body.dark-mode .login-experience-help{background:linear-gradient(135deg,#082f49,#111827);color:#bae6fd;border-color:#0e7490}
+      body.dark-mode .team-experience-bar select,body.dark-mode .login-team-experience select{background:#020617!important;color:#f8fafc!important;border-color:#475569!important}
+      body.dark-mode .team-culture,body.dark-mode #loginCulture{border-left-color:#38bdf8;color:#e5e7eb!important}
+
+      /* Paletas por selección más profesionales */
+      body.team-mx{--azul:#006847;--azul2:#00843D;--verde:#00a86b;--oro:#CE1126;--rojo:#CE1126;background:radial-gradient(circle at top left,#fff4f4 0,#effdf4 34%,#e6f7ff 70%,#ffffff 100%)}
+      body.team-ar{--azul:#0ea5e9;--azul2:#38bdf8;--verde:#75aadb;--oro:#facc15;--rojo:#60a5fa;background:radial-gradient(circle at top left,#ffffff 0,#e0f2fe 42%,#f0f9ff 75%,#ffffff 100%)}
+      body.team-br{--azul:#002776;--azul2:#009c3b;--verde:#009c3b;--oro:#ffdf00;--rojo:#002776;background:radial-gradient(circle at top left,#fff9c4 0,#eaffea 38%,#e0f2fe 80%,#ffffff 100%)}
+      body.team-es{--azul:#aa151b;--azul2:#c60b1e;--verde:#aa151b;--oro:#ffc400;--rojo:#c60b1e;background:radial-gradient(circle at top left,#fff3bf 0,#fff 35%,#ffe4e6 80%,#ffffff 100%)}
+      body.team-fr{--azul:#002654;--azul2:#0055a4;--verde:#0055a4;--oro:#ffffff;--rojo:#ef4135;background:radial-gradient(circle at top left,#eff6ff 0,#ffffff 42%,#ffe4e6 82%,#ffffff 100%)}
+      body.team-us{--azul:#3c3b6e;--azul2:#2563eb;--verde:#3c3b6e;--oro:#ffffff;--rojo:#b22234;background:radial-gradient(circle at top left,#eff6ff 0,#ffffff 38%,#fee2e2 82%,#ffffff 100%)}
+      body.dark-mode.team-mx,body.dark-mode.team-ar,body.dark-mode.team-br,body.dark-mode.team-es,body.dark-mode.team-fr,body.dark-mode.team-us{background:radial-gradient(circle at top left,#1e293b 0,#020617 55%,#0f172a 100%)}
+
+      /* Filtros: orden, foco y lectura en móvil */
+      .filters select#rondaOnlyFilter{border:1px solid #cbd5e1;background:white;border-radius:14px;padding:11px 12px;font-weight:800;color:#0f172a;min-width:150px}
+      body.dark-mode .filters select#rondaOnlyFilter{background:#111827;color:#f8fafc;border-color:#334155}
+      .filters input:focus,.filters select:focus{outline:3px solid #bfdbfe;border-color:#60a5fa}
+      .auto-save-status.saving{animation:qaPulse 1.05s infinite alternate}
+      @keyframes qaPulse{from{filter:saturate(1);transform:scale(1)}to{filter:saturate(1.25);transform:scale(1.015)}}
+      @media(max-width:700px){
+        .team-experience-bar{margin:0 0 12px!important;gap:8px!important;padding:10px!important}.team-experience-help{width:100%;justify-content:center;text-align:center;border-radius:16px}.login-experience-help{font-size:12px}.filters select#rondaOnlyFilter{width:100%;min-width:100%}
+      }
+    `;
+    const style=document.createElement('style'); style.id='qaFinalStyle'; style.textContent=css; document.head.appendChild(style);
+  }
+
+  function ensureExperienceHelp(){
+    const bar=$('teamExperienceBar');
+    if(bar && !$('teamExperienceHelpFinal')){
+      const help=document.createElement('span');
+      help.id='teamExperienceHelpFinal';
+      help.className='team-experience-help';
+      help.title='Cambia los colores, bandera y ambiente visual de la plataforma según tu selección favorita. Es solo parte de la experiencia; no modifica tus pronósticos.';
+      help.textContent='💡 Experiencia visual: personaliza colores con tu selección favorita';
+      bar.appendChild(help);
+    }
+    const loginWrap=document.querySelector('.login-team-experience');
+    if(loginWrap && !$('loginExperienceHelpFinal')){
+      loginWrap.insertAdjacentHTML('beforeend','<div id="loginExperienceHelpFinal" class="login-experience-help" title="Personaliza la plataforma con colores de una selección. No afecta tu registro ni tus marcadores.">💡 Elige una selección para vivir la plataforma con sus colores y ambiente.</div>');
+    }
+  }
+
+  function ensureRondaFilter(){
+    const status=$('statusFilter');
+    if(!status || $('rondaOnlyFilter')) return;
+    const sel=document.createElement('select');
+    sel.id='rondaOnlyFilter';
+    sel.innerHTML='<option value="">Todas las rondas</option><option value="1">1ra Ronda</option><option value="2">2da Ronda</option><option value="3">3ra Ronda</option>';
+    status.insertAdjacentElement('afterend',sel);
+    sel.addEventListener('change',()=>{ resetQaVisibleLimit(); renderMatches(); });
+  }
+
+  function buildRoundFilterFixed(){
+    const select=$('roundFilter'); if(!select) return;
+    const current=select.value;
+    const groups=[...new Set((state.matches||[]).map(m=>safeText(pick(m,['Grupo','Fase','Fase_Grupo'],''))).filter(Boolean))];
+    groups.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+    select.innerHTML='<option value="">Todos los grupos / fases</option>';
+    groups.forEach(g=>select.insertAdjacentHTML('beforeend',`<option value="${esc(g)}">${esc(g)}</option>`));
+    select.value=groups.includes(current)?current:'';
+  }
+
+  function baseFilteredMatchesFixed(){
+    const q=norm($('searchBox')?.value||'');
+    const group=$('roundFilter')?.value||'';
+    const status=$('statusFilter')?.value||'';
+    const ronda=$('rondaOnlyFilter')?.value||'';
+    return (state.matches||[]).filter(m=>{
+      const id=mId(m);
+      const text=norm([getLocalTeam(m),getVisitTeam(m),getStadium(m),getCity(m),getRound(m),getDate(m),getHour(m),pick(m,['Grupo','Fase'],''),pick(m,['Ronda'],'')].join(' '));
+      const saved=!!pFor(id);
+      const groupValue=safeText(pick(m,['Grupo','Fase','Fase_Grupo'],'')) || safeText(getRound(m));
+      const rondaValue=matchRonda(m);
+      const okText=!q || text.includes(q);
+      const okGroup=!group || groupValue===group || safeText(getRound(m))===group;
+      const okStatus=!status || (status==='pending' && !saved) || (status==='saved' && saved);
+      const okRonda=!ronda || rondaValue===ronda;
+      return okText && okGroup && okStatus && okRonda;
+    });
+  }
+
+  function resetQaVisibleLimit(){ qaVisibleLimit=12; }
+  window.loadMoreMatches=function(){ qaVisibleLimit += 8; renderMatches(); };
+
+  function renderMoreControlsFixed(total){
+    const c=$('matchesContainer'); if(!c) return;
+    $('matchMoreControls')?.remove();
+    if(total<=qaVisibleLimit) return;
+    c.insertAdjacentHTML('afterend',`<div id="matchMoreControls" class="match-more-controls"><button type="button" class="btn" onclick="loadMoreMatches()">⬇️ Ver más partidos (${Math.min(qaVisibleLimit,total)}/${total})</button><button type="button" class="btn-light" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆️ Ir arriba</button></div>`);
+  }
+
+  function renderMatchesFixed(){
+    const c=$('matchesContainer'); if(!c) return;
+    c.innerHTML='';
+    let filled=0;
+    (state.matches||[]).forEach(m=>{ const id=mId(m); if(id && pFor(id)) filled++; });
+    if(!state.matches || !state.matches.length){ c.innerHTML='<div class="empty">No hay partidos cargados. Presiona “Actualizar datos” o revisa la conexión.</div>'; updateProgress(0); return; }
+    const full=baseFilteredMatchesFixed();
+    const shown=full.slice(0,qaVisibleLimit);
+    if(!shown.length){ c.innerHTML='<div class="empty">No hay partidos para mostrar con el filtro seleccionado.</div>'; updateProgress(filled); renderMoreControlsFixed(0); return; }
+    let prevDate='';
+    shown.forEach(m=>{
+      const fecha=formatDateDisplay(getDate(m));
+      if(typeof renderMatchCard==='function'){
+        c.insertAdjacentHTML('beforeend', renderMatchCard(m, prevDate));
+      }else{
+        /* Respaldo si una versión previa no expone renderMatchCard */
+        const id=mId(m), pred=pFor(id), saved=!!pred, local=getLocalTeam(m), visit=getVisitTeam(m);
+        const ml=pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
+        const mv=pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
+        const hora=formatHourDisplay(getHour(m));
+        c.insertAdjacentHTML('beforeend',`${fecha&&fecha!==prevDate?`<div class="match-day-label">📅 ${fecha}</div>`:''}<div class="match match-espn ${saved?'saved':''}" data-match-id="${id}"><div class="match-head espn-head"><span class="round">${esc(getRound(m))}</span><span class="match-time">${esc(hora||'Hora por confirmar')}</span></div><div class="versus espn-versus"><div class="team espn-team">${teamLabel(local)}${teamTooltip(local,getTooltipLocal(m),m)}</div><div class="score espn-score"><input min="0" inputmode="numeric" type="number" id="l-${id}" value="${esc(ml)}" ${saved||isAdminProfile()?'disabled':''}><b>VS</b><input min="0" inputmode="numeric" type="number" id="v-${id}" value="${esc(mv)}" ${saved||isAdminProfile()?'disabled':''}></div><div class="team espn-team">${teamLabel(visit)}${teamTooltip(visit,getTooltipVisitante(m),m)}</div></div><div class="stadium">🏟️ ${esc(getStadium(m))} ${getCity(m)?' · '+esc(getCity(m)):''}</div><div class="match-actions espn-actions"></div></div>`);
+      }
+      if(fecha) prevDate=fecha;
+    });
+    updateProgress(filled);
+    try{ calcRanking(); }catch(e){}
+    try{ enhanceQaCards(); }catch(e){}
+    renderMoreControlsFixed(full.length);
+  }
+
+  function enhanceQaCards(){
+    document.querySelectorAll('#matchesContainer .match').forEach(card=>{
+      const l=card.querySelector('input[id^="l-"]'); if(!l) return;
+      const id=l.id.replace('l-',''); const v=$(`v-${id}`); if(!v) return;
+      let actions=card.querySelector('.match-actions');
+      if(!actions){ actions=document.createElement('div'); actions.className='match-actions espn-actions'; card.appendChild(actions); }
+      actions.classList.add('espn-actions');
+      const saved=!!pFor(id); const editing=l.dataset.editing==='true'||v.dataset.editing==='true'; const closed=typeof isQuinielaClosed==='function' && isQuinielaClosed(); const admin=isAdminProfile();
+      if(admin){ l.disabled=true; v.disabled=true; if(!actions.querySelector('.finalized-note')) actions.insertAdjacentHTML('beforeend','<div class="finalized-note">👁️ Vista administrador</div>'); return; }
+      if(isUserLike() && !closed && (!saved || editing) && !l.disabled && !actions.querySelector(`[data-predict-one="${id}"]`)) actions.insertAdjacentHTML('afterbegin',`<button type="button" class="predict-btn" data-predict-one="${id}" onclick="applySuggestedPrediction('${id}')">✨ Simular marcador</button>`);
+      if(!closed && (!saved || editing) && !actions.querySelector(`[data-save-one="${id}"]`)) actions.insertAdjacentHTML('beforeend',`<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`);
+    });
+  }
+
+  function collectTwoPendingRows(){
+    if(typeof collectPendingPredictionRows!=='function') return [];
+    const rows=collectPendingPredictionRows();
+    const unique=[]; const seen=new Set();
+    rows.forEach(r=>{ const id=String(pick(normalizeRows([r])[0],['Partido_ID','Partido ID','ID_Partido','Partido'])); if(id&&!seen.has(id)){seen.add(id); unique.push(r);} });
+    return unique.slice(0,2);
+  }
+
+  function signatureRows(rows){ return rows.map(r=>`${pick(normalizeRows([r])[0],['Partido_ID','Partido ID'])}:${r.Local ?? r.Marcador_Local}:${r.Visitante ?? r.Marcador_Visitante}`).join('|'); }
+
+  async function qaAutoSaveIfReady(){
+    if(qaAutosaveBusy || !state.currentUser || (typeof isQuinielaClosed==='function' && isQuinielaClosed())) return;
+    if(isAdminProfile()) return;
+    const rows=collectTwoPendingRows();
+    if(rows.length<2){ if(typeof setAutoSaveStatus==='function') setAutoSaveStatus(`Autoguardado: ${rows.length}/2 partidos completos`); return; }
+    const sig=signatureRows(rows); if(sig===qaLastAutosaveSignature) return;
+    qaLastAutosaveSignature=sig;
+    qaAutosaveBusy=true;
+    try{
+      if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('Autoguardando 2 partidos...', 'saving');
+      if(typeof persistPredictionRows==='function') await persistPredictionRows(rows,{silent:true});
+      if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('Autoguardado correcto', 'ok');
+    }catch(e){ console.warn('Autoguardado QA falló:',e); if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('Autoguardado pendiente. Puedes usar Guardar quiniela.', 'warn'); }
+    finally{ qaAutosaveBusy=false; setTimeout(()=>{ if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('Autoguardado cada 2 partidos completos'); },2500); }
+  }
+  window.scheduleAutoSave=function(){ clearTimeout(qaAutosaveTimer); qaAutosaveTimer=setTimeout(qaAutoSaveIfReady,650); };
+
+  function bindQaEvents(){
+    ['searchBox','roundFilter','statusFilter','rondaOnlyFilter'].forEach(id=>{ const n=$(id); if(n && !n.dataset.qaFilterBound){ n.dataset.qaFilterBound='1'; n.addEventListener('input',()=>{resetQaVisibleLimit(); renderMatches();}); n.addEventListener('change',()=>{resetQaVisibleLimit(); renderMatches();}); } });
+    const c=$('matchesContainer');
+    if(c && !c.dataset.qaAutoBound){
+      c.dataset.qaAutoBound='1';
+      c.addEventListener('input',e=>{ if(e.target && e.target.matches('input[type="number"]')){ scheduleAutoSave(); const card=e.target.closest('.match'); const cards=[...document.querySelectorAll('#matchesContainer .match')]; if(card && cards[cards.length-1]===card && [...card.querySelectorAll('input[type="number"]')].every(i=>i.value!=='')){ const full=baseFilteredMatchesFixed(); if(full.length>qaVisibleLimit){ setTimeout(()=>loadMoreMatches(),350); } } } });
+    }
+  }
+
+  function patchGlobalFunctions(){
+    window.buildRoundFilter = buildRoundFilter = buildRoundFilterFixed;
+    window.filteredMatches = filteredMatches = function(){ return baseFilteredMatchesFixed().slice(0,qaVisibleLimit); };
+    window.renderMatches = renderMatches = renderMatchesFixed;
+    const oldEnable=window.enableScoreEdit || enableScoreEdit;
+    window.enableScoreEdit = enableScoreEdit = function(id){ const ret=oldEnable(id); setTimeout(()=>{ enhanceQaCards(); },30); return ret; };
+    const oldClear=$('clearFiltersBtn');
+    if(oldClear && !oldClear.dataset.qaClear){ oldClear.dataset.qaClear='1'; oldClear.addEventListener('click',()=>{ if($('rondaOnlyFilter')) $('rondaOnlyFilter').value=''; resetQaVisibleLimit(); setTimeout(renderMatches,0); }); }
+  }
+
+  function initQaPatch(){
+    injectQaStyles(); ensureRondaFilter(); ensureExperienceHelp(); patchGlobalFunctions(); bindQaEvents();
+    try{ buildRoundFilterFixed(); }catch(e){}
+    try{ renderMatchesFixed(); }catch(e){ console.warn('Render QA diferido:',e); }
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initQaPatch); else initQaPatch();
+  window.addEventListener('load',()=>setTimeout(initQaPatch,400));
+})();
 </script>
 </body>
 </html>
