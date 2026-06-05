@@ -3356,5 +3356,673 @@ window.addEventListener('load',()=>{
   window.addEventListener('load',()=>setTimeout(initQaPatch,400));
 })();
 </script>
+
+
+<script>
+/* =============================================================
+   PATCH FINAL: EDICIÓN + AUTOGUARDADO BLINDADO
+   Objetivo:
+   1) Al editar un marcador guardado, mostrar siempre Guardar partido.
+   2) Autoguardar solo bloques de 2 partidos completos.
+   3) No borrar marcadores que el usuario ya escribió en otros partidos.
+   4) Mostrar estado/spinner visible durante guardado.
+   ============================================================= */
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+  function injectPatchStyle(){
+    if(document.getElementById('patchEditAutosaveFinalStyle')) return;
+    const css = `
+      .auto-save-status{position:relative;overflow:hidden;transition:all .25s ease;}
+      .auto-save-status.saving{background:#fff7ed!important;color:#9a3412!important;border-color:#fdba74!important;box-shadow:0 10px 24px rgba(251,146,60,.18)!important;}
+      .auto-save-status.saving::before{content:'🏆';display:inline-block;margin-right:8px;animation:fsSpinTrophy 1s linear infinite;}
+      .auto-save-status.ok::before{content:'✅';margin-right:8px;}
+      .auto-save-status.warn::before{content:'⚠️';margin-right:8px;}
+      @keyframes fsSpinTrophy{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.12)}100%{transform:rotate(360deg) scale(1)}}
+      .match-save-one.save-edit-visible{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;box-shadow:0 10px 22px rgba(11,98,214,.20)!important;}
+      .edit-score-btn.edit-active{background:#fde68a!important;color:#78350f!important;border-color:#f59e0b!important;}
+      .editing-note:not(.hidden){display:inline-flex!important;align-items:center;justify-content:center;}
+      .autosave-mini-overlay{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:3000;background:rgba(15,23,42,.92);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:10px 14px;font-weight:950;font-size:13px;box-shadow:0 18px 40px rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;max-width:calc(100vw - 28px);}
+      .autosave-mini-overlay .cup{animation:fsSpinTrophy 1s linear infinite;display:inline-block;}
+      @media(max-width:700px){.autosave-mini-overlay{bottom:12px;font-size:12px;padding:9px 12px}.match-actions.espn-actions{gap:7px!important}.match-save-one.save-edit-visible{font-size:12px!important}}
+    `;
+    const style=document.createElement('style'); style.id='patchEditAutosaveFinalStyle'; style.textContent=css; document.head.appendChild(style);
+  }
+
+  function currentUserName(){
+    try{return String(pick(state.currentUser,['Usuario'],'')).trim();}catch(e){return '';}
+  }
+  function currentUserFullName(){
+    try{return pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);}catch(e){return '';}
+  }
+  function normRow(r){
+    try{return normalizeRows([r])[0];}catch(e){return r||{};}
+  }
+  function rowId(r){
+    const n=normRow(r);
+    try{return String(pick(n,['Partido_ID','Partido ID','ID_Partido','Partido']));}catch(e){return String(n.Partido_ID||'');}
+  }
+  function rowSig(r){
+    const n=normRow(r);
+    return `${rowId(n)}:${n.Local ?? n.Marcador_Local ?? ''}:${n.Visitante ?? n.Marcador_Visitante ?? ''}`;
+  }
+  function uniqueRows(rows){
+    const out=[]; const seen=new Set();
+    (rows||[]).forEach(r=>{ const id=rowId(r); if(id && !seen.has(id)){seen.add(id); out.push(r);} });
+    return out;
+  }
+
+  function snapshotInputs(){
+    const map={};
+    document.querySelectorAll('#matchesContainer input[type="number"][id^="l-"],#matchesContainer input[type="number"][id^="v-"]').forEach(input=>{
+      map[input.id]={value:input.value, disabled:input.disabled, editing:input.dataset.editing||''};
+    });
+    return map;
+  }
+  function restoreDraftInputs(snapshot, savedIds){
+    savedIds = savedIds || new Set();
+    Object.entries(snapshot||{}).forEach(([id,data])=>{
+      const input=$(id);
+      if(!input) return;
+      const mid=id.replace(/^[lv]-/,'');
+      if(savedIds.has(String(mid))) return;
+      // Restaurar lo que el usuario ya había escrito en partidos no guardados por este bloque.
+      input.value=data.value;
+      input.disabled=data.disabled;
+      if(data.editing) input.dataset.editing=data.editing;
+    });
+    // Después de restaurar, asegurar botones de tarjetas editables.
+    setTimeout(()=>{ try{ ensureEditableButtons(); }catch(e){} },20);
+  }
+
+  function setStatus(text, mode){
+    if(typeof setAutoSaveStatus==='function') setAutoSaveStatus(text, mode||'');
+  }
+  function showMiniSaving(text){
+    let box=document.getElementById('autosaveMiniOverlay');
+    if(!box){
+      box=document.createElement('div');
+      box.id='autosaveMiniOverlay';
+      box.className='autosave-mini-overlay';
+      document.body.appendChild(box);
+    }
+    box.innerHTML=`<span class="cup">🏆</span><span>${text||'Guardando tus pronósticos...'}</span>`;
+  }
+  function hideMiniSaving(delay=700){
+    setTimeout(()=>{
+      const box=document.getElementById('autosaveMiniOverlay');
+      if(box) box.remove();
+    },delay);
+  }
+
+  function localUpsertRows(rows){
+    const uname=currentUserName();
+    const uid = (typeof userId==='function') ? String(userId()) : uname;
+    const normalized = (rows||[]).map(r=>{
+      const n=normRow(r);
+      n.Nombre_Usuario = n.Nombre_Usuario || currentUserFullName();
+      n.Usuario = n.Usuario || uname;
+      return n;
+    });
+    normalized.forEach(row=>{
+      const rid=rowId(row);
+      state.predictions = (state.predictions||[]).filter(p=>{
+        const pId=rowId(p);
+        const pUser=String(pick(p,['Usuario','Participante'],''));
+        const pUid=String(pick(p,['ID_Usuario','ID Usuario','Usuario_ID'],''));
+        return !(String(pId)===String(rid) && (pUser===uname || pUid===uid));
+      });
+      state.predictions.push(row);
+    });
+  }
+
+  async function postRowsFast(rows){
+    if(state.isDemo){
+      const normalized=(rows||[]).map(normRow);
+      normalized.forEach(row=>{
+        const rid=rowId(row);
+        state.demoPredictions = (state.demoPredictions||[]).filter(p=>String(rowId(p))!==String(rid));
+        state.demoPredictions.push(row);
+      });
+      if(typeof setupDemoEnvironment==='function') setupDemoEnvironment();
+      return true;
+    }
+    if(!state.authToken){
+      alert('Tu sesión expiró. Vuelve a iniciar sesión.');
+      if(typeof logout==='function') logout();
+      return false;
+    }
+    await Promise.all((rows||[]).map(r=>apiPost('upsertPredictionSecure','predictions',{token:state.authToken, prediction:r})));
+    localUpsertRows(rows);
+    return true;
+  }
+
+  function isAdminProfile(){
+    try{return getUserProfile(state.currentUser)==='administrador' || (typeof isCurrentAdmin==='function' && isCurrentAdmin());}catch(e){return false;}
+  }
+  function isUserProfile(){
+    try{return getUserProfile(state.currentUser)==='user' || state.isDemo;}catch(e){return false;}
+  }
+
+  function ensureSaveButtonForEdit(id){
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(!l || !v) return;
+    const card=l.closest('.match');
+    if(!card) return;
+    let actions=card.querySelector('.match-actions');
+    if(!actions){ actions=document.createElement('div'); actions.className='match-actions espn-actions'; card.appendChild(actions); }
+    actions.classList.add('espn-actions');
+    if(!actions.querySelector(`[data-save-one="${id}"]`)){
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="match-save-one save-edit-visible" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`);
+    }else{
+      const btn=actions.querySelector(`[data-save-one="${id}"]`);
+      btn.classList.add('save-edit-visible');
+      btn.disabled=false;
+      btn.style.display='inline-flex';
+    }
+    if(isUserProfile() && typeof applySuggestedPrediction==='function' && !actions.querySelector(`[data-predict-one="${id}"]`)){
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="predict-btn" data-predict-one="${id}" onclick="applySuggestedPrediction('${id}')">✨ Simular marcador</button>`);
+    }
+    const editBtn=actions.querySelector('.edit-score-btn');
+    if(editBtn) editBtn.classList.add('edit-active');
+    const note=$(`edit-note-${id}`);
+    if(note) note.classList.remove('hidden');
+  }
+
+  function ensureEditableButtons(){
+    document.querySelectorAll('#matchesContainer .match').forEach(card=>{
+      const l=card.querySelector('input[id^="l-"]'); if(!l) return;
+      const id=l.id.replace('l-',''); const v=$(`v-${id}`); if(!v) return;
+      const editing=l.dataset.editing==='true' || v.dataset.editing==='true';
+      if(editing && !isAdminProfile() && !(typeof isQuinielaClosed==='function' && isQuinielaClosed())) ensureSaveButtonForEdit(id);
+    });
+  }
+
+  const oldEnable = window.enableScoreEdit;
+  window.enableScoreEdit = enableScoreEdit = function(matchIdValue){
+    if(typeof isQuinielaClosed==='function' && isQuinielaClosed()){
+      alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+      return;
+    }
+    if(isAdminProfile()){
+      alert('El perfil administrador solo puede consultar partidos.');
+      return;
+    }
+    const l=$(`l-${matchIdValue}`), v=$(`v-${matchIdValue}`);
+    if(l && v){
+      l.disabled=false; v.disabled=false;
+      l.dataset.editing='true'; v.dataset.editing='true';
+    }else if(typeof oldEnable==='function'){
+      try{ oldEnable(matchIdValue); }catch(e){ console.warn(e); }
+    }
+    ensureSaveButtonForEdit(matchIdValue);
+    if(l) l.focus();
+  };
+
+  const oldPersist = window.persistPredictionRows;
+  window.persistPredictionRows = persistPredictionRows = async function(rows, options={}){
+    rows = uniqueRows(rows||[]);
+    const silent = !!options.silent;
+    const snapshot = snapshotInputs();
+    const savedIds = new Set(rows.map(rowId));
+    if(!rows.length){
+      if(!silent) alert('No hay nuevos marcadores completos para guardar.');
+      return false;
+    }
+    if(silent){
+      try{
+        showMiniSaving(`Autoguardando ${rows.length} partido${rows.length>1?'s':''}...`);
+        setStatus(`Autoguardando ${rows.length} partido${rows.length>1?'s':''}...`, 'saving');
+        await postRowsFast(rows);
+        if(typeof renderMatches==='function') renderMatches();
+        if(typeof renderDashboard==='function') renderDashboard();
+        restoreDraftInputs(snapshot, savedIds);
+        setStatus('Autoguardado correcto. Puedes seguir editando.', 'ok');
+        hideMiniSaving(500);
+        setTimeout(()=>setStatus('Autoguardado cada 2 partidos completos'),2600);
+        return true;
+      }catch(e){
+        console.warn('Autoguardado blindado falló:', e);
+        restoreDraftInputs(snapshot, new Set());
+        setStatus('Autoguardado pendiente. Usa Guardar partido.', 'warn');
+        hideMiniSaving(900);
+        return false;
+      }
+    }
+    // Guardado manual: conservar cualquier borrador que no pertenezca al bloque guardado.
+    if(typeof oldPersist==='function'){
+      const result = await oldPersist(rows, options);
+      restoreDraftInputs(snapshot, savedIds);
+      return result;
+    }
+    await postRowsFast(rows);
+    if(typeof renderMatches==='function') renderMatches();
+    if(typeof renderDashboard==='function') renderDashboard();
+    restoreDraftInputs(snapshot, savedIds);
+    return true;
+  };
+
+  function collectFirstTwoPendingRows(){
+    if(typeof collectPendingPredictionRows!=='function') return [];
+    const rows=uniqueRows(collectPendingPredictionRows());
+    return rows.slice(0,2);
+  }
+  let autosaveBusy=false;
+  let autosaveTimer=null;
+  let lastSig='';
+  window.autoSaveIfReady = autoSaveIfReady = async function(){
+    if(autosaveBusy || !state.currentUser || isAdminProfile() || (typeof isQuinielaClosed==='function' && isQuinielaClosed())) return;
+    const rows=collectFirstTwoPendingRows();
+    if(rows.length<2){ setStatus(`Autoguardado: ${rows.length}/2 partidos completos`); return; }
+    const sig=rows.map(rowSig).join('|');
+    if(sig===lastSig) return;
+    lastSig=sig;
+    autosaveBusy=true;
+    try{ await persistPredictionRows(rows,{silent:true}); }
+    finally{ autosaveBusy=false; }
+  };
+  window.scheduleAutoSave = scheduleAutoSave = function(){
+    clearTimeout(autosaveTimer);
+    autosaveTimer=setTimeout(()=>autoSaveIfReady(),700);
+  };
+
+  // Asegurar que el evento input use el autoguardado blindado aunque ya existan listeners previos.
+  function bindAutosavePatch(){
+    const c=$('matchesContainer');
+    if(c && !c.dataset.autosaveFinalPatch){
+      c.dataset.autosaveFinalPatch='1';
+      c.addEventListener('input',e=>{
+        if(e.target && e.target.matches('input[type="number"]')) scheduleAutoSave();
+      }, true);
+    }
+  }
+
+  function init(){
+    injectPatchStyle();
+    bindAutosavePatch();
+    ensureEditableButtons();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+  window.addEventListener('load',()=>setTimeout(init,500));
+})();
+</script>
+
+
+
+<script>
+/* =============================================================
+   PATCH FINAL UX/QC: BOTONES EDITAR + GUARDAR EN PARTIDOS GUARDADOS
+   - Mantiene visible Guardar partido en tarjetas guardadas.
+   - Al presionar Editar marcador, habilita inputs y activa Guardar partido.
+   - Asegura Simular marcador para usuarios tipo user en partidos editables.
+   - No afecta a administrador ni a quiniela cerrada.
+   ============================================================= */
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const css = `
+    .match-actions.espn-actions,.match-actions{display:flex!important;gap:8px!important;align-items:center!important;justify-content:center!important;flex-wrap:wrap!important;margin-top:12px!important;min-height:40px!important;width:100%!important;}
+    .edit-score-btn,.match-save-one,.predict-btn{min-height:36px!important;border-radius:999px!important;padding:8px 12px!important;font-size:12px!important;font-weight:950!important;line-height:1!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;white-space:nowrap!important;max-width:100%!important;}
+    .edit-score-btn{background:#fff7ed!important;color:#92400e!important;border:1px solid #fbbf24!important;box-shadow:0 8px 18px rgba(146,64,14,.10)!important;}
+    .edit-score-btn.edit-active{background:#fde68a!important;color:#78350f!important;border-color:#f59e0b!important;}
+    .match-save-one{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border:0!important;box-shadow:0 10px 22px rgba(11,98,214,.18)!important;}
+    .match-save-one[disabled],.match-save-one.is-disabled{opacity:.52!important;filter:grayscale(.25)!important;cursor:not-allowed!important;box-shadow:none!important;}
+    .predict-btn{background:#eef6ff!important;color:#003b8f!important;border:1px solid #bfdbfe!important;box-shadow:0 8px 18px rgba(0,59,143,.08)!important;}
+    .match-status-mini{display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:7px 10px!important;font-size:12px!important;font-weight:950!important;background:#f0fdf4!important;color:#166534!important;border:1px solid #bbf7d0!important;}
+    .editing-note:not(.hidden){display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:7px 10px!important;font-size:12px!important;font-weight:950!important;background:#fffbeb!important;color:#92400e!important;border:1px solid #fde68a!important;}
+    body.dark-mode .predict-btn{background:#082f49!important;color:#bae6fd!important;border-color:#075985!important;}
+    body.dark-mode .match-status-mini{background:#052e16!important;color:#bbf7d0!important;border-color:#166534!important;}
+    body.dark-mode .edit-score-btn{background:#422006!important;color:#fde68a!important;border-color:#92400e!important;}
+    @media(max-width:700px){.edit-score-btn,.match-save-one,.predict-btn{font-size:11px!important;padding:8px 10px!important;min-height:34px!important}.match-actions.espn-actions,.match-actions{gap:6px!important}.match-status-mini{font-size:11px!important;padding:7px 9px!important}}
+  `;
+  if(!document.getElementById('finalEditSaveButtonsStyle')){
+    const st=document.createElement('style'); st.id='finalEditSaveButtonsStyle'; st.textContent=css; document.head.appendChild(st);
+  }
+  function normalizeKeyLocal(k){return String(k||'').trim().replaceAll(' ','_').replace(/[áàä]/gi,'a').replace(/[éèë]/gi,'e').replace(/[íìï]/gi,'i').replace(/[óòö]/gi,'o').replace(/[úùü]/gi,'u').replace(/[ñ]/gi,'n').replace(/[^a-zA-Z0-9_]/g,'');}
+  function rowPick(o,keys,fallback=''){
+    o=o||{};
+    for(const k of keys){const nk=normalizeKeyLocal(k); if(o[nk]!==undefined && o[nk]!==null && String(o[nk]).trim()!=='') return o[nk];}
+    return fallback;
+  }
+  function isAdmin(){try{return getUserProfile(state.currentUser)==='administrador' || (typeof isCurrentAdmin==='function' && isCurrentAdmin());}catch(e){return false;}}
+  function isUser(){try{return state.isDemo || getUserProfile(state.currentUser)==='user';}catch(e){return false;}}
+  function closed(){try{return typeof isQuinielaClosed==='function' && isQuinielaClosed();}catch(e){return false;}}
+  function predFor(id){try{return typeof getUserPrediction==='function' ? getUserPrediction(id) : null;}catch(e){return null;}}
+  function matchById(id){try{return (state.matches||[]).find(m=>String(matchId(m))===String(id))||{};}catch(e){return {};}}
+  function ensureActions(card,id){
+    if(!card || !id) return null;
+    let actions=card.querySelector('.match-actions');
+    if(!actions){actions=document.createElement('div'); actions.className='match-actions espn-actions'; card.appendChild(actions);}
+    actions.classList.add('espn-actions');
+    return actions;
+  }
+  function ensureButtonsForCard(card){
+    const l=card.querySelector('input[id^="l-"]'); if(!l) return;
+    const id=l.id.replace('l-',''); const v=$(`v-${id}`); if(!v) return;
+    const actions=ensureActions(card,id); if(!actions) return;
+    const saved=!!predFor(id);
+    const editing=l.dataset.editing==='true' || v.dataset.editing==='true';
+    const isClosed=closed();
+    if(isAdmin()){
+      l.disabled=true; v.disabled=true;
+      if(!actions.querySelector('.admin-view-note')) actions.insertAdjacentHTML('beforeend','<span class="finalized-note admin-view-note">👁️ Vista administrador</span>');
+      return;
+    }
+    if(isClosed){
+      l.disabled=true; v.disabled=true;
+      if(!actions.querySelector('.finalized-note')) actions.insertAdjacentHTML('beforeend','<span class="finalized-note">🔒 Quiniela cerrada</span>');
+      return;
+    }
+    // En partidos guardados, Editar SIEMPRE debe estar visible.
+    if(saved && !actions.querySelector(`[data-edit-one="${id}"]`)){
+      actions.insertAdjacentHTML('afterbegin',`<button type="button" class="edit-score-btn" data-edit-one="${id}" onclick="enableScoreEdit('${id}')">✏️ Editar</button>`);
+    }
+    // Guardar partido SIEMPRE visible para guardados y no guardados; solo se deshabilita cuando está guardado y no se ha presionado editar.
+    if(!actions.querySelector(`[data-save-one="${id}"]`)){
+      const disabled=(saved && !editing) ? 'disabled class="match-save-one is-disabled" title="Presiona Editar para habilitar el guardado"' : 'class="match-save-one"';
+      actions.insertAdjacentHTML('beforeend',`<button type="button" ${disabled} data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar partido</button>`);
+    }else{
+      const save=actions.querySelector(`[data-save-one="${id}"]`);
+      save.style.display='inline-flex';
+      if(saved && !editing){ save.disabled=true; save.classList.add('is-disabled'); save.title='Presiona Editar para habilitar el guardado'; }
+      else { save.disabled=false; save.classList.remove('is-disabled'); save.title='Guardar marcador de este partido'; }
+    }
+    if(isUser() && !actions.querySelector(`[data-predict-one="${id}"]`)){
+      actions.insertAdjacentHTML('afterbegin',`<button type="button" class="predict-btn" data-predict-one="${id}" onclick="applySuggestedPrediction('${id}')">✨ Simular marcador</button>`);
+    }
+    if(saved && !actions.querySelector(`[data-saved-note="${id}"]`)){
+      actions.insertAdjacentHTML('beforeend',`<span class="match-status-mini" data-saved-note="${id}">🔒 Guardado</span>`);
+    }
+    const editBtn=actions.querySelector(`[data-edit-one="${id}"]`);
+    if(editBtn) editBtn.classList.toggle('edit-active', editing);
+    let note=$(`edit-note-${id}`);
+    if(editing){
+      if(!note){actions.insertAdjacentHTML('beforeend',`<span class="editing-note" id="edit-note-${id}">Editando</span>`);} else note.classList.remove('hidden');
+    }else if(note){note.classList.add('hidden');}
+  }
+  function ensureAllButtons(){document.querySelectorAll('#matchesContainer .match').forEach(ensureButtonsForCard);}
+  const previousEnable=window.enableScoreEdit;
+  window.enableScoreEdit=enableScoreEdit=function(id){
+    if(closed()){alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');return;}
+    if(isAdmin()){alert('El perfil administrador solo puede consultar partidos.');return;}
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(l&&v){l.disabled=false; v.disabled=false; l.dataset.editing='true'; v.dataset.editing='true';}
+    else if(typeof previousEnable==='function'){try{previousEnable(id);}catch(e){console.warn(e);}}
+    const card=(l||v)?.closest?.('.match'); if(card) ensureButtonsForCard(card);
+    const save=document.querySelector(`[data-save-one="${id}"]`); if(save){save.disabled=false; save.classList.remove('is-disabled'); save.style.display='inline-flex';}
+    if(l) l.focus();
+  };
+  if(typeof window.saveSingleMatchPrediction!=='function'){
+    window.saveSingleMatchPrediction=async function(id){
+      const l=$(`l-${id}`), v=$(`v-${id}`); if(!l||!v) return;
+      if(l.value===''||v.value===''){alert('Captura ambos marcadores antes de guardar este partido.'); return;}
+      const m=matchById(id); const now=new Date().toISOString();
+      const nombre=rowPick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+      const row={Prediction_ID:`${rowPick(state.currentUser,['Usuario'])}_${id}`,Usuario:rowPick(state.currentUser,['Usuario']),Nombre_Usuario:nombre,Partido_ID:id,Local:l.value,Visitante:v.value,Marcador_Local:l.value,Marcador_Visitante:v.value,Equipo_Local:(typeof getLocalTeam==='function'?getLocalTeam(m):''),Equipo_Visitante:(typeof getVisitTeam==='function'?getVisitTeam(m):''),Fecha_Registro:now,Fecha_Actualizacion:now,Estatus_Prediccion:'Guardada',Cerrada:''};
+      if(typeof persistPredictionRows==='function') await persistPredictionRows([row],{silent:false});
+      else if(typeof apiPost==='function') await apiPost('upsertPredictionSecure','predictions',{token:state.authToken,prediction:row});
+      if(l){l.disabled=true; l.dataset.editing='';} if(v){v.disabled=true; v.dataset.editing='';}
+      setTimeout(ensureAllButtons,60);
+    }
+  }
+  // Si ya existe saveSingleMatchPrediction, lo envolvemos para reactivar botones después de guardar.
+  if(!window.__saveOneWrappedFinal && typeof window.saveSingleMatchPrediction==='function'){
+    window.__saveOneWrappedFinal=true;
+    const oldSaveOne=window.saveSingleMatchPrediction;
+    window.saveSingleMatchPrediction=async function(id){
+      const res=await oldSaveOne(id);
+      const l=$(`l-${id}`), v=$(`v-${id}`);
+      if(l){l.disabled=true; l.dataset.editing='';}
+      if(v){v.disabled=true; v.dataset.editing='';}
+      setTimeout(ensureAllButtons,80);
+      return res;
+    };
+  }
+  const oldRender=window.renderMatches;
+  if(typeof oldRender==='function' && !window.__renderButtonsWrappedFinal){
+    window.__renderButtonsWrappedFinal=true;
+    window.renderMatches=renderMatches=function(){const r=oldRender(); setTimeout(ensureAllButtons,30); return r;};
+  }
+  document.addEventListener('input',e=>{if(e.target&&e.target.matches('#matchesContainer input[type="number"]')){const card=e.target.closest('.match'); if(card) ensureButtonsForCard(card);}},true);
+  document.addEventListener('click',e=>{const btn=e.target.closest('[data-edit-one]'); if(btn) setTimeout(ensureAllButtons,30);},true);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureAllButtons,200)); else setTimeout(ensureAllButtons,200);
+  window.addEventListener('load',()=>setTimeout(ensureAllButtons,800));
+})();
+</script>
+
+<script>
+/* =============================================================
+   PATCH CRÍTICO FINAL: EDITAR + GUARDAR PARTIDO EN GUARDADOS
+   - Fuerza que los partidos guardados muestren EDITAR y GUARDAR.
+   - La edición queda bloqueada únicamente cuando la quiniela llega al 100%.
+   - No depende de condiciones previas que pudieran ocultar los botones.
+   ============================================================= */
+(function(){
+  const $ = (id)=>document.getElementById(id);
+
+  function safePick(obj, keys, fallback=''){
+    if(typeof pick === 'function') return pick(obj, keys, fallback);
+    obj=obj||{};
+    for(const k of keys){ if(obj[k]!==undefined && obj[k]!==null && String(obj[k]).trim()!=='') return obj[k]; }
+    return fallback;
+  }
+  function userName(){ return String(safePick(state.currentUser,['Usuario'],'')); }
+  function userFullName(){ return safePick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario'],''); }
+  function isAdminUx(){
+    try{ return !state.isDemo && String(getUserProfile(state.currentUser)).toLowerCase()==='administrador'; }
+    catch(e){ return false; }
+  }
+  function matchObj(id){
+    try{ return (state.matches||[]).find(m=>String(matchId(m))===String(id)) || {}; }
+    catch(e){ return {}; }
+  }
+  function userPredictionUx(id){
+    try{ if(typeof getUserPrediction==='function') return getUserPrediction(id); }catch(e){}
+    const uid = typeof userId === 'function' ? userId() : userName();
+    return (state.predictions||[]).find(p=>
+      String(safePick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===String(id) &&
+      (String(safePick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===String(uid) || String(safePick(p,['Usuario','Participante']))===userName())
+    );
+  }
+  function closedReal(){
+    const total = (state.matches||[]).length;
+    if(!total) return false;
+    const ids = new Set();
+    (state.predictions||[]).forEach(p=>{
+      const pid = String(safePick(p,['Partido_ID','Partido ID','ID_Partido','Partido']));
+      if(!pid) return;
+      const sameUser = String(safePick(p,['Usuario','Participante']))===userName();
+      const uid = typeof userId === 'function' ? String(userId()) : '';
+      const sameId = uid && String(safePick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===uid;
+      if(sameUser || sameId) ids.add(pid);
+    });
+    return ids.size >= total;
+  }
+  function ensureStyles(){
+    if(document.getElementById('uxCriticalEditButtonsStyle')) return;
+    const st=document.createElement('style');
+    st.id='uxCriticalEditButtonsStyle';
+    st.textContent=`
+      .match-actions{display:flex!important;flex-wrap:wrap!important;gap:7px!important;align-items:center!important;justify-content:center!important;margin-top:12px!important;min-height:38px!important;width:100%!important;}
+      .ux-edit-btn,.edit-score-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;border-radius:999px!important;padding:7px 10px!important;font-size:11.5px!important;font-weight:950!important;border:1px solid #fbbf24!important;background:#fff7ed!important;color:#92400e!important;box-shadow:0 6px 14px rgba(146,64,14,.10)!important;white-space:nowrap!important;}
+      .ux-save-btn,.match-save-one{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;border-radius:999px!important;padding:7px 10px!important;font-size:11.5px!important;font-weight:950!important;border:0!important;background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:white!important;box-shadow:0 8px 16px rgba(0,168,107,.18)!important;white-space:nowrap!important;}
+      .ux-save-btn.is-disabled,.match-save-one.is-disabled,.ux-save-btn:disabled,.match-save-one:disabled{opacity:.55!important;filter:grayscale(.15)!important;cursor:not-allowed!important;box-shadow:none!important;}
+      .ux-sim-btn,.predict-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;border-radius:999px!important;padding:7px 10px!important;font-size:11.5px!important;font-weight:950!important;border:1px solid #bfdbfe!important;background:#eef6ff!important;color:#003b8f!important;white-space:nowrap!important;}
+      .ux-saved-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:7px 9px!important;font-size:11.5px!important;font-weight:950!important;background:#f0fdf4!important;color:#166534!important;border:1px solid #bbf7d0!important;white-space:nowrap!important;}
+      .ux-editing-pill{display:inline-flex!important;align-items:center!important;justify-content:center!important;border-radius:999px!important;padding:7px 9px!important;font-size:11.5px!important;font-weight:950!important;background:#fffbeb!important;color:#92400e!important;border:1px solid #fde68a!important;white-space:nowrap!important;}
+      body.dark-mode .ux-sim-btn,body.dark-mode .predict-btn{background:#082f49!important;color:#bae6fd!important;border-color:#075985!important;}
+      body.dark-mode .ux-edit-btn,body.dark-mode .edit-score-btn{background:#422006!important;color:#fde68a!important;border-color:#92400e!important;}
+      body.dark-mode .ux-saved-pill{background:#052e16!important;color:#bbf7d0!important;border-color:#166534!important;}
+      body.dark-mode .ux-editing-pill{background:#422006!important;color:#fde68a!important;border-color:#92400e!important;}
+      @media(max-width:700px){.ux-edit-btn,.ux-save-btn,.ux-sim-btn,.edit-score-btn,.match-save-one,.predict-btn{font-size:11px!important;padding:7px 9px!important;min-height:32px!important}.match-actions{gap:6px!important}.ux-saved-pill,.ux-editing-pill{font-size:11px!important;padding:7px 8px!important}}
+    `;
+    document.head.appendChild(st);
+  }
+  function setInputsEditing(id, editing){
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(l){ l.disabled=!editing; l.dataset.editing=editing?'true':''; }
+    if(v){ v.disabled=!editing; v.dataset.editing=editing?'true':''; }
+  }
+  function currentEditing(id){
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    return (l && l.dataset.editing==='true') || (v && v.dataset.editing==='true');
+  }
+  function ensureCardButtons(card){
+    if(!card) return;
+    const l=card.querySelector('input[id^="l-"]');
+    if(!l) return;
+    const id=l.id.replace('l-','');
+    const v=$(`v-${id}`);
+    if(!v) return;
+    let actions=card.querySelector('.match-actions');
+    if(!actions){ actions=document.createElement('div'); actions.className='match-actions espn-actions'; card.appendChild(actions); }
+    actions.innerHTML='';
+
+    const saved=!!userPredictionUx(id);
+    const editing=currentEditing(id);
+    const closed=closedReal();
+    const admin=isAdminUx();
+
+    if(admin){
+      l.disabled=true; v.disabled=true;
+      actions.insertAdjacentHTML('beforeend','<span class="finalized-note">👁️ Vista administrador</span>');
+      return;
+    }
+    if(closed){
+      l.disabled=true; v.disabled=true;
+      actions.insertAdjacentHTML('beforeend','<span class="finalized-note">🔒 Quiniela cerrada</span>');
+      return;
+    }
+
+    // Simular marcador para usuarios activos/demo antes del cierre.
+    actions.insertAdjacentHTML('beforeend',`<button type="button" class="ux-sim-btn predict-btn" onclick="applySuggestedPrediction('${id}')">✨ Simular</button>`);
+
+    // Editar solo cuando el partido ya existe/está guardado.
+    if(saved){
+      actions.insertAdjacentHTML('beforeend',`<button type="button" class="ux-edit-btn edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar</button>`);
+    }
+
+    // Guardar siempre visible; si está guardado y no está editando, queda visible pero deshabilitado hasta presionar Editar.
+    const disabled = saved && !editing;
+    actions.insertAdjacentHTML('beforeend',`<button type="button" class="ux-save-btn match-save-one ${disabled?'is-disabled':''}" ${disabled?'disabled title="Presiona Editar para modificar este marcador"':'title="Guardar este marcador"'} onclick="saveSingleMatchPrediction('${id}')">💾 Guardar</button>`);
+
+    if(saved && !editing) actions.insertAdjacentHTML('beforeend','<span class="ux-saved-pill">🔒 Guardado</span>');
+    if(saved && editing) actions.insertAdjacentHTML('beforeend','<span class="ux-editing-pill">Editando</span>');
+  }
+  function ensureAllCards(){
+    ensureStyles();
+    document.querySelectorAll('#matchesContainer .match').forEach(ensureCardButtons);
+  }
+
+  window.enableScoreEdit = function(id){
+    if(closedReal()){
+      alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+      return;
+    }
+    if(isAdminUx()){
+      alert('El perfil administrador solo puede consultar partidos.');
+      return;
+    }
+    setInputsEditing(id,true);
+    const l=$(`l-${id}`);
+    const card=l?.closest('.match');
+    ensureCardButtons(card);
+    if(l) l.focus();
+  };
+
+  function buildRowForOne(id){
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(!l || !v) return null;
+    if(l.value==='' || v.value==='') return null;
+    const m=matchObj(id);
+    const now=new Date().toISOString();
+    return {
+      Prediction_ID:`${userName()}_${id}`,
+      Usuario:userName(),
+      Nombre_Usuario:userFullName(),
+      Nombre_Completo:userFullName(),
+      'Nombre Completo':userFullName(),
+      Partido_ID:id,
+      'Partido ID':id,
+      ID_Usuario:(typeof userId==='function'?userId():userName()),
+      Local:l.value,
+      Visitante:v.value,
+      Marcador_Local:l.value,
+      Marcador_Visitante:v.value,
+      'Marcador Local':l.value,
+      'Marcador Visitante':v.value,
+      Equipo_Local:(typeof getLocalTeam==='function'?getLocalTeam(m):''),
+      Equipo_Visitante:(typeof getVisitTeam==='function'?getVisitTeam(m):''),
+      Fecha_Registro:now,
+      Fecha_Actualizacion:now,
+      Estatus_Prediccion:'Guardada',
+      Cerrada:''
+    };
+  }
+
+  window.saveSingleMatchPrediction = async function(id){
+    if(isAdminUx()){
+      alert('El perfil administrador solo puede consultar partidos.');
+      return;
+    }
+    if(closedReal()){
+      alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+      return;
+    }
+    const row=buildRowForOne(id);
+    if(!row){
+      alert('Captura ambos marcadores antes de guardar este partido.');
+      return;
+    }
+    const btn=document.querySelector(`[data-save-one="${id}"]`) || document.querySelector(`#l-${id}`)?.closest('.match')?.querySelector('.match-save-one');
+    if(btn){ btn.disabled=true; btn.classList.add('is-disabled'); btn.textContent='⏳ Guardando...'; }
+    try{
+      if(typeof persistPredictionRows==='function') await persistPredictionRows([row],{silent:true});
+      else if(typeof apiPost==='function') await apiPost('upsertPredictionSecure','predictions',{token:state.authToken,prediction:row});
+      setInputsEditing(id,false);
+      // Forzar estado local si el backend tarda en refrescar, evitando que desaparezca el botón por falta de predicción local.
+      state.predictions = (state.predictions||[]).filter(p=>!(String(safePick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===String(id) && String(safePick(p,['Usuario','Participante']))===userName()));
+      if(typeof normalizeRows==='function') state.predictions.push(normalizeRows([row])[0]); else state.predictions.push(row);
+      if(typeof renderMatches==='function') renderMatches();
+      setTimeout(ensureAllCards,120);
+      if(typeof setAutoSaveStatus==='function'){
+        setAutoSaveStatus('Partido guardado correctamente', 'ok');
+        setTimeout(()=>setAutoSaveStatus('Autoguardado cada 2 partidos completos'),2200);
+      }
+    }catch(err){
+      console.warn('Error guardando partido:',err);
+      alert('No se pudo guardar este partido. Intenta nuevamente.');
+      if(btn){ btn.disabled=false; btn.classList.remove('is-disabled'); btn.textContent='💾 Guardar'; }
+    }
+  };
+
+  const originalRender = window.renderMatches;
+  if(typeof originalRender==='function'){
+    window.renderMatches = renderMatches = function(){
+      const result = originalRender.apply(this, arguments);
+      setTimeout(ensureAllCards,50);
+      return result;
+    };
+  }
+
+  const container = $('matchesContainer');
+  if(container && !container.dataset.uxCriticalObserver){
+    container.dataset.uxCriticalObserver='1';
+    new MutationObserver(()=>setTimeout(ensureAllCards,40)).observe(container,{childList:true,subtree:true});
+    container.addEventListener('input',e=>{
+      if(e.target && e.target.matches('input[type="number"]')){
+        const id=e.target.id.replace(/^l-|^v-/,'');
+        const card=e.target.closest('.match');
+        setTimeout(()=>ensureCardButtons(card),30);
+      }
+    },true);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureAllCards,300));
+  else setTimeout(ensureAllCards,300);
+  window.addEventListener('load',()=>setTimeout(ensureAllCards,1000));
+})();
+</script>
+
 </body>
 </html>
