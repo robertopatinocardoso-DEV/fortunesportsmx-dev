@@ -29,241 +29,7 @@
     =============================================================
   -->
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js">
-
-/* =============================================================
-   ACTUALIZACIÓN UX SOLICITADA - ACCESOS, TEMAS, SPINNER,
-   GUARDADO POR PARTIDO Y CARGA PROGRESIVA AUTOMÁTICA
-   ============================================================= */
-const UX_WORLD_CUP_START = new Date('2026-06-11T13:00:00-06:00');
-const TEAM_EXPERIENCES = {
-  'default': {label:'🌎 Experiencia Mundial', cls:'', flag:'🌎', culture:'Vive la pasión global del fútbol.'},
-  'mx': {label:'🇲🇽 México', cls:'team-mx', flag:'🇲🇽', culture:'Pasión, mariachi, estadio lleno y corazón tricolor.'},
-  'ar': {label:'🇦🇷 Argentina', cls:'team-ar', flag:'🇦🇷', culture:'Garra, asado, tango y una hinchada que nunca deja de cantar.'},
-  'br': {label:'🇧🇷 Brasil', cls:'team-br', flag:'🇧🇷', culture:'Samba, jogo bonito y alegría en cada pronóstico.'},
-  'es': {label:'🇪🇸 España', cls:'team-es', flag:'🇪🇸', culture:'Toque, técnica y pasión roja para competir hasta el final.'},
-  'fr': {label:'🇫🇷 Francia', cls:'team-fr', flag:'🇫🇷', culture:'Elegancia, velocidad y espíritu campeón.'},
-  'us': {label:'🇺🇸 Estados Unidos', cls:'team-us', flag:'🇺🇸', culture:'Energía de estadio, espectáculo y competencia total.'}
-};
-let uxVisibleAutoLoadEnabled = true;
-
-function ensureUxLoader(){
-  if(document.getElementById('uxLoader')) return;
-  document.body.insertAdjacentHTML('beforeend', `<div id="uxLoader" class="ux-loader"><div class="ux-loader-card"><div class="cup-spin">🏆</div><b id="uxLoaderTitle">Cargando experiencia</b><span id="uxLoaderText">Preparando la plataforma...</span></div></div>`);
-}
-function showUxLoader(title='Cargando experiencia', text='Preparando la plataforma...'){
-  ensureUxLoader();
-  const box=document.getElementById('uxLoader');
-  const t=document.getElementById('uxLoaderTitle');
-  const s=document.getElementById('uxLoaderText');
-  if(t) t.textContent=title;
-  if(s) s.textContent=text;
-  if(box) box.classList.add('active');
-}
-function hideUxLoader(){ const box=document.getElementById('uxLoader'); if(box) box.classList.remove('active'); }
-
-function makeSafeSlug(text){
-  return String(text||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12);
-}
-function randomDigits(n=4){ return String(Math.floor(Math.random()*Math.pow(10,n))).padStart(n,'0'); }
-function generateAccessData(){
-  const name=el('regName')?.value||'';
-  const phone=el('regPhone')?.value||'';
-  const userInput=el('regUser');
-  const passInput=el('regPass');
-  if(!userInput || !passInput) return;
-  const base = makeSafeSlug(name.split(/\s+/).slice(0,2).join('')) || 'fortune';
-  const suffix = phone.length>=4 ? phone.slice(-4) : randomDigits(4);
-  if(userInput.dataset.manual !== 'true') userInput.value = `${base}${suffix}`.slice(0,18);
-  if(passInput.dataset.manual !== 'true') passInput.value = `FS2026-${suffix}`;
-}
-function enhanceAccessModule(){
-  const regBox=el('registerBox');
-  if(regBox && !document.getElementById('regAutoHint')){
-    regBox.insertAdjacentHTML('afterbegin', `<div id="regAutoHint" class="reg-access-hint">🚀 Registro rápido: escribe tu nombre y WhatsApp. Generaremos tu usuario y contraseña automáticamente, pero puedes editarlos antes de enviar.</div>`);
-  }
-  const regUser=el('regUser'), regPass=el('regPass');
-  if(regUser && !document.getElementById('userAutoNote')) regUser.insertAdjacentHTML('afterend','<span id="userAutoNote" class="ux-field-note">Usuario sugerido automático; editable antes de enviar.</span>');
-  if(regPass && !document.getElementById('passAutoNote')) regPass.insertAdjacentHTML('afterend','<span id="passAutoNote" class="ux-field-note">Contraseña temporal sugerida; editable antes de enviar.</span>');
-  ['regName','regPhone'].forEach(id=>{ const node=el(id); if(node && !node.dataset.uxAuto){ node.dataset.uxAuto='1'; node.addEventListener('input',generateAccessData); }});
-  [regUser, regPass].forEach(node=>{ if(node && !node.dataset.uxManualBind){ node.dataset.uxManualBind='1'; node.addEventListener('input',()=>{ node.dataset.manual='true'; }); }});
-  const showReg=el('showRegBtn'); if(showReg) showReg.textContent='🚀 Registrarme en 1 minuto';
-  const demo=el('demoBtn'); if(demo) demo.textContent='🎮 Probar experiencia demo';
-}
-
-function ensureTeamExperienceSelectors(){
-  const opts=Object.entries(TEAM_EXPERIENCES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
-  const headerActions=document.querySelector('.header-actions');
-  if(headerActions && !document.getElementById('teamExperienceSelect')){
-    headerActions.insertAdjacentHTML('afterbegin', `<div class="team-exp-wrap"><select id="teamExperienceSelect" class="team-exp-select" title="Cambiar experiencia visual">${opts}</select><span id="teamCultureBadge" class="team-culture-badge">🌎 Mundial</span></div>`);
-  }
-  const brand=document.querySelector('.login-card .brand');
-  if(brand && !document.getElementById('loginTeamExperience')){
-    brand.insertAdjacentHTML('afterend', `<div class="login-team-exp"><select id="loginTeamExperience" title="Elige una experiencia visual">${opts}</select><div id="loginCulture" class="login-culture">🌎 Vive la pasión global del fútbol.</div></div>`);
-  }
-  ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{
-    const node=document.getElementById(id);
-    if(node && !node.dataset.bound){
-      node.dataset.bound='1';
-      node.addEventListener('change',()=>applyTeamExperience(node.value));
-    }
-  });
-  applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
-}
-function applyTeamExperience(key){
-  key = TEAM_EXPERIENCES[key] ? key : 'default';
-  const cfg=TEAM_EXPERIENCES[key];
-  Object.values(TEAM_EXPERIENCES).forEach(x=>{ if(x.cls) document.body.classList.remove(x.cls); });
-  if(cfg.cls) document.body.classList.add(cfg.cls);
-  const header=document.querySelector('header');
-  if(header) header.classList.add('team-exp-visual');
-  const badge=document.getElementById('teamCultureBadge');
-  if(badge) badge.textContent=`${cfg.flag} ${cfg.culture}`;
-  const loginCulture=document.getElementById('loginCulture');
-  if(loginCulture) loginCulture.textContent=`${cfg.flag} ${cfg.culture}`;
-  ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{ const n=document.getElementById(id); if(n) n.value=key; });
-  localStorage.setItem('teamExperience', key);
-}
-
-function worldCupHasStarted(){ return Date.now() >= UX_WORLD_CUP_START.getTime(); }
-const uxOriginalOpenParticipantsModal = typeof openParticipantsModal === 'function' ? openParticipantsModal : null;
-openParticipantsModal = function(){
-  if(!isCurrentAdmin?.() && !worldCupHasStarted()){
-    const msg = '👀 La vista de quinielas de otros participantes estará disponible cuando comience el primer partido del Mundial. Así mantenemos la experiencia justa y transparente para todos.';
-    if(el('participantsModal')){
-      el('participantsModal').classList.remove('hidden');
-      if(el('participantsMsg')) el('participantsMsg').innerHTML = `<div class="participants-locked-msg">${msg}</div>`;
-      if(el('participantsBody')) el('participantsBody').innerHTML='';
-    } else alert(msg);
-    return;
-  }
-  if(uxOriginalOpenParticipantsModal) uxOriginalOpenParticipantsModal();
-};
-
-function collectPredictionRowForMatch(id){
-  if(isCurrentAdmin?.()) return [];
-  const m = state.matches.find(x=>String(matchId(x))===String(id));
-  if(!m) return [];
-  const lInput=el(`l-${id}`), vInput=el(`v-${id}`);
-  if(!lInput || !vInput || lInput.value==='' || vInput.value==='') return [];
-  const saved=getUserPrediction(id);
-  const isEditing = lInput.dataset.editing==='true' || vInput.dataset.editing==='true';
-  if(saved && !isEditing) return [];
-  const now = new Date().toISOString();
-  const nombreUsuario = pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
-  return [{
-    'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
-    'Usuario': pick(state.currentUser,['Usuario']),
-    'Nombre_Usuario': nombreUsuario,
-    'Partido_ID': id,
-    'Local': lInput.value,
-    'Visitante': vInput.value,
-    'Fecha_Registro': now,
-    'Fecha_Actualizacion': now,
-    'Estatus_Prediccion':'Guardada',
-    'Cerrada':''
-  }];
-}
-async function saveSingleMatchPrediction(id){
-  const rows=collectPredictionRowForMatch(id);
-  if(!rows.length){ alert('Completa el marcador local y visitante, o usa editar si ya estaba guardado.'); return; }
-  showUxLoader('Guardando partido','Registrando tu marcador...');
-  try{ await persistPredictionRows(rows,{silent:false}); }
-  finally{ hideUxLoader(); }
-}
-function addSingleSaveButtons(){
-  if(!state.matches || !state.matches.length) return;
-  state.matches.forEach(m=>{
-    const id=matchId(m); if(!id) return;
-    const l=el(`l-${id}`); if(!l) return;
-    const matchCard=l.closest('.match'); if(!matchCard || matchCard.querySelector(`[data-save-one="${id}"]`)) return;
-    const actions=matchCard.querySelector('.match-actions') || matchCard;
-    const saved=!!getUserPrediction(id);
-    if(!isCurrentAdmin?.() && !isQuinielaClosed() && !saved){
-      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar este partido</button>`);
-    }
-  });
-}
-const uxOriginalRenderMatches2 = typeof renderMatches === 'function' ? renderMatches : null;
-if(uxOriginalRenderMatches2){
-  renderMatches = function(){
-    uxOriginalRenderMatches2();
-    addSingleSaveButtons();
-    applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
-  };
-}
-
-function autoLoadMoreWhenLastVisibleFilled(target){
-  if(!uxVisibleAutoLoadEnabled || !target || !target.matches('input[type="number"]')) return;
-  const card=target.closest('.match'); if(!card) return;
-  const cards=[...document.querySelectorAll('#matchesContainer .match')];
-  if(!cards.length || cards[cards.length-1] !== card) return;
-  const inputs=[...card.querySelectorAll('input[type="number"]')];
-  if(inputs.length<2 || inputs.some(i=>i.value==='')) return;
-  const moreBtn=el('loadMoreMatchesBtn');
-  if(moreBtn && !moreBtn.classList.contains('hidden')){
-    setTimeout(()=>{ loadMoreMatches(); }, 450);
-  }
-}
-
-const uxOriginalLogin = typeof login === 'function' ? login : null;
-if(uxOriginalLogin){
-  login = async function(){
-    showUxLoader('Validando acceso','Preparando tu estadio digital...');
-    try{ await uxOriginalLogin(); }
-    finally{ setTimeout(hideUxLoader, 450); }
-  };
-}
-const uxOriginalReloadAll = typeof reloadAll === 'function' ? reloadAll : null;
-if(uxOriginalReloadAll){
-  reloadAll = async function(){
-    showUxLoader('Actualizando datos','Consultando partidos, ranking y progreso...');
-    try{ return await uxOriginalReloadAll(); }
-    finally{ setTimeout(hideUxLoader, 350); }
-  };
-}
-const uxOriginalPersist = typeof persistPredictionRows === 'function' ? persistPredictionRows : null;
-if(uxOriginalPersist){
-  persistPredictionRows = async function(rows, options={}){
-    if(!options.silent) showUxLoader('Guardando quiniela','Protegiendo tus pronósticos oficiales...');
-    try{ return await uxOriginalPersist(rows, options); }
-    finally{ if(!options.silent) setTimeout(hideUxLoader, 350); }
-  };
-}
-const uxOriginalShowTab = typeof showTab === 'function' ? showTab : null;
-if(uxOriginalShowTab){
-  showTab = function(tab){
-    showUxLoader('Cambiando vista','Cargando la experiencia...');
-    try{ return uxOriginalShowTab(tab); }
-    finally{ setTimeout(hideUxLoader, 250); }
-  };
-}
-const uxOriginalRegister = typeof registerUser === 'function' ? registerUser : null;
-if(uxOriginalRegister){
-  registerUser = async function(){
-    generateAccessData();
-    showUxLoader('Creando registro','Generando tus accesos de Fortune Sports MX...');
-    try{ await uxOriginalRegister(); }
-    finally{ setTimeout(hideUxLoader, 450); }
-  };
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  ensureUxLoader();
-  enhanceAccessModule();
-  ensureTeamExperienceSelectors();
-  document.addEventListener('input',e=>autoLoadMoreWhenLastVisibleFilled(e.target));
-  setTimeout(()=>{
-    ensureTeamExperienceSelectors();
-    enhanceAccessModule();
-  },500);
-});
-window.addEventListener('load',()=>{
-  ensureTeamExperienceSelectors();
-  enhanceAccessModule();
-});
-
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root{
@@ -410,137 +176,47 @@ line-height:1.4}.msg.ok{background:#dcfce7;color:#14532d}.msg.err{background:#fe
     @media(max-width:700px){.tip{position:fixed;left:50%;top:auto;bottom:24px;transform:translateX(-50%);width:calc(100vw - 34px)}.tip:after{display:none}.team{min-height:78px}.flag-img,.flag-svg{width:24px;height:17px}}
 
   
-    /* MEJORAS UX LANZAMIENTO: cuenta regresiva, paginación móvil, registro destacado y filtros */
-    .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .countdown-pill{background:rgba(255,255,255,.20);border:1px solid rgba(255,255,255,.32);color:#fff;border-radius:999px;padding:9px 13px;font-weight:950;display:inline-flex;gap:6px;align-items:center}
-    .countdown-card{margin:14px 0;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg,#eff6ff,#fff7ed);border:1px solid #bfdbfe;text-align:center;color:#003b8f}
-    .countdown-card span{display:block;font-weight:900;font-size:13px;color:#64748b;margin-bottom:5px}.countdown-card b{font-size:18px}
-    .countdown-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 18px 0;padding:13px 18px;border-radius:20px;background:linear-gradient(135deg,#003b8f,#0b62d6,#00a86b);color:#fff;box-shadow:0 12px 30px rgba(0,59,143,.18)}
-    .countdown-strip span{font-weight:900}.countdown-strip b{font-size:18px}
-    #showRegBtn{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border-radius:18px;margin-top:14px;box-shadow:0 12px 28px rgba(0,168,107,.25);font-size:16px}
-    #showRegBtn:before{content:"🚀 ";}.filters select#statusFilter{background:linear-gradient(135deg,#ffffff,#eff6ff);border:2px solid #bfdbfe;color:#003b8f}
-    .match-nav-controls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0 8px}.match-nav-controls .btn{min-width:190px}
-    .suggest-btn{background:#eef6ff;color:#003b8f;border:1px solid #bfdbfe;border-radius:999px;padding:7px 12px;font-size:12px;box-shadow:0 6px 18px rgba(0,59,143,.10)}
-    .suggest-btn:hover{background:#dbeafe}.admin-readonly-note{background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}
-    body.dark-mode .countdown-card{background:linear-gradient(135deg,#111827,#1e293b);border-color:#334155;color:#bfdbfe}
-    body.dark-mode .countdown-card span{color:#cbd5e1}body.dark-mode .countdown-strip{background:linear-gradient(135deg,#0f172a,#1e3a8a,#065f46)}
-    body.dark-mode .filters select#statusFilter{background:#111827;color:#bfdbfe;border-color:#334155}
-    @media(max-width:700px){
-      .countdown-strip{display:block;text-align:center}.countdown-strip span{display:block;margin-bottom:5px}
-      .filters{position:sticky;top:0;z-index:50;background:rgba(238,246,255,.92);backdrop-filter:blur(10px);padding:10px;border-radius:18px;border:1px solid #dbeafe}
-      body.dark-mode .filters{background:rgba(15,23,42,.92);border-color:#334155}
-      .filters input,.filters select,.filters button{width:100%;min-width:0}
-      .match-nav-controls{position:sticky;bottom:10px;z-index:45;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);padding:10px;border-radius:18px;border:1px solid #dbeafe}
-      body.dark-mode .match-nav-controls{background:rgba(15,23,42,.9);border-color:#334155}
-      .match-nav-controls button{flex:1;min-width:130px}
-    }
-
-  
-
-    /* =============================================================
-       UI/UX PRO FINAL - MOVIL, HOVER, CARDS, TOOLTIP CONTROLADO
-       ============================================================= */
-    :root{--shadow-soft:0 16px 38px rgba(0,59,143,.10);--shadow-hover:0 20px 48px rgba(0,59,143,.18)}
-    html{scroll-behavior:smooth}
-    button,.tab,.metric,.match,.panel,.money-card,.login-card,.field input,.filters input,.filters select{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, filter .18s ease}
-    button:hover,.tab:hover,.info-pill:hover{transform:translateY(-2px);filter:saturate(1.05);box-shadow:var(--shadow-hover)}
-    button:active{transform:scale(.98)}
-    .metric:hover,.match:hover,.panel:hover,.money-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
-
-    /* Balón estilo mundialista sin depender de assets externos */
-    .ball{position:relative;font-size:0!important;background:radial-gradient(circle at 35% 30%,#fff 0 18%,#dbeafe 19% 38%,#0b62d6 39% 43%,#fff 44% 100%)!important;box-shadow:inset 0 0 0 3px #0b62d6,0 10px 24px rgba(0,59,143,.20)!important;overflow:hidden}
-    .ball:before{content:'⚽';font-size:32px;position:absolute;inset:0;display:grid;place-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.20))}
-    .ball:after{content:'2026';position:absolute;right:5px;bottom:5px;background:#003b8f;color:#fff;border-radius:999px;padding:2px 5px;font-size:9px;font-weight:950;letter-spacing:.3px}
-
-    /* Login más claro: Demo y Registro con jerarquía visual */
-    .login-card{max-width:560px}
-    #loginBtn{margin-top:4px}
-    #demoBtn{margin-top:14px;background:linear-gradient(135deg,#eef6ff,#e0f2fe)!important;color:#003b8f!important;border:1px solid #bfdbfe;border-radius:18px;padding:14px 16px;font-size:15px;box-shadow:0 10px 25px rgba(11,98,214,.10)}
-    #demoBtn:before{content:'🎮 ';}
-    #showRegBtn{margin-top:12px!important;background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:white!important;border-radius:18px!important;padding:15px 18px!important;font-size:16px!important;box-shadow:0 16px 34px rgba(0,168,107,.24)!important}
-    #showRegBtn:after{content:'  ➜'}
-    .countdown-card{background:linear-gradient(135deg,#003b8f,#0b62d6,#00a86b)!important;color:#fff!important;border:0!important;box-shadow:0 16px 34px rgba(0,59,143,.22)}
-    .countdown-card span{color:#dbeafe!important}.countdown-card b{font-size:20px;color:#fff}
-    .demo-inspiration{font-size:15px;background:linear-gradient(135deg,#fff7ed,#eef6ff);box-shadow:0 10px 24px rgba(0,59,143,.07)}
-
-    /* Layout de partidos: menos fricción, más espacio útil */
-    .filters{background:rgba(255,255,255,.68);border:1px solid rgba(191,219,254,.70);border-radius:24px;padding:12px;box-shadow:var(--shadow-soft);backdrop-filter:blur(10px)}
-    .filters input,.filters select{height:48px}.filters button{height:48px}
-    .matches{align-items:start}.match{overflow:hidden}.match-head{font-size:14px;margin-bottom:14px}.stadium{font-size:13px;margin-top:12px}.score input{height:56px;width:58px}.score b{font-size:18px}
-    .team-name span:last-child{font-size:18px;line-height:1.18}
-    .tip{pointer-events:none}
-
-    /* Botones de carga no deben tapar la pantalla en móvil */
-    .match-nav-controls{position:static!important;background:transparent!important;border:0!important;box-shadow:none!important;margin:18px 0!important;padding:0!important}
-    .match-nav-controls button{border-radius:18px}
-
-    /* Dashboard más elegante y legible */
-    .dashboard .panel,.panel{background:rgba(255,255,255,.94);border:1px solid rgba(219,234,254,.95)}
-    .panel h3{font-size:22px}.money-card b{font-size:26px}.money-card{position:relative;overflow:hidden}.money-card:before{content:'';position:absolute;inset:auto -20px -28px auto;width:90px;height:90px;border-radius:999px;background:rgba(0,168,107,.10)}
-    #rankingBody td:nth-child(2){font-weight:900;color:#003b8f}
-
-    /* Usuarios admin: tabla más usable en móvil */
-    .users-table th{position:sticky;top:0;z-index:2}.admin-chip{box-shadow:0 8px 18px rgba(0,59,143,.08)}
-    .btn-mini:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,59,143,.12)}
-
-    @media(max-width:700px){
-      body{background:linear-gradient(180deg,#e8f7ff 0,#fff7cc 55%,#e8f7ff 100%)}
-      .center{align-items:flex-start;padding:12px;background:linear-gradient(180deg,#dff2ff,#fff7d6)}
-      .login-card{border-radius:26px;padding:22px;margin-top:10px;box-shadow:0 18px 48px rgba(0,59,143,.16)}
-      .brand{align-items:flex-start}.brand h1{font-size:25px;line-height:1.08}.brand .sub{font-size:14px}.ball{width:54px;height:54px;min-width:54px}
-      .countdown-card{margin:12px 0!important;padding:12px!important;border-radius:18px}.countdown-card b{font-size:17px}
-      .demo-inspiration{padding:12px;font-size:14px}.info-pill{width:100%;justify-content:center}
-
-      header{padding:14px 16px;border-bottom-width:4px}.top{display:block}.top h2{font-size:24px;margin-bottom:12px}.header-actions{justify-content:flex-start;gap:8px}.countdown-pill{order:-1;width:100%;justify-content:center;border-radius:18px;font-size:14px;background:rgba(255,255,255,.24)}.user-pill,.theme-toggle,#logoutBtn{margin:0;font-size:13px;padding:9px 10px}
-      main{padding:14px}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tab{border-radius:18px;min-height:54px}.tab:not(.hidden):last-child:nth-child(3){grid-column:1/-1}
-      .hero{border-radius:26px;padding:18px;margin-bottom:14px}.hero h1{font-size:28px}.progress-wrap{min-width:100%;max-width:100%}.progress{height:16px}.summary-cards{grid-template-columns:repeat(2,1fr);gap:12px}.metric{border-radius:20px;padding:16px}.metric b{font-size:30px}
-      .countdown-strip{border-radius:18px;margin:0 0 14px 0;padding:12px}.countdown-strip b{font-size:16px}
-
-      /* Quitar paneles fijos para recuperar visibilidad */
-      .filters{position:static!important;display:grid;grid-template-columns:1fr;gap:10px;padding:12px;margin-bottom:14px;border-radius:22px;background:rgba(255,255,255,.86)}
-      .filters input,.filters select,.filters button,.auto-save-status{width:100%;min-width:0;justify-content:center;text-align:center}
-      .filters #saveBtn,.filters #tutorialBtn{font-size:15px}.auto-save-status{padding:12px;font-size:13px}
-      .matches{grid-template-columns:1fr;gap:14px}.match{border-radius:24px;padding:14px}.match-head{font-size:13px}.versus{grid-template-columns:1fr auto 1fr!important;gap:8px}.team{min-height:74px!important;padding:9px!important;border-radius:18px}.team-name{gap:5px}.team-name span:last-child{font-size:15px}.flag-img,.flag-svg{width:24px;height:17px}.score{gap:5px}.score input{width:48px;height:52px;font-size:18px;padding:6px;border-radius:16px}.score b{font-size:16px}.stadium{font-size:12px;line-height:1.25}
-      .team:hover .tip{display:none!important}.team:focus .tip{display:none!important}.tip{display:none!important}
-      .match-actions{justify-content:center}.edit-score-btn,.lock,.finalized-note,.editing-note{font-size:11px;padding:6px 9px}
-      .match-nav-controls{display:grid!important;grid-template-columns:1fr;gap:10px;margin:16px 0 10px!important}.match-nav-controls button{width:100%;min-height:52px}.actions{display:grid;grid-template-columns:1fr;gap:10px}.actions button{width:100%;min-height:52px}
-
-      .dashboard{grid-template-columns:1fr}.panel{border-radius:24px;padding:16px}.panel h3{font-size:24px}.money-cards{grid-template-columns:1fr 1fr;gap:10px}.money-card{padding:14px;border-radius:18px}.money-card b{font-size:20px}.table-wrap{border-radius:18px;border:1px solid #e5eef9;max-height:65vh;overflow:auto}
-      th,td{padding:10px;font-size:13px}.users-table th,.users-table td{font-size:12px}.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.btn-mini{font-size:11px;padding:7px 8px}
-    }
-
-    @media(min-width:701px){
-      .team:hover .tip{display:block}.filters{position:relative}.filters:hover{box-shadow:var(--shadow-hover)}
-    }
-
-    body.dark-mode .filters{background:rgba(15,23,42,.74);border-color:#334155}body.dark-mode .dashboard .panel,body.dark-mode .panel{background:rgba(15,23,42,.96)}body.dark-mode #rankingBody td:nth-child(2){color:#93c5fd}
-
-  
 
 /* =============================================================
-   ACTUALIZACIÓN UX - ACCESOS SIMPLIFICADOS, TEMA POR SELECCIÓN,
-   SPINNER, GUARDADO POR PARTIDO Y MEJORA MÓVIL
+   PATCH FINAL UX / REGISTRO RÁPIDO / THEMES / ESPN CARDS
    ============================================================= */
-.ux-field-note{font-size:12px;color:#0f766e;font-weight:900;margin-top:6px;display:block}
-.reg-access-hint{margin:12px 0 16px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#ecfeff,#f0fdf4);border:1px solid #99f6e4;color:#075985;font-weight:900;line-height:1.45;text-align:center}
-#showRegBtn{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border-radius:18px;padding:14px 18px;box-shadow:0 14px 30px rgba(0,168,107,.25);margin-top:14px}
-#demoBtn{background:linear-gradient(135deg,#fef3c7,#fff7ed)!important;color:#92400e!important;border:1px solid #fbbf24;border-radius:18px;padding:13px 18px;box-shadow:0 10px 24px rgba(251,191,36,.20)}
-.btn-main,.btn,.btn-green,.btn-purple,.btn-gold,.btn-light,.btn-red,.tab,.info-pill,.theme-toggle{position:relative;overflow:hidden;will-change:transform;transition:transform .18s ease, box-shadow .18s ease, filter .18s ease!important}
-.btn-main:hover,.btn:hover,.btn-green:hover,.btn-purple:hover,.btn-gold:hover,.btn-light:hover,.btn-red:hover,.tab:hover,.info-pill:hover,.theme-toggle:hover{transform:translateY(-3px) scale(1.01)!important;filter:saturate(1.08);box-shadow:0 18px 35px rgba(0,59,143,.18)!important}
-.btn-main:active,.btn:active,.btn-green:active,.btn-purple:active,.btn-gold:active,.btn-light:active,.btn-red:active,.tab:active{transform:translateY(0) scale(.99)!important}
-.ball{background:radial-gradient(circle at 35% 30%,#fff 0 24%,#dbeafe 25% 42%,#0b62d6 43% 46%,#fff 47% 65%,#00a86b 66% 78%,#ef476f 79% 100%)!important;box-shadow:inset 0 0 0 3px #0b62d6,0 10px 25px rgba(11,98,214,.25)!important;color:transparent!important;position:relative}.ball:after{content:'⚽';position:absolute;inset:0;display:grid;place-items:center;color:#07111f;font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.16))}
-.team-exp-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.team-exp-select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:10px 12px;font-weight:900;max-width:220px;outline:none}.team-exp-select option{color:#0f172a;background:#fff}.login-team-exp{margin:4px 0 16px}.login-team-exp select{width:100%;border:1px solid #bfdbfe;background:#f8fbff;color:#003b8f;border-radius:16px;padding:12px 14px;font-weight:900}.team-culture-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font-weight:900;border:1px solid rgba(255,255,255,.25)}.login-culture{margin-top:8px;color:#075985;background:#ecfeff;border:1px solid #a5f3fc;border-radius:14px;padding:9px 12px;text-align:center;font-weight:900}
-body.team-mx{--azul:#006341;--azul2:#006847;--verde:#00a86b;--oro:#ce1126;--rojo:#ce1126}body.team-ar{--azul:#0099d6;--azul2:#5eb6e4;--verde:#75aadb;--oro:#f6b40e;--rojo:#f6b40e}body.team-br{--azul:#002776;--azul2:#009c3b;--verde:#009c3b;--oro:#ffdf00;--rojo:#002776}body.team-es{--azul:#aa151b;--azul2:#c60b1e;--verde:#f1bf00;--oro:#ffc400;--rojo:#c60b1e}body.team-fr{--azul:#002395;--azul2:#0055a4;--verde:#ffffff;--oro:#ed2939;--rojo:#ed2939}body.team-us{--azul:#3c3b6e;--azul2:#0052a5;--verde:#b22234;--oro:#ffffff;--rojo:#b22234}
-.team-exp-visual{background:linear-gradient(135deg,var(--azul2),var(--verde));border-bottom-color:var(--oro)!important}.team-exp-visual .countdown-pill,.team-exp-visual .user-pill,.team-exp-visual .theme-toggle,.team-exp-visual .team-culture-badge{backdrop-filter:blur(8px)}
-body.dark-mode .flag-img,body.dark-mode .flag-svg{background:#ffffff!important;border:1px solid rgba(255,255,255,.75);box-shadow:0 0 0 2px rgba(255,255,255,.14),0 6px 18px rgba(0,0,0,.45);opacity:1!important;filter:none!important}
-body.dark-mode .match{background:linear-gradient(180deg,#111827,#0f172a)!important;border-color:#334155!important}body.dark-mode .score input{background:#0b1220!important;color:#f8fafc!important;border-color:#60a5fa!important}body.dark-mode .btn-light{background:#1e293b;color:#e5e7eb;border:1px solid #334155}
-.match-save-one{background:linear-gradient(135deg,#06b6d4,#0b62d6);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950;box-shadow:0 10px 20px rgba(6,182,212,.20)}
-.match-save-one:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
-.ux-loader{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;background:rgba(7,17,31,.64);backdrop-filter:blur(6px);padding:20px}.ux-loader.active{display:flex}.ux-loader-card{width:min(340px,90vw);background:linear-gradient(135deg,#fff,#eff6ff);border:1px solid #bfdbfe;border-radius:28px;padding:28px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35);color:#003b8f}.cup-spin{width:86px;height:86px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#fff 0 52%,#ffd166 53% 64%,#0b62d6 65% 100%);font-size:46px;animation:cupPulse 1.05s ease-in-out infinite;box-shadow:0 15px 35px rgba(11,98,214,.25)}@keyframes cupPulse{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.08) rotate(6deg)}}.ux-loader-card b{display:block;font-size:18px;margin-bottom:6px}.ux-loader-card span{color:#64748b;font-weight:800}
-.participants-locked-msg{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:18px;padding:16px;font-weight:900;line-height:1.45}
-@media(max-width:700px){.login-card{padding:26px 20px;border-radius:26px}.brand{align-items:flex-start}.brand h1{font-size:24px}.field input{font-size:16px;padding:15px}.filters{position:static!important;display:grid!important;grid-template-columns:1fr!important;gap:12px;padding:14px;border-radius:24px;background:rgba(255,255,255,.72);border:1px solid #dbeafe;box-shadow:0 10px 30px rgba(15,23,42,.08)}.filters input,.filters select,.filters button,.filters .auto-save-status{width:100%;min-width:0;justify-content:center;text-align:center}.matches{gap:18px}.match{padding:18px 14px;border-radius:26px}.versus{grid-template-columns:1fr!important;gap:12px}.score{justify-content:center}.team{min-height:76px}.match-actions{justify-content:center}.match-save-one,.suggest-btn,.edit-score-btn{width:100%;padding:11px}.top{align-items:flex-start}.header-actions{width:100%;display:flex;gap:8px;flex-wrap:wrap}.team-exp-select{width:100%;max-width:none}.team-culture-badge{width:100%;justify-content:center}.countdown-pill{width:100%;justify-content:center;text-align:center}.user-pill,.theme-toggle,.btn-red{flex:1;text-align:center}.dashboard{grid-template-columns:1fr!important}.panel canvas{max-height:260px}.users-table{font-size:12px}.users-table th,.users-table td{padding:9px}.match-nav-controls{position:static!important;display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}.actions{display:grid;grid-template-columns:1fr}.summary-cards{grid-template-columns:repeat(2,1fr)!important}.money-cards{grid-template-columns:1fr!important}}
+.ball{width:64px!important;height:64px!important;min-width:64px!important;border-radius:50%!important;background:radial-gradient(circle at 32% 28%,#ffffff 0 14%,#dbeafe 15% 28%,#0b62d6 29% 34%,#ffffff 35% 52%,#00a86b 53% 65%,#ffd166 66% 76%,#ef476f 77% 100%)!important;box-shadow:inset 0 0 0 4px #0b62d6,0 14px 30px rgba(0,59,143,.24)!important;position:relative;overflow:hidden;animation:worldBallFloat 2.8s ease-in-out infinite;color:transparent!important}
+.ball:before{content:'⚽';position:absolute;inset:0;display:grid;place-items:center;color:#0f172a;font-size:34px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
+.ball:after{content:'2026';position:absolute;right:6px;bottom:6px;background:#003b8f;color:white;border-radius:999px;padding:2px 6px;font-size:9px;font-weight:950;letter-spacing:.3px}
+@keyframes worldBallFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(4deg)}}
 
-</style>
+#showRegBtn{background:linear-gradient(135deg,#00a86b,#0b62d6)!important;color:#fff!important;border-radius:18px!important;padding:15px 18px!important;font-size:16px!important;box-shadow:0 16px 34px rgba(0,168,107,.25)!important;transform-origin:center;transition:.25s!important}
+#showRegBtn:hover,.btn:hover,.btn-main:hover,.tab:hover{transform:translateY(-3px) scale(1.01);filter:saturate(1.05)}
+#showRegBtn:before{content:'🚀 '}
+#demoBtn{background:linear-gradient(135deg,#ede9fe,#dbeafe)!important;color:#003b8f!important;border:1px solid #bfdbfe!important;border-radius:18px!important;font-weight:950!important;padding:14px 18px!important;box-shadow:0 12px 26px rgba(11,98,214,.12)!important}
+#demoBtn:hover{background:linear-gradient(135deg,#dbeafe,#c4b5fd)!important}
+
+.quick-register-note{background:linear-gradient(135deg,#ecfeff,#eff6ff);border:1px solid #a5f3fc;color:#155e75;border-radius:18px;padding:14px;margin:0 0 15px;font-weight:850;line-height:1.45}
+.auto-credentials{background:linear-gradient(135deg,#fff7ed,#eff6ff);border:1px solid #fed7aa;border-radius:18px;padding:14px;margin:14px 0}.auto-credentials h3{color:#003b8f;margin-bottom:8px}.auto-credentials .field{margin-bottom:10px}.auto-credentials input{font-weight:900;color:#003b8f}.cred-hint{font-size:12px;color:#92400e;font-weight:800;line-height:1.4}.optional-tag{display:inline-block;background:#e0f2fe;color:#075985;padding:2px 8px;border-radius:999px;margin-left:6px;font-size:11px;font-weight:900}
+.whatsapp-proof-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;background:#25d366;color:white!important;border-radius:14px;padding:12px 14px;font-weight:950;text-decoration:none;box-shadow:0 10px 22px rgba(37,211,102,.22)}
+
+.ux-loader{position:fixed;inset:0;background:rgba(2,6,23,.62);backdrop-filter:blur(8px);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px}.ux-loader.active{display:flex}.ux-loader-card{background:linear-gradient(135deg,#ffffff,#eff6ff);border:1px solid #bfdbfe;border-radius:28px;padding:28px;min-width:260px;box-shadow:0 28px 80px rgba(0,0,0,.35);text-align:center;color:#0f172a}.cup-spin{font-size:56px;animation:cupPulse 1s ease-in-out infinite}.ux-loader-card b{display:block;color:#003b8f;font-size:20px;margin:12px 0 5px}.ux-loader-card span{color:#64748b;font-weight:800}@keyframes cupPulse{0%,100%{transform:scale(1) rotate(-4deg)}50%{transform:scale(1.16) rotate(5deg)}}
+
+.team-experience-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:rgba(255,255,255,.68);border:1px solid rgba(191,219,254,.8);border-radius:20px;padding:10px 12px;margin:0 0 16px;box-shadow:0 10px 24px rgba(15,23,42,.06)}.team-experience-bar select{border:1px solid #bfdbfe;border-radius:14px;padding:10px 12px;font-weight:950;color:#003b8f;background:white;min-width:230px}.team-culture{font-weight:850;color:#334155}.login-team-experience{margin:4px 0 16px}.login-team-experience select{width:100%;border:1px solid #bfdbfe;border-radius:14px;padding:12px;font-weight:900;color:#003b8f;background:#f8fafc}.login-team-experience div{margin-top:8px;font-weight:850;color:#334155;background:#f8fafc;border:1px solid #e5eef9;border-radius:14px;padding:10px}
+body.team-mx{--azul:#006341;--azul2:#006847;--verde:#006847;--oro:#ce1126;--rojo:#ce1126;background:radial-gradient(circle at top left,#fff 0,#f0fdf4 22%,#ffe4e6 56%,#e8f7ff 100%)}
+body.team-ar{--azul:#2d9cdb;--azul2:#49aeea;--verde:#75aadb;--oro:#f6c945;background:radial-gradient(circle at top left,#ffffff 0,#e0f2fe 35%,#fff7ed 100%)}
+body.team-br{--azul:#002776;--azul2:#009c3b;--verde:#009c3b;--oro:#ffdf00;background:radial-gradient(circle at top left,#fef9c3 0,#dcfce7 40%,#dbeafe 100%)}
+body.team-es{--azul:#aa151b;--azul2:#aa151b;--verde:#f1bf00;--oro:#f1bf00;--rojo:#aa151b;background:radial-gradient(circle at top left,#fff7ed 0,#fef3c7 42%,#fee2e2 100%)}
+body.team-fr{--azul:#0055a4;--azul2:#0055a4;--verde:#ffffff;--oro:#ef4135;--rojo:#ef4135;background:radial-gradient(circle at top left,#eff6ff 0,#ffffff 44%,#fee2e2 100%)}
+body.team-us{--azul:#3c3b6e;--azul2:#3c3b6e;--verde:#b22234;--oro:#ffffff;--rojo:#b22234;background:radial-gradient(circle at top left,#eff6ff 0,#ffffff 36%,#fee2e2 100%)}
+
+body.dark-mode .team-experience-bar,body.dark-mode .login-team-experience div{background:#0f172a;border-color:#334155;color:#e5e7eb}body.dark-mode .team-experience-bar select,body.dark-mode .login-team-experience select{background:#111827;color:#f8fafc;border-color:#475569}body.dark-mode .team-culture,body.dark-mode .login-team-experience div{color:#cbd5e1}
+body.dark-mode .flag-img,body.dark-mode .flag-svg{background:#ffffff!important;padding:1px;border:1px solid rgba(255,255,255,.7);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+
+/* Vista de partidos tipo ESPN/FIFA */
+.matches{align-items:start}.match{background:linear-gradient(180deg,#ffffff,#f8fbff)!important;border:1px solid rgba(11,98,214,.14)!important;border-radius:24px!important;box-shadow:0 14px 34px rgba(0,59,143,.09)!important;overflow:hidden!important}.match:before{content:'';display:block;height:5px;background:linear-gradient(90deg,var(--azul2),var(--verde),var(--oro),var(--rojo));margin:-18px -18px 14px}.match-head{font-size:13px!important;color:#475569!important}.versus{grid-template-columns:1fr auto 1fr!important}.team{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;min-height:88px!important;background:linear-gradient(180deg,#ffffff,#eef6ff)!important;border:1px solid #cfe3ff!important;border-radius:20px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;padding:12px!important}.team-name{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;width:100%;font-weight:950;color:#07111f}.score{justify-content:center}.score input{width:58px!important;height:58px!important;border-radius:16px!important;background:white!important}.match-actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:12px}.match-save-one{background:linear-gradient(135deg,#00a86b,#0b62d6);color:#fff;border:0;border-radius:999px;padding:8px 12px;font-weight:950;font-size:12px;box-shadow:0 10px 20px rgba(0,168,107,.18)}.match-save-one:hover{transform:translateY(-2px)}
+body.dark-mode .match{background:linear-gradient(180deg,#0f172a,#111827)!important;border-color:#334155!important}body.dark-mode .team{background:linear-gradient(180deg,#1e293b,#0f172a)!important;border-color:#334155!important;color:#f8fafc!important}body.dark-mode .team-name{color:#f8fafc}body.dark-mode .score input{background:#020617!important;color:#f8fafc!important;border-color:#475569!important}
+body.dark-mode .tip{background:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}.tip{background:#fff!important;color:#1e293b!important;border:1px solid #dbeafe!important;border-radius:16px!important;box-shadow:0 18px 45px rgba(15,23,42,.20)!important}.tip-title{display:flex;gap:8px;align-items:center;color:#003b8f;font-weight:950;border-bottom:1px solid #e5eef9;padding-bottom:7px;margin-bottom:7px}.tip-note{display:block;background:#fff7ed;color:#92400e;border:1px solid #fed7aa;border-radius:12px;padding:8px;margin:6px 0;font-weight:900}.tip-row{display:block;margin-top:4px;color:#334155}.tip-round{display:inline-block;margin-top:8px;padding:5px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:950}
+
+.match-more-controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}.match-more-controls .btn{min-width:220px}.participants-locked-msg{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:18px;padding:18px;font-weight:900;line-height:1.5}
+@media(max-width:700px){.login-card{padding:24px}.matches{grid-template-columns:1fr!important}.versus{grid-template-columns:1fr!important}.team{min-height:74px!important}.score input{width:54px!important;height:54px!important}.filters{position:static!important;background:rgba(255,255,255,.84);padding:14px;border-radius:22px;border:1px solid #dbeafe}.filters input,.filters select,.filters button,.auto-save-status{width:100%;min-width:100%}.match-actions{justify-content:center}.match-save-one,.edit-score-btn{width:100%}.tip{display:none!important}.team:active .tip{display:block!important;position:fixed!important;left:16px!important;right:16px!important;bottom:20px!important;transform:none!important;width:auto!important}.hero{padding:18px}.summary-cards{grid-template-columns:repeat(2,1fr)!important}.team-experience-bar select{min-width:100%;width:100%}.team-culture{font-size:13px}}
+
+  </style>
 
 </head>
 <body>
@@ -559,10 +235,6 @@ body.dark-mode .match{background:linear-gradient(180deg,#111827,#0f172a)!importa
 
       <div id="demoInfo" class="demo-inspiration">
         Vive la emoción del Mundial: cada pronóstico cuenta, cada marcador puede cambiar la tabla y cada participante compite por llegar a la cima.
-      </div>
-      <div class="countdown-card login-countdown">
-        <span>⏳ Faltan para el inicio del Mundial</span>
-        <b id="countdownLogin">Calculando...</b>
       </div>
       <div class="info-access-row">
         <button type="button" class="info-pill" id="infoQuinielaBtn">ℹ️ ¿Cómo funciona la quiniela?</button>
@@ -585,16 +257,14 @@ body.dark-mode .match{background:linear-gradient(180deg,#111827,#0f172a)!importa
   </div>
 </section>
 <section id="app" class="app hidden">
-  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div class="header-actions"><span id="countdownHeader" class="countdown-pill">⏳ Calculando...</span><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="theme-toggle" id="themeToggle">🌙 Vista obscura</button><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
+  <header><div class="top"><h2>🏆 Quiniela Mundial 2026</h2><div><span id="welcome" class="user-pill">👤 Usuario</span><button type="button" class="theme-toggle" id="themeToggle">🌙 Vista obscura</button><button type="button" class="btn-red" id="logoutBtn">Salir</button></div></div></header>
   <main>
     <div class="tabs"><button type="button" id="tabMatches" class="tab active">⚽ Partidos</button><button type="button" id="tabDash" class="tab">📊 Dashboard</button><button type="button" id="tabUsers" class="tab hidden">👥 Usuarios</button></div>
     <section id="matchesView">
       <div class="hero"><div><h1>Llena tu quiniela</h1><p class="sub">Captura tus marcadores. Al guardar, los partidos quedarán bloqueados.</p></div><div class="progress-wrap"><div class="progress-label"><span>Progreso de llenado</span><span id="progressText">0%</span></div><div class="progress"><div id="progressBar" class="progress-bar"></div></div></div></div>
-      <div class="countdown-strip"><span>⏳ Cuenta regresiva al Mundial</span><b id="countdownMatches">Calculando...</b></div>
       <div class="summary-cards"><div class="metric"><small>Partidos</small><b id="mTotal">0</b></div><div class="metric"><small>Llenados</small><b id="mFilled">0</b></div><div class="metric"><small>Pendientes</small><b id="mPending">0</b></div><div class="metric"><small>Mis puntos</small><b id="mPoints">0</b></div></div>
       <div class="filters"><input id="searchBox" placeholder="Buscar selección o estadio"><select id="roundFilter"><option value="">Todas las rondas / grupos</option></select><select id="statusFilter"><option value="">Todos los partidos</option><option value="pending">Pendientes por llenar</option><option value="saved">Guardados</option></select><button type="button" class="btn-light" id="clearFiltersBtn">Limpiar filtros</button><button type="button" class="btn-green" id="saveBtn">💾 Guardar quiniela</button><button type="button" class="btn-purple" id="tutorialBtn">🎓 Ver tutorial</button><button type="button" class="btn-light" id="reloadBtn">🔄 Actualizar datos</button><span id="autosaveStatus" class="auto-save-status">Autoguardado cada 2 partidos completos</span></div>
       <div id="matchesContainer" class="matches"></div>
-      <div class="match-nav-controls"><button type="button" class="btn-light" id="topMatchesBtn">⬆️ Ir arriba</button><button type="button" class="btn" id="loadMoreMatchesBtn">⬇️ Ver más partidos</button></div>
       <div class="actions"><button type="button" class="btn-gold" id="dashBtn">📊 Ver dashboard</button><button type="button" class="btn-light" id="downloadBtn">⬇️ Descargar mi quiniela</button></div>
       <div id="dataNotice" class="notice"><b>Conexión:</b> consultando datos desde Google Sheets.</div>
     </section>
@@ -2719,290 +2389,16 @@ showTab = function(tab){
   if(tab==='users' && isCurrentAdmin()) loadAdminUsers();
 };
 
-
-/* =============================================================
-   MEJORAS UX + ADMIN + CUENTA REGRESIVA - NO RESTAURA DEMO
-   ============================================================= */
-state.visibleMatches = 12;
-state.lastFilterSignature = '';
-
-function isAdminCurrent(){
-  return !!state.currentUser && !state.isDemo && getUserProfile(state.currentUser)==='administrador';
-}
-
-function worldCupCountdownText(){
-  const start = new Date('2026-06-11T13:00:00-06:00');
-  const now = new Date();
-  let diff = start.getTime() - now.getTime();
-  if(diff <= 0) return '¡El Mundial ya comenzó!';
-  const days = Math.floor(diff / 86400000); diff %= 86400000;
-  const hours = Math.floor(diff / 3600000); diff %= 3600000;
-  const mins = Math.floor(diff / 60000); diff %= 60000;
-  const secs = Math.floor(diff / 1000);
-  return `${days} días · ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
-}
-
-function updateCountdowns(){
-  const text = worldCupCountdownText();
-  if(el('countdownLogin')) el('countdownLogin').textContent = text;
-  if(el('countdownHeader')) el('countdownHeader').textContent = `⏳ ${text}`;
-  if(el('countdownMatches')) el('countdownMatches').textContent = text;
-}
-
-function filterSignature(){
-  return JSON.stringify({
-    q: el('searchBox')?.value || '',
-    r: el('roundFilter')?.value || '',
-    s: el('statusFilter')?.value || ''
-  });
-}
-
-function renderMatches(){
-  const c=el('matchesContainer');
-  if(!c) return;
-  c.innerHTML='';
-
-  const currentSig = filterSignature();
-  if(state.lastFilterSignature !== currentSig){
-    state.visibleMatches = 12;
-    state.lastFilterSignature = currentSig;
-  }
-
-  let filled=0;
-  const allShown=filteredMatches();
-  const shown=allShown.slice(0, state.visibleMatches);
-  const admin = isAdminCurrent();
-
-  state.matches.forEach(m=>{
-    const id=matchId(m);
-    if(id && getUserPrediction(id)) filled++;
-  });
-
-  if(!state.matches.length){
-    c.innerHTML='<div class="empty">No hay partidos cargados. Presiona “Actualizar datos” o revisa que el archivo matches esté compartido/publicado correctamente.</div>';
-    updateProgress(0);
-    updateLoadMoreButton(0,0);
-    return;
-  }
-
-  if(!shown.length){
-    c.innerHTML='<div class="empty">No hay partidos para mostrar con el filtro seleccionado.</div>';
-    updateProgress(filled);
-    updateLoadMoreButton(0,0);
-    return;
-  }
-
-  shown.forEach(m=>{
-    const id=matchId(m);
-    if(!id) return;
-
-    const pred=getUserPrediction(id);
-    const saved=!!pred;
-    const local=getLocalTeam(m);
-    const visit=getVisitTeam(m);
-    const tooltipLocal=getTooltipLocal(m);
-    const tooltipVisitante=getTooltipVisitante(m);
-    const ml=pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
-    const mv=pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
-    const fecha = formatDateDisplay(getDate(m));
-    const hora = formatHourDisplay(getHour(m));
-    const fechaHora = hora ? `${fecha} · ${hora}` : fecha;
-    const disabled = admin || saved;
-
-    c.insertAdjacentHTML('beforeend',`
-      <div class="match ${saved?'saved':''}">
-        <div class="match-head"><span class="round">${getRound(m)}</span><span>${fechaHora}</span></div>
-        <div class="versus">
-          <div class="team">${teamLabel(local)}${teamTooltip(local, tooltipLocal, m)}</div>
-          <div class="score"><input min="0" type="number" id="l-${id}" value="${ml}" ${disabled?'disabled':''}><b>VS</b><input min="0" type="number" id="v-${id}" value="${mv}" ${disabled?'disabled':''}></div>
-          <div class="team">${teamLabel(visit)}${teamTooltip(visit, tooltipVisitante, m)}</div>
-        </div>
-        <div class="stadium">🏟️ ${getStadium(m)} ${getCity(m) ? ' · ' + getCity(m) : ''}</div>
-        <div class="match-actions">
-          ${!admin && !saved ? `<button type="button" class="suggest-btn" onclick="autoFillMatchSuggestion('${id}')">✨ Sugerir marcador</button>` : ''}
-          ${admin ? '<div class="admin-readonly-note">👁️ Administrador: solo lectura</div>' : ''}
-          ${saved && !admin ? `${!isQuinielaClosed()?`<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${id}')">✏️ Editar marcador</button><div class="lock">🔒 Guardado</div>`:''}${isQuinielaClosed()?'<div class="finalized-note">🔒 Quiniela cerrada</div><div class="lock">Solo consulta</div>':''}<div class="editing-note hidden" id="edit-note-${id}">Editando marcador</div>` : ''}
-        </div>
-      </div>
-    `);
-  });
-
-  updateProgress(filled);
-  updateLoadMoreButton(shown.length, allShown.length);
-  calcRanking();
-}
-
-function updateLoadMoreButton(visible,total){
-  const btn = el('loadMoreMatchesBtn');
-  const topBtn = el('topMatchesBtn');
-  if(!btn) return;
-  btn.classList.toggle('hidden', visible >= total);
-  btn.textContent = visible < total ? `⬇️ Ver más partidos (${visible}/${total})` : 'Todos los partidos visibles';
-  if(topBtn) topBtn.classList.toggle('hidden', total <= 12);
-}
-
-function loadMoreMatches(){
-  state.visibleMatches += 12;
-  renderMatches();
-  setTimeout(()=>window.scrollBy({top:420, behavior:'smooth'}), 60);
-}
-
-function scrollMatchesTop(){
-  const target = el('matchesView');
-  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function saveAllPredictions(){
-  if(isAdminCurrent()){
-    alert('El perfil administrador solo puede consultar partidos y usar filtros. No participa en la quiniela.');
-    return;
-  }
-  return persistPredictionRows(collectPendingPredictionRows(), {silent:false});
-}
-
-function collectPendingPredictionRows(){
-  if(isAdminCurrent()) return [];
-  const rows=[];
-
-  state.matches.forEach(m=>{
-    const id=matchId(m);
-    const lInput=el(`l-${id}`);
-    const vInput=el(`v-${id}`);
-    const isEditing = (lInput && lInput.dataset.editing==='true') || (vInput && vInput.dataset.editing==='true');
-    if(!id || (getUserPrediction(id) && !isEditing)) return;
-
-    const l=lInput?.value;
-    const v=vInput?.value;
-
-    if(l!==undefined && v!==undefined && l!=='' && v!==''){
-      const now = new Date().toISOString();
-      const nombreUsuario = pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
-      rows.push({
-        'Prediction_ID': `${pick(state.currentUser,['Usuario'])}_${id}`,
-        'Usuario': pick(state.currentUser,['Usuario']),
-        'Nombre_Usuario': nombreUsuario,
-        'Partido_ID': id,
-        'Local': l,
-        'Visitante': v,
-        'Fecha_Registro': now,
-        'Fecha_Actualizacion': now,
-        'Estatus_Prediccion':'Guardada',
-        'Cerrada':''
-      });
-    }
-  });
-
-  return rows;
-}
-
-function teamRecentScores(team){
-  const normalized = normalizeTeamName(team);
-  const rows = (state.results || []).filter(r=>{
-    const local = normalizeTeamName(pick(r,['Equipo_Local','Equipo Local','Local_Equipo','Local']));
-    const visit = normalizeTeamName(pick(r,['Equipo_Visitante','Equipo Visitante','Visitante_Equipo','Visitante']));
-    const hasScores = pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],'') !== '' &&
-                      pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],'') !== '';
-    return hasScores && (local===normalized || visit===normalized);
-  }).slice(-5);
-
-  return rows.map(r=>{
-    const local = normalizeTeamName(pick(r,['Equipo_Local','Equipo Local','Local_Equipo','Local']));
-    const ml = Number(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],0));
-    const mv = Number(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],0));
-    return local===normalized ? {gf:ml, ga:mv} : {gf:mv, ga:ml};
-  });
-}
-
-function averageGoals(scores, fallback){
-  if(!scores.length) return fallback;
-  const avg = scores.reduce((s,x)=>s+x.gf,0) / scores.length;
-  return Math.max(0, Math.min(4, Math.round(avg)));
-}
-
-function autoFillMatchSuggestion(id){
-  if(isAdminCurrent()) return;
-  const m = state.matches.find(x=>String(matchId(x))===String(id));
-  if(!m) return;
-  if(getUserPrediction(id)){
-    alert('Este partido ya está guardado. Usa editar marcador si necesitas cambiarlo.');
-    return;
-  }
-
-  const local = getLocalTeam(m);
-  const visit = getVisitTeam(m);
-  const localScores = teamRecentScores(local);
-  const visitScores = teamRecentScores(visit);
-
-  let localGoals = averageGoals(localScores, 1);
-  let visitGoals = averageGoals(visitScores, 1);
-
-  if(!localScores.length && !visitScores.length){
-    // No hay históricos reales cargados. Se propone un marcador conservador editable.
-    localGoals = 1;
-    visitGoals = 1;
-  }
-
-  const li = el(`l-${id}`);
-  const vi = el(`v-${id}`);
-  if(li && vi){
-    li.value = localGoals;
-    vi.value = visitGoals;
-    li.dispatchEvent(new Event('input', {bubbles:true}));
-  }
-}
-
-function updateRoleUI(){
-  const admin = isAdminCurrent();
-  ['saveBtn','downloadBtn','autosaveStatus'].forEach(id=>{
-    const node = el(id);
-    if(node) node.classList.toggle('hidden', admin);
-  });
-  const notice = el('dataNotice');
-  if(admin && notice){
-    notice.innerHTML = '<b>Administrador:</b> puedes consultar partidos, usar filtros, revisar dashboard y administrar usuarios. Este perfil no participa en la quiniela.';
-  }
-}
-
-const previousShowAppUx = showApp;
-showApp = function(user){
-  previousShowAppUx(user);
-  setTimeout(updateRoleUI, 200);
-};
-
-const previousShowTabUx = showTab;
-showTab = function(tab){
-  previousShowTabUx(tab);
-  updateRoleUI();
-  if(tab==='users' && isCurrentAdmin()) loadAdminUsers();
-};
-
-
 window.addEventListener('load',()=>{
   applyTheme(localStorage.getItem('quinielaTheme') || 'light');
   bindEvents();
-
-  updateCountdowns();
-  setInterval(updateCountdowns, 1000);
-
-  el('loadMoreMatchesBtn')?.addEventListener('click', loadMoreMatches);
-  el('topMatchesBtn')?.addEventListener('click', scrollMatchesTop);
-
   const savedUserRaw = localStorage.getItem('quinielaUser');
   if(savedUserRaw){
     try{
       const savedUser = JSON.parse(savedUserRaw);
-      /*
-        Ajuste solicitado:
-        No restaurar automáticamente la sesión demo.
-        El demo solo entra cuando el usuario presiona el botón.
-      */
-      if(savedUser && pick(savedUser,['Usuario']) && String(pick(savedUser,['Usuario'])).toLowerCase() !== 'domie'){
+      if(savedUser && pick(savedUser,['Usuario'])){
         showApp(savedUser);
         return;
-      }
-      if(String(pick(savedUser,['Usuario'])).toLowerCase() === 'domie'){
-        localStorage.removeItem('quinielaUser');
-        localStorage.removeItem('quinielaToken');
       }
     }catch(error){
       console.warn('No se pudo restaurar la sesión:', error);
@@ -3014,82 +2410,240 @@ window.addEventListener('load',()=>{
 
 
 /* =============================================================
-   UI/UX PRO FINAL - AJUSTES DE EXPERIENCIA SIN ALTERAR BACKEND
+   PATCH FINAL SOLICITADO - REGISTRO SIMPLE, THEMES, SPINNER,
+   GUARDADO POR PARTIDO, LOCK QUINIELAS Y CARGA AUTOMÁTICA
    ============================================================= */
-function isMobileViewport(){ return window.matchMedia('(max-width:700px)').matches; }
-
-/* Evita restaurar automáticamente la sesión demo al abrir el sitio público. */
-const originalShowApp_UX = showApp;
-showApp = function(user){
-  if(isDemoUser(user)){
-    localStorage.removeItem('quinielaToken');
-  }
-  originalShowApp_UX(user);
-  applyAdminReadOnlyUX();
-};
-
-/* Administrador puede consultar partidos y filtros, pero no capturar/guardar quiniela. */
-function applyAdminReadOnlyUX(){
-  const isAdmin = isCurrentAdmin && isCurrentAdmin();
-  const save = el('saveBtn');
-  const autosave = el('autosaveStatus');
-  if(save){
-    save.style.display = isAdmin ? 'none' : '';
-  }
-  if(autosave && isAdmin){
-    autosave.textContent = 'Vista administrador: solo consulta y filtros';
-    autosave.className = 'auto-save-status';
-  }
-}
-
-const originalRenderMatches_UX = renderMatches;
-renderMatches = function(){
-  originalRenderMatches_UX();
-  applyAdminReadOnlyUX();
-  if(isCurrentAdmin && isCurrentAdmin()){
-    state.matches.forEach(m=>{
-      const id = matchId(m);
-      const l = el(`l-${id}`); const v = el(`v-${id}`);
-      if(l) l.disabled = true;
-      if(v) v.disabled = true;
-    });
-  }
-};
-
-/* Menú móvil: al usar filtros se mantiene arriba y no tapa partidos. */
-['searchBox','roundFilter','statusFilter'].forEach(id=>{
-  setTimeout(()=>{
-    const node = el(id);
-    if(node) node.addEventListener('change',()=>{ if(isMobileViewport()) window.scrollTo({top:0, behavior:'smooth'}); });
-  },0);
-});
-
-/* Botón Ver más: baja al siguiente bloque sin dejar controles fijos tapando pantalla. */
-const originalLoadMoreMatches_UX = typeof loadMoreMatches === 'function' ? loadMoreMatches : null;
-if(originalLoadMoreMatches_UX){
-  loadMoreMatches = function(){
-    originalLoadMoreMatches_UX();
-    setTimeout(()=>{
-      const cards = document.querySelectorAll('.match');
-      const index = Math.max(0, Math.min(cards.length-1, (state.visibleMatches||12)-12));
-      if(cards[index]) cards[index].scrollIntoView({behavior:'smooth', block:'start'});
-    },100);
+(function(){
+  const WORLD_CUP_START = new Date('2026-06-11T13:00:00-06:00');
+  const TEAM_EXPERIENCES = {
+    default:{label:'🌎 Experiencia Mundial', cls:'', flag:'🌎', culture:'Vive la pasión global del fútbol.'},
+    mx:{label:'🇲🇽 México', cls:'team-mx', flag:'🇲🇽', culture:'Estadio, pasión tricolor y ambiente de fiesta mexicana.'},
+    ar:{label:'🇦🇷 Argentina', cls:'team-ar', flag:'🇦🇷', culture:'Hinchada, garra, tango y corazón albiceleste.'},
+    br:{label:'🇧🇷 Brasil', cls:'team-br', flag:'🇧🇷', culture:'Samba, alegría y jogo bonito en cada pronóstico.'},
+    es:{label:'🇪🇸 España', cls:'team-es', flag:'🇪🇸', culture:'Toque, técnica y energía roja.'},
+    fr:{label:'🇫🇷 Francia', cls:'team-fr', flag:'🇫🇷', culture:'Elegancia, velocidad y mentalidad campeona.'},
+    us:{label:'🇺🇸 Estados Unidos', cls:'team-us', flag:'🇺🇸', culture:'Show, estadio lleno y competencia total.'}
   };
-}
+  let visibleLimit = 12;
+  let originalFilteredMatches = null;
+  let originalRenderMatches = null;
 
-/* Limpia la sesión demo guardada si alguien abre el link desde otro dispositivo. */
-window.addEventListener('DOMContentLoaded',()=>{
-  try{
-    const raw = localStorage.getItem('quinielaUser');
-    if(raw){
-      const u = JSON.parse(raw);
-      if(isDemoUser(u)){
-        localStorage.removeItem('quinielaUser');
-        localStorage.removeItem('quinielaToken');
-      }
+  function safeEl(id){ return document.getElementById(id); }
+  function slug(text){ return String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10); }
+  function digits(n=4){ return String(Math.floor(Math.random()*Math.pow(10,n))).padStart(n,'0'); }
+  function whatsappProofLink(usuario){
+    const msg = encodeURIComponent(`Hola Roberto, ya realicé mi registro en Fortune Sports MX. Mi usuario es ${usuario || ''}. Te envío mi comprobante para activar mi acceso.`);
+    return `https://wa.me/525571662207?text=${msg}`;
+  }
+
+  function ensureLoader(){
+    if(safeEl('uxLoader')) return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="uxLoader" class="ux-loader"><div class="ux-loader-card"><div class="cup-spin">🏆</div><b id="uxLoaderTitle">Cargando</b><span id="uxLoaderText">Preparando la experiencia...</span></div></div>`);
+  }
+  window.showUxLoader = function(title='Cargando', text='Preparando la experiencia...'){
+    ensureLoader();
+    safeEl('uxLoaderTitle').textContent = title;
+    safeEl('uxLoaderText').textContent = text;
+    safeEl('uxLoader').classList.add('active');
+  };
+  window.hideUxLoader = function(){ const n=safeEl('uxLoader'); if(n) n.classList.remove('active'); };
+
+  function buildGeneratedCredentials(){
+    const name = safeEl('regName')?.value || '';
+    const phone = safeEl('regPhone')?.value || '';
+    const suffix = phone.length >= 4 ? phone.slice(-4) : digits(4);
+    const user = safeEl('regUser');
+    const pass = safeEl('regPass');
+    if(user && user.dataset.manual !== 'true') user.value = `User${suffix}`;
+    if(pass && pass.dataset.manual !== 'true') pass.value = `FS2026-${suffix}`;
+  }
+
+  function setupQuickRegistration(){
+    const showReg = safeEl('showRegBtn');
+    if(showReg) showReg.textContent = 'Registrarme en 1 minuto';
+    const email = safeEl('regEmail');
+    if(email){
+      email.required = false;
+      email.placeholder = 'Opcional: correo@ejemplo.com';
+      const label = email.closest('.field')?.querySelector('label');
+      if(label && !label.innerHTML.includes('Opcional')) label.innerHTML = 'Correo electrónico <span class="optional-tag">Opcional</span>';
     }
-  }catch(e){}
-});
+    const phone = safeEl('regPhone');
+    if(phone){ phone.placeholder='WhatsApp a 10 dígitos'; phone.maxLength=10; phone.inputMode='numeric'; }
+    const userField = safeEl('regUser')?.closest('.field');
+    const passField = safeEl('regPass')?.closest('.field');
+    const regBox = safeEl('registerBox');
+    if(regBox && !safeEl('quickRegisterNote')){
+      regBox.insertAdjacentHTML('afterbegin', `<div id="quickRegisterNote" class="quick-register-note"><b>Registro fácil:</b> solo captura tu nombre y WhatsApp. El sistema genera tu usuario y contraseña temporal; puedes editarlos antes de enviar.</div>`);
+    }
+    if(regBox && userField && passField && !safeEl('autoCredentialsBox')){
+      const box = document.createElement('div');
+      box.id='autoCredentialsBox'; box.className='auto-credentials';
+      box.innerHTML = '<h3>🔐 Accesos generados automáticamente</h3><p class="cred-hint">Puedes editarlos antes de enviar tu solicitud.</p>';
+      box.appendChild(userField); box.appendChild(passField);
+      const btn = safeEl('regBtn');
+      regBox.insertBefore(box, btn);
+    }
+    ['regName','regPhone'].forEach(id=>{
+      const n=safeEl(id); if(n && !n.dataset.autoCred){ n.dataset.autoCred='1'; n.addEventListener('input', buildGeneratedCredentials); }
+    });
+    ['regUser','regPass'].forEach(id=>{
+      const n=safeEl(id); if(n && !n.dataset.manualBind){ n.dataset.manualBind='1'; n.addEventListener('input',()=>{ n.dataset.manual='true'; }); }
+    });
+    buildGeneratedCredentials();
+  }
+
+  window.validateRegistration = function(nombre, correo, telefono, usuario, password, users){
+    if(String(nombre||'').trim().length < 6) return 'El nombre completo debe tener mínimo 6 caracteres.';
+    if(!/^\d{10}$/.test(String(telefono||'').trim())) return 'El WhatsApp debe tener exactamente 10 dígitos numéricos.';
+    if(correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return 'El correo electrónico es opcional, pero si lo capturas debe ser válido.';
+    if(String(usuario||'').trim().length < 6) return 'El usuario generado debe tener mínimo 6 caracteres.';
+    if(String(password||'').trim().length < 6) return 'La contraseña temporal debe tener mínimo 6 caracteres.';
+    const exists = (users || []).some(u => String(pick(u,['Usuario'])).toLowerCase() === String(usuario).toLowerCase());
+    if(exists) return 'Ese usuario ya existe. Edita el usuario sugerido e intenta nuevamente.';
+    return '';
+  };
+
+  window.registerUser = async function(){
+    buildGeneratedCredentials();
+    const nombre=safeEl('regName').value.trim();
+    const correo=safeEl('regEmail').value.trim();
+    const telefono=safeEl('regPhone').value.trim();
+    const usuario=safeEl('regUser').value.trim();
+    const password=safeEl('regPass').value.trim();
+    const btn=safeEl('regBtn');
+    const err = validateRegistration(nombre, correo, telefono, usuario, password, []);
+    if(err){ setMsg(err,'err'); return; }
+    btn.disabled=true; btn.textContent='Enviando registro...'; showUxLoader('Creando solicitud','Generando tus accesos Fortune Sports MX...');
+    try{
+      await apiPost('registerUser','Users',{
+        'Usuario':usuario,'Contraseña':password,'Nombre Completo':nombre,'Telefono':telefono,'Correo Electrónico':correo,
+        'Estatus':'Inactivo','Perfil del Usuario':'user','Pago':'0','Estatus Pago':'pendiente'
+      });
+      toggleAuth('login');
+      setMsg(`<div><b>Tu registro fue recibido.</b></div><div>Envía comprobante por WhatsApp para activar tu acceso.</div><div class="payment-box"><b>Datos para depósito:</b><br>Número de cuenta: <b>722969010319340514</b><br>Nombre: <b>Roberto Daniel Patiño Cardoso</b><br>Institución: <b>Mercado Pago W</b><br>Cantidad: <b>$200</b><br><br>Usuario generado: <b>${usuario}</b><br>Contraseña temporal: <b>${password}</b><br><a class="whatsapp-proof-btn" target="_blank" href="${whatsappProofLink(usuario)}">📲 Enviar comprobante por WhatsApp</a></div>`,'ok');
+    }finally{ btn.disabled=false; btn.textContent='Solicitar registro'; hideUxLoader(); }
+  };
+
+  function setupTeamExperience(){
+    const opts=Object.entries(TEAM_EXPERIENCES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+    const main=document.querySelector('main');
+    if(main && !safeEl('teamExperienceBar')){
+      main.insertAdjacentHTML('afterbegin', `<div id="teamExperienceBar" class="team-experience-bar"><select id="teamExperienceSelect">${opts}</select><span id="teamCulture" class="team-culture">🌎 Vive la pasión global del fútbol.</span></div>`);
+    }
+    const brand=document.querySelector('.login-card .brand');
+    if(brand && !safeEl('loginTeamExperience')){
+      brand.insertAdjacentHTML('afterend', `<div class="login-team-experience"><select id="loginTeamExperience">${opts}</select><div id="loginCulture">🌎 Vive la pasión global del fútbol.</div></div>`);
+    }
+    ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{
+      const n=safeEl(id); if(n && !n.dataset.bound){ n.dataset.bound='1'; n.addEventListener('change',()=>applyTeamExperience(n.value)); }
+    });
+    applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
+  }
+  window.applyTeamExperience = function(key){
+    const cfg=TEAM_EXPERIENCES[key] || TEAM_EXPERIENCES.default;
+    Object.values(TEAM_EXPERIENCES).forEach(x=>{ if(x.cls) document.body.classList.remove(x.cls); });
+    if(cfg.cls) document.body.classList.add(cfg.cls);
+    ['teamExperienceSelect','loginTeamExperience'].forEach(id=>{ const n=safeEl(id); if(n) n.value=key; });
+    const t=safeEl('teamCulture'); if(t) t.textContent=`${cfg.flag} ${cfg.culture}`;
+    const l=safeEl('loginCulture'); if(l) l.textContent=`${cfg.flag} ${cfg.culture}`;
+    localStorage.setItem('teamExperience', key);
+  };
+
+  function started(){ return Date.now() >= WORLD_CUP_START.getTime(); }
+  const oldOpenParticipants = window.openParticipantsModal;
+  window.openParticipantsModal = function(){
+    if(!(typeof isCurrentAdmin==='function' && isCurrentAdmin()) && !started()){
+      safeEl('participantsModal')?.classList.remove('hidden');
+      if(safeEl('participantsMsg')) safeEl('participantsMsg').innerHTML = `<div class="participants-locked-msg">👀 Esta vista estará activa cuando comience el primer partido del Mundial. Así todos participan con igualdad y transparencia.</div>`;
+      if(safeEl('participantsBody')) safeEl('participantsBody').innerHTML='';
+      return;
+    }
+    if(oldOpenParticipants) return oldOpenParticipants();
+  };
+
+  function isAdminNow(){ return typeof isCurrentAdmin==='function' && isCurrentAdmin(); }
+  function rowForOne(id){
+    if(isAdminNow()) return [];
+    const m = state.matches.find(x=>String(matchId(x))===String(id)); if(!m) return [];
+    const l=safeEl(`l-${id}`), v=safeEl(`v-${id}`); if(!l||!v||l.value===''||v.value==='') return [];
+    const saved=getUserPrediction(id), editing=l.dataset.editing==='true'||v.dataset.editing==='true';
+    if(saved && !editing) return [];
+    const now=new Date().toISOString(); const nombre=pick(state.currentUser,['Nombre_Usuario','Nombre_Completo','Nombre Completo','Nombre','Usuario']);
+    return [{'Prediction_ID':`${pick(state.currentUser,['Usuario'])}_${id}`,'Usuario':pick(state.currentUser,['Usuario']),'Nombre_Usuario':nombre,'Partido_ID':id,'Local':l.value,'Visitante':v.value,'Fecha_Registro':now,'Fecha_Actualizacion':now,'Estatus_Prediccion':'Guardada','Cerrada':''}];
+  }
+  window.saveSingleMatchPrediction = async function(id){
+    const rows=rowForOne(id); if(!rows.length){ alert('Completa ambos marcadores para guardar este partido.'); return; }
+    showUxLoader('Guardando partido','Registrando este marcador...');
+    try{ await persistPredictionRows(rows,{silent:false}); } finally{ hideUxLoader(); }
+  };
+  function decorateMatches(){
+    document.querySelectorAll('#matchesContainer .match').forEach(card=>{
+      const input=card.querySelector('input[id^="l-"]'); if(!input) return;
+      const id=input.id.replace('l-','');
+      if(isAdminNow()) card.querySelectorAll('input[type="number"]').forEach(i=>i.disabled=true);
+      let actions=card.querySelector('.match-actions');
+      if(!actions){ actions=document.createElement('div'); actions.className='match-actions'; card.appendChild(actions); }
+      if(!actions.querySelector(`[data-save-one="${id}"]`) && !isAdminNow() && !isQuinielaClosed() && !getUserPrediction(id)){
+        actions.insertAdjacentHTML('afterbegin', `<button type="button" class="match-save-one" data-save-one="${id}" onclick="saveSingleMatchPrediction('${id}')">💾 Guardar este partido</button>`);
+      }
+    });
+    applyTeamExperience(localStorage.getItem('teamExperience') || 'default');
+  }
+
+  function installMatchLimit(){
+    if(!originalFilteredMatches && typeof filteredMatches==='function'){
+      originalFilteredMatches=filteredMatches;
+      window.filteredMatches = filteredMatches = function(){ return originalFilteredMatches().slice(0, visibleLimit); };
+    }
+    if(!originalRenderMatches && typeof renderMatches==='function'){
+      originalRenderMatches=renderMatches;
+      window.renderMatches = renderMatches = function(){
+        originalRenderMatches(); decorateMatches(); renderLoadMoreControls();
+      };
+    }
+  }
+  window.loadMoreMatches = function(){ visibleLimit += 8; renderMatches(); };
+  function resetVisibleLimit(){ visibleLimit=12; }
+  function renderLoadMoreControls(){
+    const c=safeEl('matchesContainer'); if(!c || !originalFilteredMatches) return;
+    safeEl('matchMoreControls')?.remove();
+    const total=originalFilteredMatches().length;
+    if(total<=visibleLimit) return;
+    c.insertAdjacentHTML('afterend', `<div id="matchMoreControls" class="match-more-controls"><button type="button" class="btn" onclick="loadMoreMatches()">⬇️ Ver más partidos (${Math.min(visibleLimit,total)}/${total})</button><button type="button" class="btn-light" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆️ Ir arriba</button></div>`);
+  }
+  function autoLoadIfLastVisibleFilled(target){
+    if(!target || !target.matches('input[type="number"]')) return;
+    const card=target.closest('.match'); if(!card) return;
+    const cards=[...document.querySelectorAll('#matchesContainer .match')]; if(!cards.length || cards[cards.length-1]!==card) return;
+    const inputs=[...card.querySelectorAll('input[type="number"]')]; if(inputs.length<2 || inputs.some(i=>i.value==='')) return;
+    if(originalFilteredMatches && originalFilteredMatches().length>visibleLimit) setTimeout(()=>loadMoreMatches(), 350);
+  }
+
+  function wrapTransitions(){
+    const oldLogin=window.login; if(typeof oldLogin==='function' && !oldLogin.__uxWrapped){
+      window.login = login = async function(){ showUxLoader('Validando acceso','Abriendo tu estadio digital...'); try{return await oldLogin();} finally{setTimeout(hideUxLoader,450);} }; window.login.__uxWrapped=true;
+    }
+    const oldReload=window.reloadAll; if(typeof oldReload==='function' && !oldReload.__uxWrapped){
+      window.reloadAll = reloadAll = async function(){ showUxLoader('Actualizando datos','Consultando partidos y ranking...'); try{return await oldReload();} finally{setTimeout(hideUxLoader,350);} }; window.reloadAll.__uxWrapped=true;
+    }
+    const oldPersist=window.persistPredictionRows; if(typeof oldPersist==='function' && !oldPersist.__uxWrapped){
+      window.persistPredictionRows = persistPredictionRows = async function(rows,options={}){ if(!options.silent) showUxLoader('Guardando quiniela','Protegiendo tus pronósticos...'); try{return await oldPersist(rows,options);} finally{if(!options.silent) setTimeout(hideUxLoader,350);} }; window.persistPredictionRows.__uxWrapped=true;
+    }
+    const oldShowTab=window.showTab; if(typeof oldShowTab==='function' && !oldShowTab.__uxWrapped){
+      window.showTab = showTab = function(tab){ showUxLoader('Cambiando pantalla','Preparando la vista...'); try{return oldShowTab(tab);} finally{setTimeout(hideUxLoader,250);} }; window.showTab.__uxWrapped=true;
+    }
+  }
+
+  function bindUx(){
+    setupQuickRegistration(); setupTeamExperience(); installMatchLimit(); wrapTransitions();
+    const mc=safeEl('matchesContainer'); if(mc && !mc.dataset.autoMore){ mc.dataset.autoMore='1'; mc.addEventListener('input',e=>autoLoadIfLastVisibleFilled(e.target)); }
+    ['searchBox','roundFilter','statusFilter'].forEach(id=>{ const n=safeEl(id); if(n && !n.dataset.resetLimit){ n.dataset.resetLimit='1'; n.addEventListener('change',()=>{resetVisibleLimit();}); n.addEventListener('input',()=>{resetVisibleLimit();}); }});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindUx); else bindUx();
+  window.addEventListener('load',()=>{ bindUx(); setTimeout(()=>{ installMatchLimit(); if(typeof renderMatches==='function') renderMatches(); },600); });
+})();
+
 </script>
 </body>
 </html>
