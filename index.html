@@ -225,38 +225,192 @@ body.dark-mode .tip{background:#0f172a!important;color:#e2e8f0!important;border-
 
 
 /* PATCH FINAL: ajuste responsive de tarjetas tipo ESPN para que nunca salgan del cuadro */
-.matches{width:100%;max-width:100%;overflow:visible!important;}
-.match.match-espn{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
-.espn-versus{width:100%!important;min-width:0!important;}
-.espn-team{min-width:0!important;max-width:100%!important;overflow:hidden!important;}
-.espn-team .team-name span:last-child{max-width:100%;overflow-wrap:anywhere;word-break:normal;}
-.predict-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;}
-@media(max-width:700px){
-  main{padding-left:14px!important;padding-right:14px!important;}
-  .matches{display:block!important;width:100%!important;}
-  .match.match-espn{margin:0 0 16px 0!important;padding:14px!important;border-radius:22px!important;}
-  .espn-versus{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:7px!important;align-items:center!important;}
-  .espn-team{min-height:96px!important;padding:10px 6px!important;border-radius:18px!important;}
-  .espn-team .team-name{font-size:14px!important;line-height:1.12!important;gap:6px!important;}
-  .espn-team .flag-img,.espn-team .flag-svg{width:42px!important;height:31px!important;border-radius:8px!important;}
-  .espn-team .flag-emoji{font-size:32px!important;}
-  .espn-score{gap:5px!important;min-width:108px!important;}
-  .espn-score input{width:45px!important;height:50px!important;border-radius:15px!important;font-size:20px!important;padding:4px!important;}
-  .espn-score b{font-size:17px!important;}
-  .espn-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:12px!important;}
-  .espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;min-height:44px!important;}
-  .match-day-label{margin:14px 2px 8px!important;font-size:17px!important;}
-}
-@media(max-width:380px){
-  .espn-versus{gap:4px!important;}
-  .espn-team{padding:8px 4px!important;}
-  .espn-team .team-name{font-size:13px!important;}
-  .espn-team .flag-img,.espn-team .flag-svg{width:36px!important;height:27px!important;}
-  .espn-score{min-width:98px!important;}
-  .espn-score input{width:41px!important;height:48px!important;}
-  .espn-score b{font-size:15px!important;}
+.matches{
+  width:100%;
+  max-width:100%;
+  overflow:visible!important;
 }
 
+.match.match-espn{
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+
+.espn-versus{
+  width:100%!important;
+  min-width:0!important;
+}
+
+.espn-team{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+
+.espn-team .team-name span:last-child{
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+
+.predict-btn{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-width:160px;
+  white-space:normal!important;
+  text-align:center!important;
+}
+
+/* MÓVIL / ANDROID / iOS */
+@media(max-width:700px){
+  main{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+
+  .matches{
+    display:block!important;
+    width:100%!important;
+  }
+
+  .match.match-espn{
+    margin:0 0 16px 0!important;
+    padding:14px!important;
+    border-radius:22px!important;
+  }
+
+  .espn-versus{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+    gap:7px!important;
+    align-items:center!important;
+  }
+
+  .espn-team{
+    min-height:96px!important;
+    padding:10px 6px!important;
+    border-radius:18px!important;
+  }
+
+  .espn-team .team-name{
+    font-size:14px!important;
+    line-height:1.12!important;
+    gap:6px!important;
+  }
+
+  .espn-team .flag-img,
+  .espn-team .flag-svg{
+    width:42px!important;
+    height:31px!important;
+    border-radius:8px!important;
+  }
+
+  .espn-team .flag-emoji{
+    font-size:32px!important;
+  }
+
+  .espn-score{
+    gap:5px!important;
+    min-width:108px!important;
+  }
+
+  .espn-score input{
+    width:45px!important;
+    height:50px!important;
+    border-radius:15px!important;
+    font-size:20px!important;
+    padding:4px!important;
+  }
+
+  .espn-score b{
+    font-size:17px!important;
+  }
+
+  .espn-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:9px!important;
+    margin-top:12px!important;
+    width:100%!important;
+  }
+
+  .espn-actions .predict-btn,
+  .espn-actions .match-save-one,
+  .espn-actions .edit-score-btn{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:44px!important;
+    justify-content:center!important;
+    text-align:center!important;
+    white-space:normal!important;
+    line-height:1.15!important;
+    padding:11px 10px!important;
+    font-size:12.5px!important;
+  }
+
+  .espn-actions .lock,
+  .espn-actions .editing-note,
+  .espn-actions .finalized-note{
+    width:100%!important;
+    text-align:center!important;
+    justify-content:center!important;
+  }
+
+  .match-day-label{
+    margin:14px 2px 8px!important;
+    font-size:17px!important;
+  }
+}
+
+/* ANDROID PEQUEÑO / PANTALLAS ANGOSTAS */
+@media(max-width:380px){
+  .espn-versus{
+    gap:4px!important;
+  }
+
+  .espn-team{
+    padding:8px 4px!important;
+  }
+
+  .espn-team .team-name{
+    font-size:13px!important;
+  }
+
+  .espn-team .flag-img,
+  .espn-team .flag-svg{
+    width:36px!important;
+    height:27px!important;
+  }
+
+  .espn-score{
+    min-width:98px!important;
+  }
+
+  .espn-score input{
+    width:41px!important;
+    height:48px!important;
+  }
+
+  .espn-score b{
+    font-size:15px!important;
+  }
+
+  .espn-actions{
+    grid-template-columns:1fr!important;
+  }
+
+  .espn-actions .predict-btn,
+  .espn-actions .match-save-one,
+  .espn-actions .edit-score-btn{
+    width:100%!important;
+    font-size:12px!important;
+    padding:11px 9px!important;
+  }
+}
   </style>
 
 </head>
