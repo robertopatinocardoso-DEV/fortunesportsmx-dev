@@ -225,193 +225,78 @@ body.dark-mode .tip{background:#0f172a!important;color:#e2e8f0!important;border-
 
 
 /* PATCH FINAL: ajuste responsive de tarjetas tipo ESPN para que nunca salgan del cuadro */
-.matches{
-  width:100%;
-  max-width:100%;
-  overflow:visible!important;
-}
-
-.match.match-espn{
-  width:100%!important;
-  max-width:100%!important;
-  box-sizing:border-box!important;
-}
-
-.espn-versus{
-  width:100%!important;
-  min-width:0!important;
-}
-
-.espn-team{
-  min-width:0!important;
-  max-width:100%!important;
-  overflow:hidden!important;
-}
-
-.espn-team .team-name span:last-child{
-  max-width:100%;
-  overflow-wrap:anywhere;
-  word-break:normal;
-}
-
-.predict-btn{
-  display:inline-flex!important;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  min-width:160px;
-  white-space:normal!important;
-  text-align:center!important;
-}
-
-/* MÓVIL / ANDROID / iOS */
+.matches{width:100%;max-width:100%;overflow:visible!important;}
+.match.match-espn{width:100%!important;max-width:100%!important;box-sizing:border-box!important;}
+.espn-versus{width:100%!important;min-width:0!important;}
+.espn-team{min-width:0!important;max-width:100%!important;overflow:hidden!important;}
+.espn-team .team-name span:last-child{max-width:100%;overflow-wrap:anywhere;word-break:normal;}
+.predict-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;}
 @media(max-width:700px){
-  main{
-    padding-left:14px!important;
-    padding-right:14px!important;
-  }
-
-  .matches{
-    display:block!important;
-    width:100%!important;
-  }
-
-  .match.match-espn{
-    margin:0 0 16px 0!important;
-    padding:14px!important;
-    border-radius:22px!important;
-  }
-
-  .espn-versus{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
-    gap:7px!important;
-    align-items:center!important;
-  }
-
-  .espn-team{
-    min-height:96px!important;
-    padding:10px 6px!important;
-    border-radius:18px!important;
-  }
-
-  .espn-team .team-name{
-    font-size:14px!important;
-    line-height:1.12!important;
-    gap:6px!important;
-  }
-
-  .espn-team .flag-img,
-  .espn-team .flag-svg{
-    width:42px!important;
-    height:31px!important;
-    border-radius:8px!important;
-  }
-
-  .espn-team .flag-emoji{
-    font-size:32px!important;
-  }
-
-  .espn-score{
-    gap:5px!important;
-    min-width:108px!important;
-  }
-
-  .espn-score input{
-    width:45px!important;
-    height:50px!important;
-    border-radius:15px!important;
-    font-size:20px!important;
-    padding:4px!important;
-  }
-
-  .espn-score b{
-    font-size:17px!important;
-  }
-
-  .espn-actions{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    gap:9px!important;
-    margin-top:12px!important;
-    width:100%!important;
-  }
-
-  .espn-actions .predict-btn,
-  .espn-actions .match-save-one,
-  .espn-actions .edit-score-btn{
-    width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    min-height:44px!important;
-    justify-content:center!important;
-    text-align:center!important;
-    white-space:normal!important;
-    line-height:1.15!important;
-    padding:11px 10px!important;
-    font-size:12.5px!important;
-  }
-
-  .espn-actions .lock,
-  .espn-actions .editing-note,
-  .espn-actions .finalized-note{
-    width:100%!important;
-    text-align:center!important;
-    justify-content:center!important;
-  }
-
-  .match-day-label{
-    margin:14px 2px 8px!important;
-    font-size:17px!important;
-  }
+  main{padding-left:14px!important;padding-right:14px!important;}
+  .matches{display:block!important;width:100%!important;}
+  .match.match-espn{margin:0 0 16px 0!important;padding:14px!important;border-radius:22px!important;}
+  .espn-versus{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:7px!important;align-items:center!important;}
+  .espn-team{min-height:96px!important;padding:10px 6px!important;border-radius:18px!important;}
+  .espn-team .team-name{font-size:14px!important;line-height:1.12!important;gap:6px!important;}
+  .espn-team .flag-img,.espn-team .flag-svg{width:42px!important;height:31px!important;border-radius:8px!important;}
+  .espn-team .flag-emoji{font-size:32px!important;}
+  .espn-score{gap:5px!important;min-width:108px!important;}
+  .espn-score input{width:45px!important;height:50px!important;border-radius:15px!important;font-size:20px!important;padding:4px!important;}
+  .espn-score b{font-size:17px!important;}
+  .espn-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:12px!important;}
+  .espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;min-height:44px!important;}
+  .match-day-label{margin:14px 2px 8px!important;font-size:17px!important;}
 }
-
-/* ANDROID PEQUEÑO / PANTALLAS ANGOSTAS */
 @media(max-width:380px){
-  .espn-versus{
-    gap:4px!important;
-  }
-
-  .espn-team{
-    padding:8px 4px!important;
-  }
-
-  .espn-team .team-name{
-    font-size:13px!important;
-  }
-
-  .espn-team .flag-img,
-  .espn-team .flag-svg{
-    width:36px!important;
-    height:27px!important;
-  }
-
-  .espn-score{
-    min-width:98px!important;
-  }
-
-  .espn-score input{
-    width:41px!important;
-    height:48px!important;
-  }
-
-  .espn-score b{
-    font-size:15px!important;
-  }
-
-  .espn-actions{
-    grid-template-columns:1fr!important;
-  }
-
-  .espn-actions .predict-btn,
-  .espn-actions .match-save-one,
-  .espn-actions .edit-score-btn{
-    width:100%!important;
-    font-size:12px!important;
-    padding:11px 9px!important;
-  }
+  .espn-versus{gap:4px!important;}
+  .espn-team{padding:8px 4px!important;}
+  .espn-team .team-name{font-size:13px!important;}
+  .espn-team .flag-img,.espn-team .flag-svg{width:36px!important;height:27px!important;}
+  .espn-score{min-width:98px!important;}
+  .espn-score input{width:41px!important;height:48px!important;}
+  .espn-score b{font-size:15px!important;}
 }
-  </style>
+
+  
+/* =============================================================
+   PATCH FINAL LAUNCH UX - SIMULAR / COUNTDOWN / RESUMEN / PASSWORD / FILTROS
+   ============================================================= */
+.wc-countdown-card{
+  width:100%;
+  max-width:1500px;
+  margin:14px auto 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:22px;
+  background:rgba(239,246,255,.18);
+  border:1px solid rgba(255,255,255,.25);
+  backdrop-filter:blur(12px);
+  color:white;
+  box-shadow:0 10px 28px rgba(0,0,0,.12);
+}
+.wc-countdown-title{font-size:14px;font-weight:950;opacity:.96;white-space:nowrap}
+.wc-countdown-units{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:nowrap}
+.wc-unit{min-width:54px;background:rgba(255,255,255,.95);color:#1e40af;border-radius:16px;padding:8px 9px;text-align:center;box-shadow:0 8px 22px rgba(0,0,0,.10)}
+.wc-number{display:block;font-size:22px;line-height:1;font-weight:950;letter-spacing:.4px}.wc-label{display:block;font-size:11px;color:#64748b;font-weight:900;margin-top:3px}
+body.dark-mode .wc-countdown-card{background:rgba(15,23,42,.52);border-color:rgba(255,255,255,.12)}
+body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
+.password-wrap{position:relative}.password-wrap input{padding-right:48px!important}.password-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:999px;border:1px solid #bfdbfe;background:#eff6ff;color:#003b8f;display:grid;place-items:center;cursor:pointer;font-weight:950;padding:0;line-height:1}.password-eye:hover{transform:translateY(-50%) scale(1.05);background:#dbeafe}body.dark-mode .password-eye{background:#082f49;border-color:#0e7490;color:#bae6fd}
+.myquiniela-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.66);z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px}.myquiniela-card{background:white;border-radius:28px;max-width:1050px;width:100%;max-height:88vh;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.38);border:1px solid #dbeafe;display:flex;flex-direction:column}.myquiniela-head{padding:20px 22px;border-bottom:1px solid #e5eef9;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.myquiniela-head h2{color:var(--azul);font-size:24px}.myquiniela-body{padding:16px 22px;overflow:auto}.myquiniela-summary{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:10px;margin-bottom:12px}.myq-chip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:12px;font-weight:950;color:#1e3a8a;text-align:center}.myquiniela-actions{padding:14px 22px;border-top:1px solid #e5eef9;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}.myq-table{width:100%;border-collapse:collapse;font-size:13px}.myq-table th,.myq-table td{padding:10px;border-bottom:1px solid #edf2f7}.myq-table th{background:#f1f5f9;color:#1e3a8a;text-align:left}.myq-missing{color:#b45309;font-weight:950}.myq-ok{color:#166534;font-weight:950}body.dark-mode .myquiniela-card{background:#0f172a;color:#e5e7eb;border-color:#334155}body.dark-mode .myquiniela-head,body.dark-mode .myquiniela-actions{border-color:#334155}body.dark-mode .myq-chip{background:#082f49;color:#bae6fd;border-color:#0e7490}body.dark-mode .myq-table th{background:#1e293b;color:#bfdbfe}body.dark-mode .myq-table td{border-color:#334155}
+.btn-myq{background:#e0f2fe;color:#075985;border:1px solid #7dd3fc}.btn-myq:hover{background:#bae6fd}
+/* Simular/Guardar/Editar: ancho estable en Android, iOS y PC */
+.predict-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-width:170px!important;white-space:normal!important;text-align:center!important;line-height:1.15!important;box-sizing:border-box!important}.match-save-one,.edit-score-btn{box-sizing:border-box!important}.espn-actions{width:100%!important;box-sizing:border-box!important}
+@media(max-width:700px){
+  .wc-countdown-card{margin-top:12px;padding:11px;border-radius:20px;align-items:center}.wc-countdown-title{font-size:13px;white-space:normal;line-height:1.15}.wc-countdown-units{gap:6px}.wc-unit{min-width:44px;border-radius:14px;padding:7px 6px}.wc-number{font-size:19px}.wc-label{font-size:10px}
+  .filters{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;padding:10px!important}.filters input,.filters select,.filters button,.filters .auto-save-status,.filters .ux-filter-tip{width:100%!important;min-width:0!important;font-size:12px!important;padding:10px 9px!important;border-radius:14px!important}.filters input,.filters select,.filters .ux-filter-tip{grid-column:1/-1}.filters #clearFiltersBtn,.filters #saveBtn,.filters #tutorialBtn,.filters #reloadBtn{min-height:42px!important}.filters .auto-save-status{grid-column:1/-1;text-align:center;justify-content:center}.filters .btn-myq{grid-column:1/-1}
+  .espn-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;width:100%!important;margin-top:12px!important}.espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;max-width:100%!important;min-width:0!important;justify-content:center!important;text-align:center!important;white-space:normal!important;line-height:1.15!important;padding:11px 10px!important;font-size:12.5px!important;min-height:44px!important}.espn-actions .lock,.espn-actions .editing-note,.espn-actions .finalized-note{width:100%!important;text-align:center!important;justify-content:center!important}
+  .myquiniela-card{border-radius:22px;max-height:90vh}.myquiniela-head{padding:16px}.myquiniela-body{padding:12px 16px}.myquiniela-actions{padding:12px 16px}.myquiniela-summary{grid-template-columns:1fr}.myq-table{font-size:12px}.myq-table th,.myq-table td{padding:8px;white-space:nowrap}
+}
+@media(max-width:380px){.wc-unit{min-width:40px}.wc-number{font-size:17px}.wc-label{font-size:9px}.espn-actions{grid-template-columns:1fr!important}.espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;font-size:12px!important;padding:11px 9px!important}}
+
+</style>
 
 </head>
 <body>
@@ -3163,122 +3048,263 @@ window.addEventListener('load',()=>{
   window.addEventListener('load',()=>setTimeout(init,250));
 })();
 
-/* PATCH DEFINITIVO - EDITAR MARCADOR GUARDADO */
-(function () {
-  function $(id) {
-    return document.getElementById(id);
-  }
 
-  function isAdminEditingBlocked() {
-    try {
-      return typeof isCurrentAdmin === 'function' && isCurrentAdmin();
-    } catch (e) {
-      return false;
-    }
-  }
+/* =============================================================
+   PATCH FINAL LAUNCH UX
+   - Botón Simular responsive y con pronóstico por ranking FIFA + forma reciente.
+   - Reloj cuenta regresiva tipo torneo.
+   - Pantalla Mi quiniela y resumen antes de cierre 100%.
+   - Mostrar/ocultar contraseña en login y registro.
+   - Filtros móviles compactos.
+   ============================================================= */
+(function(){
+  if(window.__fortuneLaunchPatchV2) return;
+  window.__fortuneLaunchPatchV2 = true;
 
-  function isClosedEditingBlocked() {
-    try {
-      return typeof isQuinielaClosed === 'function' && isQuinielaClosed();
-    } catch (e) {
-      return false;
-    }
-  }
-
-  window.enableScoreEdit = function (matchIdValue) {
-    if (isClosedEditingBlocked()) {
-      alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
-      return;
-    }
-
-    if (isAdminEditingBlocked()) {
-      alert('El perfil administrador solo puede consultar partidos.');
-      return;
-    }
-
-    const localInput = $(`l-${matchIdValue}`);
-    const visitInput = $(`v-${matchIdValue}`);
-
-    if (!localInput || !visitInput) {
-      alert('No se encontraron las casillas de marcador para este partido.');
-      return;
-    }
-
-    localInput.disabled = false;
-    visitInput.disabled = false;
-
-    localInput.removeAttribute('disabled');
-    visitInput.removeAttribute('disabled');
-
-    localInput.dataset.editing = 'true';
-    visitInput.dataset.editing = 'true';
-
-    const card = localInput.closest('.match');
-    if (!card) return;
-
-    let actions = card.querySelector('.match-actions');
-
-    if (!actions) {
-      actions = document.createElement('div');
-      actions.className = 'match-actions espn-actions';
-      card.appendChild(actions);
-    }
-
-    actions.classList.add('espn-actions');
-
-    let saveBtn = actions.querySelector(`[data-save-one="${matchIdValue}"]`);
-
-    if (!saveBtn) {
-      saveBtn = document.createElement('button');
-      saveBtn.type = 'button';
-      saveBtn.className = 'match-save-one';
-      saveBtn.dataset.saveOne = matchIdValue;
-      saveBtn.textContent = '💾 Guardar partido';
-      saveBtn.onclick = function () {
-        saveSingleMatchPrediction(matchIdValue);
-      };
-      actions.prepend(saveBtn);
-    }
-
-    saveBtn.disabled = false;
-    saveBtn.classList.remove('is-disabled');
-    saveBtn.style.display = 'inline-flex';
-    saveBtn.style.visibility = 'visible';
-    saveBtn.style.opacity = '1';
-    saveBtn.title = 'Guardar marcador editado';
-
-    let note = $(`edit-note-${matchIdValue}`);
-
-    if (!note) {
-      note = document.createElement('span');
-      note.id = `edit-note-${matchIdValue}`;
-      note.className = 'editing-note';
-      note.textContent = 'Editando marcador';
-      actions.appendChild(note);
-    }
-
-    note.classList.remove('hidden');
-
-    localInput.focus();
+  const WORLD_CUP_FIRST_MATCH = new Date('2026-06-11T13:00:00-06:00');
+  const FIFA_RANK = {
+    'argentina':1,'francia':2,'espana':3,'inglaterra':4,'brasil':5,'portugal':6,'paises bajos':7,'belgica':8,'italia':9,'alemania':10,
+    'croacia':11,'marruecos':12,'colombia':13,'uruguay':14,'mexico':15,'estados unidos':16,'suiza':17,'japon':18,'senegal':19,'dinamarca':20,
+    'iran':21,'corea del sur':22,'austria':23,'australia':24,'turquia':25,'ecuador':26,'canada':27,'qatar':28,'catar':28,'escocia':29,
+    'egipto':30,'noruega':31,'suecia':32,'polonia':33,'paraguay':34,'tunez':35,'argelia':36,'costa de marfil':37,'ghana':38,'uzbekistan':39,
+    'republica checa':40,'arabia saudita':41,'panama':42,'sudafrica':43,'cabo verde':44,'mali':45,'irak':46,'jordania':47,'emiratos arabes unidos':48,
+    'haiti':49,'nueva zelanda':50,'curazao':51,'bosnia y herzegovina':52,'rd congo':53,'republica democratica del congo':53
   };
 
-  document.addEventListener('click', function (event) {
-    const editButton = event.target.closest('.edit-score-btn');
+  function $(id){ return document.getElementById(id); }
+  function norm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  function cleanNum(v){ const n=Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return Number.isFinite(n)?n:NaN; }
+  function escapeText(v){ return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+  function getRank(team){ return FIFA_RANK[norm(team)] || 60; }
+  function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 
-    if (!editButton) return;
+  function insertCountdown(){
+    if($('worldCupCountdown')) return;
+    const headerTop = document.querySelector('header .top') || document.querySelector('header');
+    if(!headerTop) return;
+    const html = `<div id="worldCupCountdown" class="wc-countdown-card" aria-label="Cuenta regresiva para el primer partido del Mundial">
+      <div class="wc-countdown-title">El Mundial empieza en:</div>
+      <div class="wc-countdown-units">
+        <div class="wc-unit"><span id="wcDays" class="wc-number">--</span><span class="wc-label">D</span></div>
+        <div class="wc-unit"><span id="wcHours" class="wc-number">--</span><span class="wc-label">H</span></div>
+        <div class="wc-unit"><span id="wcMinutes" class="wc-number">--</span><span class="wc-label">M</span></div>
+        <div class="wc-unit"><span id="wcSeconds" class="wc-number">--</span><span class="wc-label">S</span></div>
+      </div>
+    </div>`;
+    const header = document.querySelector('header');
+    if(header) header.insertAdjacentHTML('beforeend', html);
+    else headerTop.insertAdjacentHTML('afterend', html);
+  }
 
-    event.preventDefault();
-    event.stopPropagation();
-
-    const id =
-      editButton.dataset.editOne ||
-      editButton.getAttribute('data-edit-one') ||
-      (editButton.getAttribute('onclick') || '').match(/enableScoreEdit\('([^']+)'\)/)?.[1];
-
-    if (id) {
-      window.enableScoreEdit(id);
+  function updateCountdown(){
+    const diff = WORLD_CUP_FIRST_MATCH.getTime() - Date.now();
+    if(!$('worldCupCountdown')) insertCountdown();
+    if(diff <= 0){
+      const title = document.querySelector('.wc-countdown-title');
+      if(title) title.textContent = 'El Mundial ya comenzó';
+      ['wcDays','wcHours','wcMinutes','wcSeconds'].forEach(id=>{ const n=$(id); if(n) n.textContent='00'; });
+      return;
     }
-  }, true);
+    const d = Math.floor(diff/(1000*60*60*24));
+    const h = Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+    const m = Math.floor((diff%(1000*60*60))/(1000*60));
+    const s = Math.floor((diff%(1000*60))/1000);
+    if($('wcDays')) $('wcDays').textContent=String(d).padStart(2,'0');
+    if($('wcHours')) $('wcHours').textContent=String(h).padStart(2,'0');
+    if($('wcMinutes')) $('wcMinutes').textContent=String(m).padStart(2,'0');
+    if($('wcSeconds')) $('wcSeconds').textContent=String(s).padStart(2,'0');
+  }
+
+  function installPasswordToggles(){
+    ['loginPass','regPass'].forEach(id=>{
+      const input=$(id);
+      if(!input || input.dataset.eyeReady==='1') return;
+      input.dataset.eyeReady='1';
+      const parent=input.parentElement;
+      if(parent) parent.classList.add('password-wrap');
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='password-eye';
+      btn.setAttribute('aria-label','Mostrar contraseña');
+      btn.textContent='👁️';
+      btn.addEventListener('click',()=>{
+        input.type = input.type === 'password' ? 'text' : 'password';
+        btn.textContent = input.type === 'password' ? '👁️' : '🙈';
+        btn.setAttribute('aria-label', input.type === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña');
+      });
+      parent.appendChild(btn);
+    });
+  }
+
+  function teamRecentStats(team){
+    const target = norm(team);
+    const rows=[];
+    (state.results||[]).forEach(r=>{
+      const mid = String(pick(r,['Partido_ID','Partido ID','ID_Partido','Partido'],''));
+      const m = (state.matches||[]).find(x=>String(matchId(x))===mid) || r;
+      const localTeam = getLocalTeam(m) || pick(r,['Equipo_Local','Equipo Local','Local_Team'], '');
+      const visitTeam = getVisitTeam(m) || pick(r,['Equipo_Visitante','Equipo Visitante','Visitante_Team'], '');
+      const ls = cleanNum(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Goles_Local','Local'],''));
+      const vs = cleanNum(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Goles_Visitante','Visitante'],''));
+      if(!Number.isFinite(ls) || !Number.isFinite(vs)) return;
+      if(norm(localTeam)===target) rows.push({gf:ls, ga:vs});
+      if(norm(visitTeam)===target) rows.push({gf:vs, ga:ls});
+    });
+    const last = rows.slice(-5);
+    if(!last.length) return null;
+    return {
+      played:last.length,
+      gf:last.reduce((s,x)=>s+x.gf,0)/last.length,
+      ga:last.reduce((s,x)=>s+x.ga,0)/last.length,
+      form:last.reduce((s,x)=>s+(x.gf>x.ga?3:x.gf===x.ga?1:0),0)/(last.length*3)
+    };
+  }
+
+  function seededVariance(local, visit, mod){
+    const seed=(norm(local)+'|'+norm(visit)).split('').reduce((s,c)=>s+c.charCodeAt(0),0);
+    return seed % mod;
+  }
+
+  function suggestedScoreByRankAndForm(match){
+    const local=getLocalTeam(match), visit=getVisitTeam(match);
+    const lr=getRank(local), vr=getRank(visit);
+    const localStrength=(70-lr)/70;
+    const visitStrength=(70-vr)/70;
+    const lf=teamRecentStats(local);
+    const vf=teamRecentStats(visit);
+    const localAttack = lf ? lf.gf : (1.05 + localStrength*1.15);
+    const visitAttack = vf ? vf.gf : (1.00 + visitStrength*1.10);
+    const localDefenseConcedes = lf ? lf.ga : (1.25 - localStrength*.55);
+    const visitDefenseConcedes = vf ? vf.ga : (1.25 - visitStrength*.55);
+    const rankDelta = (vr - lr) / 25; // positivo favorece local
+    const formDelta = ((lf?lf.form:.50) - (vf?vf.form:.50));
+    const localHomeBoost = .18;
+    let localGoals = ((localAttack + visitDefenseConcedes) / 2) + localHomeBoost + rankDelta*.28 + formDelta*.42;
+    let visitGoals = ((visitAttack + localDefenseConcedes) / 2) - rankDelta*.22 - formDelta*.32;
+    // Variación pequeña y determinística para evitar mismo marcador en todos los partidos.
+    localGoals += (seededVariance(local,visit,3)-1)*0.18;
+    visitGoals += (seededVariance(visit,local,3)-1)*0.16;
+    let l=clamp(Math.round(localGoals),0,5);
+    let v=clamp(Math.round(visitGoals),0,5);
+    if(l===0 && v===0){
+      if(lr <= vr) l=1; else v=1;
+    }
+    // Evita empates masivos cuando la diferencia FIFA es amplia.
+    if(l===v && Math.abs(lr-vr)>=18){ if(lr<vr) l=clamp(l+1,0,5); else v=clamp(v+1,0,5); }
+    return [l,v];
+  }
+
+  window.applySuggestedPrediction = function(id){
+    const userProfile = state.currentUser ? getUserProfile(state.currentUser) : '';
+    const isDemo = String(pick(state.currentUser||{},['Usuario'])).toLowerCase()==='domie';
+    if(userProfile !== 'user' && !isDemo){
+      alert('El pronóstico sugerido solo está disponible para usuarios participantes.');
+      return;
+    }
+    const match=(state.matches||[]).find(x=>String(matchId(x))===String(id));
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(!match || !l || !v) return;
+    if(l.disabled || v.disabled){
+      alert('Este marcador ya está guardado. Presiona “Editar marcador” antes de simular un nuevo pronóstico.');
+      return;
+    }
+    const [sl,sv]=suggestedScoreByRankAndForm(match);
+    l.value=sl; v.value=sv;
+    l.dispatchEvent(new Event('input',{bubbles:true}));
+    v.dispatchEvent(new Event('input',{bubbles:true}));
+    if(typeof setAutoSaveStatus==='function') setAutoSaveStatus('✨ Pronóstico sugerido aplicado con ranking FIFA y forma reciente. Puedes ajustarlo antes de guardar.','ok');
+  };
+
+  function ensureMyQuinielaModal(){
+    if($('myQuinielaModal')) return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="myQuinielaModal" class="myquiniela-backdrop hidden">
+      <div class="myquiniela-card">
+        <div class="myquiniela-head"><div><h2>📋 Mi quiniela</h2><p class="sub" id="myQuinielaSub">Resumen de tus marcadores.</p></div><button type="button" class="btn-light" id="closeMyQuinielaBtn">Cerrar</button></div>
+        <div class="myquiniela-body"><div id="myQuinielaStats" class="myquiniela-summary"></div><div class="table-wrap"><table class="myq-table"><thead><tr><th>#</th><th>Partido</th><th>Fecha</th><th>Marcador</th><th>Estado</th></tr></thead><tbody id="myQuinielaBody"></tbody></table></div></div>
+        <div class="myquiniela-actions"><button type="button" class="btn-light" id="cancelCloseQuinielaBtn">Seguir revisando</button><button type="button" class="btn-green hidden" id="confirmCloseQuinielaBtn">Confirmar cierre y guardar</button></div>
+      </div>
+    </div>`);
+    $('closeMyQuinielaBtn')?.addEventListener('click',()=>$('myQuinielaModal').classList.add('hidden'));
+    $('cancelCloseQuinielaBtn')?.addEventListener('click',()=>$('myQuinielaModal').classList.add('hidden'));
+    $('myQuinielaModal')?.addEventListener('click',e=>{ if(e.target.id==='myQuinielaModal') $('myQuinielaModal').classList.add('hidden'); });
+  }
+
+  function predictionOrInputForMatch(m){
+    const id=String(matchId(m));
+    const pred = getUserPrediction(id);
+    const lInput=$(`l-${id}`), vInput=$(`v-${id}`);
+    const l = lInput && lInput.value!=='' ? lInput.value : pick(pred||{},['Marcador_Local','Marcador Local','Participante_Local','Local'],'');
+    const v = vInput && vInput.value!=='' ? vInput.value : pick(pred||{},['Marcador_Visitante','Marcador Visitante','Participante_Visitante','Visitante'],'');
+    return {id,l,v,complete:l!=='' && v!==''};
+  }
+
+  window.openMyQuinielaSummary = function(opts={}){
+    ensureMyQuinielaModal();
+    const closing=!!opts.closing;
+    const total=(state.matches||[]).length;
+    let filled=0;
+    const body=$('myQuinielaBody');
+    if(body) body.innerHTML='';
+    (state.matches||[]).forEach((m,idx)=>{
+      const p=predictionOrInputForMatch(m);
+      if(p.complete) filled++;
+      const local=getLocalTeam(m), visit=getVisitTeam(m);
+      const status=p.complete?'<span class="myq-ok">Completo</span>':'<span class="myq-missing">Pendiente</span>';
+      body?.insertAdjacentHTML('beforeend',`<tr><td>${idx+1}</td><td>${flagHtml(local)} ${escapeText(local)} vs ${flagHtml(visit)} ${escapeText(visit)}</td><td>${escapeText(formatDateDisplay(getDate(m)))} · ${escapeText(formatHourDisplay(getHour(m)))}</td><td><b>${p.complete ? escapeText(p.l)+' - '+escapeText(p.v) : '-'}</b></td><td>${status}</td></tr>`);
+    });
+    const pct=total?Math.round(filled/total*100):0;
+    $('myQuinielaStats').innerHTML=`<div class="myq-chip">Partidos<br><b>${total}</b></div><div class="myq-chip">Completos<br><b>${filled}</b></div><div class="myq-chip">Avance<br><b>${pct}%</b></div>`;
+    $('myQuinielaSub').textContent = closing ? 'Estás por cerrar tu quiniela al 100%. Revisa tus marcadores antes de confirmar.' : 'Resumen de tus marcadores guardados y capturados.';
+    const confirmBtn=$('confirmCloseQuinielaBtn');
+    if(confirmBtn){
+      confirmBtn.classList.toggle('hidden', !closing);
+      confirmBtn.onclick = async function(){
+        $('myQuinielaModal').classList.add('hidden');
+        if(typeof opts.onConfirm==='function') await opts.onConfirm();
+      };
+    }
+    $('myQuinielaModal').classList.remove('hidden');
+  };
+
+  function addMyQuinielaButton(){
+    if($('myQuinielaBtn')) return;
+    const actions=document.querySelector('#matchesView .actions');
+    if(actions) actions.insertAdjacentHTML('afterbegin','<button type="button" class="btn-myq" id="myQuinielaBtn">📋 Mi quiniela</button>');
+    $('myQuinielaBtn')?.addEventListener('click',()=>openMyQuinielaSummary({closing:false}));
+  }
+
+  function installClosingSummary(){
+    if(window.__closingSummaryInstalled) return;
+    window.__closingSummaryInstalled = true;
+    const oldPersist = window.persistPredictionRows || (typeof persistPredictionRows !== 'undefined' ? persistPredictionRows : null);
+    if(typeof oldPersist !== 'function') return;
+    window.persistPredictionRows = persistPredictionRows = async function(rows, options={}){
+      const silent=!!options.silent;
+      try{
+        if(!silent && rows && rows.length && state.matches && state.matches.length){
+          const currentIds=new Set(currentUserPredictions().map(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))));
+          rows.forEach(r=>currentIds.add(String(pick(normalizeRows([r])[0],['Partido_ID','Partido ID','ID_Partido','Partido']))));
+          if(currentIds.size >= state.matches.length && !window.__closingSummaryConfirmed){
+            openMyQuinielaSummary({closing:true,onConfirm:async()=>{
+              window.__closingSummaryConfirmed=true;
+              const originalConfirm=window.confirm;
+              window.confirm=function(){ return true; };
+              try{ await oldPersist(rows, options); } finally { window.confirm=originalConfirm; window.__closingSummaryConfirmed=false; }
+            }});
+            return false;
+          }
+        }
+      }catch(e){ console.warn('No se pudo abrir resumen de cierre',e); }
+      return oldPersist(rows, options);
+    };
+  }
+
+  function init(){
+    insertCountdown(); updateCountdown(); setInterval(updateCountdown,1000);
+    installPasswordToggles(); ensureMyQuinielaModal(); addMyQuinielaButton(); installClosingSummary();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+  window.addEventListener('load',()=>setTimeout(init,400));
 })();
 
 </script>
