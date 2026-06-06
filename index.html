@@ -3360,49 +3360,71 @@ window.addEventListener('load',()=>{
       return;
     }
 
+    window.__fsEditingMatchIds = window.__fsEditingMatchIds || new Set();
     window.__fsEditingMatchIds.add(id);
 
-    if(typeof renderMatches === 'function') renderMatches();
+    const l = document.getElementById(`l-${id}`);
+    const v = document.getElementById(`v-${id}`);
 
-    setTimeout(function(){
-      const l = getInput(id,'l');
-      const v = getInput(id,'v');
-      const card = l?.closest('.match') || document.querySelector(`[data-match-id="${CSS.escape(id)}"]`);
+    if(!l || !v){
+      alert('No se encontraron las casillas de este partido. Actualiza datos e intenta nuevamente.');
+      return;
+    }
 
-      if(l){
-        l.disabled = false;
-        l.removeAttribute('disabled');
-        l.dataset.editing = 'true';
-      }
+    const card =
+      l.closest('.match') ||
+      l.closest('.fs-match-card') ||
+      document.querySelector(`[data-match-id="${id}"]`);
 
-      if(v){
-        v.disabled = false;
-        v.removeAttribute('disabled');
-        v.dataset.editing = 'true';
-      }
+    l.disabled = false;
+    v.disabled = false;
 
-      const saveBtn = card?.querySelector('.match-save-one');
+    l.removeAttribute('disabled');
+    v.removeAttribute('disabled');
+
+    l.dataset.editing = 'true';
+    v.dataset.editing = 'true';
+
+    if(card){
+      card.classList.add('editing');
+
+      const saveBtn = card.querySelector('.match-save-one');
       if(saveBtn){
         saveBtn.disabled = false;
-        saveBtn.classList.remove('is-disabled');
         saveBtn.removeAttribute('disabled');
+        saveBtn.classList.remove('is-disabled');
         saveBtn.style.display = 'inline-flex';
+        saveBtn.style.opacity = '1';
+        saveBtn.style.visibility = 'visible';
         saveBtn.title = 'Guardar marcador editado';
       }
 
-      const predictBtn = card?.querySelector('.predict-btn');
+      const predictBtn = card.querySelector('.predict-btn');
       if(predictBtn){
         predictBtn.disabled = false;
-        predictBtn.classList.remove('is-disabled');
         predictBtn.removeAttribute('disabled');
+        predictBtn.classList.remove('is-disabled');
         predictBtn.style.display = 'inline-flex';
+        predictBtn.style.opacity = '1';
+        predictBtn.style.visibility = 'visible';
       }
 
-      if(l){
-        l.focus();
-        l.scrollIntoView({behavior:'smooth', block:'center'});
+      const savedPill = card.querySelector('.fs-pill.saved');
+      if(savedPill){
+        savedPill.textContent = '✏️ Editando';
+        savedPill.classList.remove('saved');
+        savedPill.classList.add('editing');
       }
-    }, 40);
+    }
+
+    l.focus();
+
+    setTimeout(function(){
+      l.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+    }, 80);
   };
 
   window.applySuggestedPrediction = function(matchIdValue){
