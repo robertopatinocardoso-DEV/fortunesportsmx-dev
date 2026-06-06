@@ -3307,6 +3307,190 @@ window.addEventListener('load',()=>{
   window.addEventListener('load',()=>setTimeout(init,400));
 })();
 
+
+/* =========================================================
+   PATCH PRD - REPARAR EDITAR + SIMULAR SIN CAMBIAR BASE
+   Motivo:
+   - Editar se perdía porque renderMatches recrea los inputs y borra dataset.editing.
+   - Simular podía requerir doble click por conflicto entre onclick + re-render/estado.
+   Solución:
+   - Mantener IDs en edición en un Set persistente.
+   - Reasignar rowIsEditing para que renderMatches respete ese Set.
+   - Delegar clicks de Simular/Editar en fase capture y evitar doble ejecución.
+========================================================= */
+(function(){
+  window.__fsEditingMatchIds = window.__fsEditingMatchIds || new Set();
+
+  function getInput(id, side){
+    return document.getElementById(`${side}-${id}`);
+  }
+
+  function canParticipantEdit(){
+    try{
+      if(typeof isAdmin === 'function' && isAdmin()) return false;
+      if(typeof isQuinielaClosed === 'function' && isQuinielaClosed()) return false;
+      return true;
+    }catch(e){
+      return true;
+    }
+  }
+
+  /* renderMatches usa rowIsEditing(); la reemplazamos para que la edición sobreviva al re-render */
+  try{
+    rowIsEditing = function(id){
+      const key = String(id);
+      return window.__fsEditingMatchIds.has(key) ||
+        getInput(key,'l')?.dataset.editing === 'true' ||
+        getInput(key,'v')?.dataset.editing === 'true';
+    };
+  }catch(e){
+    console.warn('No se pudo reemplazar rowIsEditing', e);
+  }
+
+  window.enableScoreEdit = function(matchIdValue){
+    const id = String(matchIdValue);
+
+    if(typeof isQuinielaClosed === 'function' && isQuinielaClosed()){
+      alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+      return;
+    }
+
+    if(typeof isAdmin === 'function' && isAdmin()){
+      alert('El perfil administrador solo puede consultar partidos.');
+      return;
+    }
+
+    window.__fsEditingMatchIds.add(id);
+
+    if(typeof renderMatches === 'function') renderMatches();
+
+    setTimeout(function(){
+      const l = getInput(id,'l');
+      const v = getInput(id,'v');
+      const card = l?.closest('.match') || document.querySelector(`[data-match-id="${CSS.escape(id)}"]`);
+
+      if(l){
+        l.disabled = false;
+        l.removeAttribute('disabled');
+        l.dataset.editing = 'true';
+      }
+
+      if(v){
+        v.disabled = false;
+        v.removeAttribute('disabled');
+        v.dataset.editing = 'true';
+      }
+
+      const saveBtn = card?.querySelector('.match-save-one');
+      if(saveBtn){
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('is-disabled');
+        saveBtn.removeAttribute('disabled');
+        saveBtn.style.display = 'inline-flex';
+        saveBtn.title = 'Guardar marcador editado';
+      }
+
+      const predictBtn = card?.querySelector('.predict-btn');
+      if(predictBtn){
+        predictBtn.disabled = false;
+        predictBtn.classList.remove('is-disabled');
+        predictBtn.removeAttribute('disabled');
+        predictBtn.style.display = 'inline-flex';
+      }
+
+      if(l){
+        l.focus();
+        l.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    }, 40);
+  };
+
+  window.applySuggestedPrediction = function(matchIdValue){
+    const id = String(matchIdValue);
+
+    if(typeof isParticipant === 'function' && !isParticipant()){
+      alert('El pronóstico sugerido solo está disponible para participantes.');
+      return;
+    }
+
+    if(typeof isAdmin === 'function' && isAdmin()){
+      alert('El pronóstico sugerido solo está disponible para participantes.');
+      return;
+    }
+
+    const l = getInput(id,'l');
+    const v = getInput(id,'v');
+
+    if(!l || !v) return;
+
+    if(l.disabled || v.disabled){
+      alert('Este marcador ya está guardado. Presiona Editar antes de simular un nuevo pronóstico.');
+      return;
+    }
+
+    const m = (typeof matchById === 'function') ? matchById(id) : null;
+    let score = [1,1];
+
+    try{
+      if(typeof suggestedScore === 'function' && m){
+        score = suggestedScore(m);
+      }else if(typeof fallbackScore === 'function' && m){
+        score = fallbackScore(getLocalTeam(m), getVisitTeam(m));
+      }
+    }catch(e){
+      console.warn('No se pudo calcular sugerencia, se aplica empate base', e);
+    }
+
+    l.value = score[0];
+    v.value = score[1];
+
+    l.dispatchEvent(new Event('input', {bubbles:true}));
+    v.dispatchEvent(new Event('input', {bubbles:true}));
+
+    if(typeof setAutoSaveStatus === 'function'){
+      setAutoSaveStatus('✨ Pronóstico sugerido aplicado. Puedes ajustarlo antes de guardar.','ok');
+    }
+  };
+
+  /* Limpieza del estado de edición cuando el partido se guarda correctamente */
+  if(typeof window.saveSingleMatchPrediction === 'function' && !window.saveSingleMatchPrediction.__fsEditPatch){
+    const originalSaveSingleMatchPrediction = window.saveSingleMatchPrediction;
+    window.saveSingleMatchPrediction = async function(matchIdValue){
+      const id = String(matchIdValue);
+      const result = await originalSaveSingleMatchPrediction(id);
+      window.__fsEditingMatchIds.delete(id);
+      return result;
+    };
+    window.saveSingleMatchPrediction.__fsEditPatch = true;
+  }
+
+  /* Captura estable para iOS/PC/Android: evita que onclick antiguo compita con el patch */
+  document.addEventListener('click', function(event){
+    const editBtn = event.target.closest('.edit-score-btn');
+    if(editBtn){
+      const raw = editBtn.getAttribute('onclick') || '';
+      const id = raw.match(/enableScoreEdit\('([^']+)'\)/)?.[1] || editBtn.dataset.editOne;
+      if(id){
+        event.preventDefault();
+        event.stopPropagation();
+        window.enableScoreEdit(id);
+      }
+      return;
+    }
+
+    const predictBtn = event.target.closest('.predict-btn');
+    if(predictBtn){
+      const raw = predictBtn.getAttribute('onclick') || '';
+      const id = raw.match(/applySuggestedPrediction\('([^']+)'\)/)?.[1] || predictBtn.dataset.predictOne;
+      if(id){
+        event.preventDefault();
+        event.stopPropagation();
+        window.applySuggestedPrediction(id);
+      }
+    }
+  }, true);
+})();
+
 </script>
 </body>
 </html>
