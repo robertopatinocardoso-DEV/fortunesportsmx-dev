@@ -296,10 +296,210 @@ body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
 }
 @media(max-width:380px){.wc-unit{min-width:40px}.wc-number{font-size:17px}.wc-label{font-size:9px}.espn-actions{grid-template-columns:1fr!important}.espn-actions .predict-btn,.espn-actions .match-save-one,.espn-actions .edit-score-btn{width:100%!important;font-size:12px!important;padding:11px 9px!important}}
 
+
+
+/* ===== FIX VISUAL ANDROID - SIMULAR PARTIDO Y ESTATUS =====
+   Solo diseño: no modifica lógica, guardado, edición ni Apps Script. */
+.predict-btn{
+  min-width:210px!important;
+  width:auto!important;
+  max-width:92%!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding:12px 24px!important;
+  white-space:nowrap!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  line-height:1.15!important;
+  box-sizing:border-box!important;
+}
+
+.match-status,
+.fs-pill,
+.fs-pill.saved,
+.espn-actions .lock,
+.espn-actions .editing-note,
+.espn-actions .finalized-note{
+  min-width:142px!important;
+  width:auto!important;
+  max-width:92%!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding:8px 18px!important;
+  white-space:nowrap!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  line-height:1.15!important;
+  box-sizing:border-box!important;
+}
+
+@media(max-width:700px){
+  .espn-actions,
+  .match-actions{
+    width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  .espn-actions .predict-btn,
+  .match-actions .predict-btn,
+  .predict-btn{
+    min-width:220px!important;
+    width:auto!important;
+    max-width:88%!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    padding:12px 20px!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+  }
+
+  .match-status,
+  .fs-pill,
+  .fs-pill.saved,
+  .espn-actions .lock,
+  .espn-actions .editing-note,
+  .espn-actions .finalized-note{
+    min-width:150px!important;
+    max-width:88%!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media(max-width:380px){
+  .espn-actions .predict-btn,
+  .match-actions .predict-btn,
+  .predict-btn{
+    min-width:205px!important;
+    max-width:90%!important;
+    font-size:13.5px!important;
+    padding:11px 16px!important;
+  }
+
+  .match-status,
+  .fs-pill,
+  .fs-pill.saved,
+  .espn-actions .lock,
+  .espn-actions .editing-note,
+  .espn-actions .finalized-note{
+    min-width:140px!important;
+    max-width:90%!important;
+    font-size:12.5px!important;
+    padding:8px 14px!important;
+  }
+}
+
+
+/* ===== PATCH PRD SOLO DISEÑO ANDROID - BOTONES Y ESTATUS ANCHOS =====
+   No modifica lógica, guardado, edición, simulación ni Apps Script. */
+.espn-actions .predict-btn,
+.match-actions .predict-btn,
+.predict-btn{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  padding:12px 18px!important;
+  box-sizing:border-box!important;
+}
+
+.espn-actions .lock,
+.espn-actions .editing-note,
+.espn-actions .finalized-note,
+.match-status,
+.fs-pill,
+.fs-pill.saved{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  box-sizing:border-box!important;
+}
+
+@media(max-width:700px){
+  .espn-actions,
+  .match-actions{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+
+  .espn-actions .predict-btn,
+  .match-actions .predict-btn,
+  .predict-btn{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:44px!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    border-radius:999px!important;
+    font-size:14px!important;
+    font-weight:850!important;
+  }
+
+  .espn-actions .lock,
+  .espn-actions .editing-note,
+  .espn-actions .finalized-note,
+  .match-status,
+  .fs-pill,
+  .fs-pill.saved{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    padding:9px 14px!important;
+    border-radius:999px!important;
+    font-size:13px!important;
+    font-weight:850!important;
+  }
+}
+
 </style>
 
 </head>
 <body>
+
+<script>
+/* PATCH PRD SESIÓN DEMO: no restaurar demo al abrir la página.
+   Si el usuario quiere demo, debe presionar el botón de demo manualmente. */
+(function(){
+  try{
+    const rawUser = localStorage.getItem('quinielaUser');
+    if(rawUser){
+      const u = JSON.parse(rawUser);
+      const name = String((u && (u.Usuario || u.usuario)) || '').toLowerCase();
+      if(name === 'domie'){
+        localStorage.removeItem('quinielaUser');
+        localStorage.removeItem('quinielaToken');
+      }
+    }
+  }catch(e){
+    localStorage.removeItem('quinielaUser');
+    localStorage.removeItem('quinielaToken');
+  }
+})();
+</script>
+
 <section id="loginScreen" class="center">
   <div class="login-card">
     <div class="brand"><div class="ball">⚽</div><div><h1>Quiniela Mundial 2026</h1><p class="sub">Acceso, registro y predicciones conectadas a Google Sheets y Apps Script.</p></div></div>
@@ -777,7 +977,7 @@ function enableScoreEdit(matchIdValue){
     }
     /* Al editar, también se muestra el botón de pronóstico/simulación para usuario participante. */
     if(actions && typeof applySuggestedPrediction === 'function' && getUserProfile(state.currentUser)==='user' && !actions.querySelector(`[data-predict-one="${matchIdValue}"]`)){
-      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="predict-btn" data-predict-one="${matchIdValue}" onclick="applySuggestedPrediction('${matchIdValue}')">✨ Simular marcador</button>`);
+      actions.insertAdjacentHTML('afterbegin', `<button type="button" class="predict-btn" data-predict-one="${matchIdValue}" onclick="applySuggestedPrediction('${matchIdValue}')">✨ Simular partido</button>`);
     }
 
     const note = el(`edit-note-${matchIdValue}`);
@@ -1163,7 +1363,13 @@ function buildDemoPredictions(matches, results){
 function showApp(user){
   state.currentUser=user;
   state.isDemo=isDemoUser(user);
-  localStorage.setItem('quinielaUser',JSON.stringify(user));
+  if(state.isDemo){
+    localStorage.removeItem('quinielaUser');
+    localStorage.removeItem('quinielaToken');
+    state.authToken='';
+  }else{
+    localStorage.setItem('quinielaUser',JSON.stringify(user));
+  }
 
   el('loginScreen').classList.add('hidden');
   el('app').classList.remove('hidden');
@@ -1972,7 +2178,13 @@ async function login(){
 function showApp(user){
   state.currentUser=user;
   state.isDemo=isDemoUser(user);
-  localStorage.setItem('quinielaUser',JSON.stringify(user));
+  if(state.isDemo){
+    localStorage.removeItem('quinielaUser');
+    localStorage.removeItem('quinielaToken');
+    state.authToken='';
+  }else{
+    localStorage.setItem('quinielaUser',JSON.stringify(user));
+  }
 
   el('loginScreen').classList.add('hidden');
   el('app').classList.remove('hidden');
@@ -2303,15 +2515,38 @@ function renderDashboard(){
 async function restoreSessionIfPossible(){
   const savedToken = localStorage.getItem('quinielaToken');
   const savedUser = localStorage.getItem('quinielaUser');
-  if(!savedToken || !savedUser) return;
+
+  if(!savedToken || !savedUser){
+    localStorage.removeItem('quinielaToken');
+    localStorage.removeItem('quinielaUser');
+    return;
+  }
+
   try{
     const parsedUser = JSON.parse(savedUser);
+    if(String(pick(parsedUser,['Usuario'])).toLowerCase()==='domie'){
+      localStorage.removeItem('quinielaToken');
+      localStorage.removeItem('quinielaUser');
+      return;
+    }
+
     const result = await apiGetJSONP({action:'validarSesion', token:savedToken});
     if(result && result.status==='ok'){
+      const restoredUser = normalizeRows([result.user || parsedUser])[0];
+      if(String(pick(restoredUser,['Usuario'])).toLowerCase()==='domie'){
+        localStorage.removeItem('quinielaToken');
+        localStorage.removeItem('quinielaUser');
+        return;
+      }
       state.authToken = savedToken;
-      showApp(normalizeRows([result.user || parsedUser])[0]);
+      showApp(restoredUser);
+    }else{
+      localStorage.removeItem('quinielaToken');
+      localStorage.removeItem('quinielaUser');
     }
   }catch(e){
+    localStorage.removeItem('quinielaToken');
+    localStorage.removeItem('quinielaUser');
     console.warn('No se pudo restaurar sesión', e);
   }
 }
@@ -2839,7 +3074,7 @@ window.addEventListener('load',()=>{
     if(admin) return `<span class="fs-pill admin">👁️ Vista admin</span>`;
     if(closed) return `<span class="fs-pill admin">🔒 Quiniela cerrada</span>`;
     let html='';
-    if(isParticipant() && (!saved || editing)) html += `<button type="button" class="predict-btn" onclick="applySuggestedPrediction('${esc(id)}')">✨ Simular</button>`;
+    if(isParticipant() && (!saved || editing)) html += `<button type="button" class="predict-btn" onclick="applySuggestedPrediction('${esc(id)}')">✨ Simular partido</button>`;
     if(saved) html += `<button type="button" class="edit-score-btn" onclick="enableScoreEdit('${esc(id)}')">✏️ Editar</button>`;
     const disabled=saved&&!editing;
     html += `<button type="button" class="match-save-one ${disabled?'is-disabled':''}" ${disabled?'disabled title="Presiona Editar para modificar este marcador"':''} onclick="saveSingleMatchPrediction('${esc(id)}')">💾 Guardar</button>`;
@@ -3514,5 +3749,183 @@ window.addEventListener('load',()=>{
 })();
 
 </script>
+
+
+<script>
+/* =============================================================
+   PATCH PRD - SIMULADOR FIFA DETERMINÍSTICO
+   Objetivo: corregir que "Simular marcador" regrese 1-1 en todos
+   los partidos. No modifica HTML ni Apps Script; solo sobreescribe
+   la función applySuggestedPrediction con una lógica de fuerza FIFA
+   estimada + variación determinística por partido.
+   ============================================================= */
+(function(){
+  if(window.__fortuneFifaDeterministicSimulatorPatch) return;
+  window.__fortuneFifaDeterministicSimulatorPatch = true;
+
+  const FIFA_STRENGTH = {
+    "Argentina":95,"Francia":94,"España":93,"Inglaterra":92,"Brasil":91,"Portugal":90,
+    "Países Bajos":88,"Belgica":86,"Bélgica":86,"Alemania":86,"Uruguay":85,"Colombia":84,
+    "Croacia":83,"Marruecos":83,"México":80,"Estados Unidos":79,"Suiza":79,"Japón":78,
+    "Corea del Sur":76,"Escocia":76,"Canadá":75,"Senegal":75,"Egipto":75,"República Checa":75,
+    "Ecuador":74,"Austria":74,"Paraguay":74,"Costa de Marfil":74,"Irán":73,"Australia":72,
+    "Argelia":72,"Túnez":70,"Ghana":70,"Bosnia y Herzegovina":70,"Cabo Verde":69,
+    "República Democrática del Congo":69,"R. D. Congo":69,"RD Congo":69,"Panamá":68,"Catar":68,"Qatar":68,
+    "Arabia Saudita":67,"Sudáfrica":66,"Uzbekistán":66,"Irak":65,"Jordania":64,"Nueva Zelanda":63,
+    "Curazao":62,"Haití":61
+  };
+
+  function normalizeTeamForPrediction(name){
+    return String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g,' ');
+  }
+
+  function getTeamStrength(team){
+    const normalized = normalizeTeamForPrediction(team);
+    const found = Object.keys(FIFA_STRENGTH).find(key =>
+      normalizeTeamForPrediction(key) === normalized
+    );
+    return found ? FIFA_STRENGTH[found] : 68;
+  }
+
+  function deterministicNoise(local, visitante){
+    const text = `${local}-${visitante}`;
+    let hash = 0;
+    for(let i = 0; i < text.length; i++){
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function getRecentFormAdjustment(team){
+    /*
+      Si en el futuro results contiene partidos históricos, esta función
+      aprovecha hasta 5 resultados del equipo. Si no hay datos, devuelve 0
+      y el simulador trabaja solo con fuerza FIFA + variación determinística.
+    */
+    try{
+      const target = normalizeTeamForPrediction(team);
+      const rows = [];
+      (state.results || []).forEach(r => {
+        const mid = String(pick(r,['Partido_ID','Partido ID','ID_Partido','Partido'],''));
+        const match = (state.matches || []).find(m => String(matchId(m)) === mid) || r;
+        const localTeam = getLocalTeam(match) || pick(r,['Equipo_Local','Equipo Local'],'');
+        const awayTeam = getVisitTeam(match) || pick(r,['Equipo_Visitante','Equipo Visitante'],'');
+        const localScore = Number(pick(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local'],NaN));
+        const awayScore = Number(pick(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante'],NaN));
+        if(!Number.isFinite(localScore) || !Number.isFinite(awayScore)) return;
+        if(normalizeTeamForPrediction(localTeam) === target){
+          rows.push({gf:localScore, ga:awayScore});
+        }
+        if(normalizeTeamForPrediction(awayTeam) === target){
+          rows.push({gf:awayScore, ga:localScore});
+        }
+      });
+      const last = rows.slice(-5);
+      if(!last.length) return 0;
+      const points = last.reduce((sum,r)=>sum + (r.gf > r.ga ? 3 : r.gf === r.ga ? 1 : 0),0);
+      const form = points / (last.length * 3);
+      return (form - 0.5) * 0.8;
+    }catch(e){
+      return 0;
+    }
+  }
+
+  function generateSuggestedScore(localTeam, awayTeam){
+    const localStrength = getTeamStrength(localTeam);
+    const awayStrength = getTeamStrength(awayTeam);
+    const diff = localStrength - awayStrength;
+    const noise = deterministicNoise(localTeam, awayTeam);
+    const localForm = getRecentFormAdjustment(localTeam);
+    const awayForm = getRecentFormAdjustment(awayTeam);
+
+    let localGoals = 1;
+    let awayGoals = 1;
+
+    if(diff >= 18){
+      localGoals = 3;
+      awayGoals = noise % 2;
+    }else if(diff >= 10){
+      localGoals = 2 + (noise % 2 === 0 ? 0 : 1);
+      awayGoals = noise % 2;
+    }else if(diff >= 4){
+      localGoals = 2;
+      awayGoals = 1 + (noise % 3 === 0 ? 1 : 0);
+    }else if(diff > -4){
+      localGoals = 1 + (noise % 3 === 0 ? 1 : 0);
+      awayGoals = 1 + (noise % 4 === 0 ? 1 : 0);
+    }else if(diff > -10){
+      localGoals = 1 + (noise % 4 === 0 ? 1 : 0);
+      awayGoals = 2;
+    }else if(diff > -18){
+      localGoals = noise % 2;
+      awayGoals = 2 + (noise % 3 === 0 ? 1 : 0);
+    }else{
+      localGoals = noise % 2;
+      awayGoals = 3;
+    }
+
+    localGoals = Math.round(localGoals + localForm - awayForm * 0.35);
+    awayGoals = Math.round(awayGoals + awayForm - localForm * 0.35);
+
+    localGoals = Math.max(0, Math.min(5, localGoals));
+    awayGoals = Math.max(0, Math.min(5, awayGoals));
+
+    if(localGoals === 0 && awayGoals === 0){
+      if(diff >= 0) localGoals = 1;
+      else awayGoals = 1;
+    }
+
+    return { local: localGoals, visitante: awayGoals };
+  }
+
+  window.applySuggestedPrediction = function(partidoId){
+    try{
+      const userProfile = state.currentUser ? getUserProfile(state.currentUser) : '';
+      const isDemo = String(pick(state.currentUser || {}, ['Usuario'])).toLowerCase() === 'domie';
+
+      if(userProfile !== 'user' && !isDemo){
+        alert('El pronóstico sugerido solo está disponible para usuarios participantes.');
+        return;
+      }
+
+      const partido = (state.matches || []).find(m => String(matchId(m)) === String(partidoId));
+      if(!partido) return;
+
+      const localInput = document.getElementById(`l-${partidoId}`);
+      const visitanteInput = document.getElementById(`v-${partidoId}`);
+      if(!localInput || !visitanteInput) return;
+
+      if(localInput.disabled || visitanteInput.disabled){
+        alert('Este marcador ya está guardado. Presiona “Editar marcador” antes de simular un nuevo pronóstico.');
+        return;
+      }
+
+      const local = getLocalTeam(partido);
+      const visitante = getVisitTeam(partido);
+      const score = generateSuggestedScore(local, visitante);
+
+      localInput.value = score.local;
+      visitanteInput.value = score.visitante;
+
+      localInput.dispatchEvent(new Event('input', {bubbles:true}));
+      visitanteInput.dispatchEvent(new Event('input', {bubbles:true}));
+
+      if(typeof setAutoSaveStatus === 'function'){
+        setAutoSaveStatus('✨ Pronóstico sugerido aplicado con fuerza FIFA estimada y variación por partido. Puedes ajustarlo antes de guardar.','ok');
+      }
+    }catch(error){
+      console.warn('No se pudo simular marcador:', error);
+      alert('No fue posible generar el pronóstico sugerido para este partido.');
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
