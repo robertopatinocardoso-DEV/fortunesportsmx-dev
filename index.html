@@ -474,6 +474,43 @@ body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
   }
 }
 
+
+/* =============================================================
+   PATCH PRD PC - ANCHO BOTONES EDITAR / GUARDAR
+   Solo diseño para escritorio. No modifica lógica ni funciones.
+   ============================================================= */
+@media (min-width: 701px){
+  .match-actions .edit-score-btn,
+  .match-actions .match-save-one,
+  .fs-match-card .edit-score-btn,
+  .fs-match-card .match-save-one{
+    min-width: 118px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .match-actions{
+    gap: 12px !important;
+  }
+
+  .match-actions .fs-pill.saved,
+  .match-actions .lock,
+  .fs-match-card .fs-pill.saved,
+  .fs-match-card .lock{
+    min-width: 160px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+}
+
 </style>
 
 </head>
