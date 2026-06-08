@@ -3925,6 +3925,139 @@ window.addEventListener('load',()=>{
     }
   };
 })();
+
+/* =========================================================
+   PATCH PRD - PROTECCIÓN AUTOGUARDADO SIN BORRAR CAPTURAS
+   Objetivo:
+   - Evitar que autoguardado o simular borren marcadores visibles.
+   - Mantener en memoria local los marcadores capturados.
+   - Restaurarlos después de render/autoguardado.
+========================================================= */
+
+(function(){
+
+  window.__fsLocalScores = window.__fsLocalScores || {};
+
+  function getInputPair(matchId){
+    const id = String(matchId);
+    return {
+      l: document.getElementById(`l-${id}`),
+      v: document.getElementById(`v-${id}`)
+    };
+  }
+
+  function rememberScore(matchId){
+    const id = String(matchId);
+    const pair = getInputPair(id);
+
+    if(!pair.l || !pair.v) return;
+
+    const local = pair.l.value;
+    const visitante = pair.v.value;
+
+    if(local !== "" || visitante !== ""){
+      window.__fsLocalScores[id] = {
+        local,
+        visitante,
+        ts: Date.now()
+      };
+    }
+  }
+
+  function rememberAllVisibleScores(){
+    document.querySelectorAll('input[id^="l-"]').forEach(input=>{
+      const id = input.id.replace('l-','');
+      rememberScore(id);
+    });
+  }
+
+  function restoreVisibleScores(){
+    Object.keys(window.__fsLocalScores || {}).forEach(id=>{
+      const pair = getInputPair(id);
+      const saved = window.__fsLocalScores[id];
+
+      if(!pair.l || !pair.v || !saved) return;
+
+      const currentLocal = pair.l.value;
+      const currentVisitante = pair.v.value;
+
+      if(currentLocal === "" && saved.local !== ""){
+        pair.l.value = saved.local;
+      }
+
+      if(currentVisitante === "" && saved.visitante !== ""){
+        pair.v.value = saved.visitante;
+      }
+    });
+  }
+
+  document.addEventListener('input', function(e){
+    const target = e.target;
+
+    if(!target || !target.id) return;
+
+    if(target.id.startsWith('l-') || target.id.startsWith('v-')){
+      const id = target.id.replace(/^l-|^v-/,'');
+      rememberScore(id);
+    }
+  }, true);
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('.predict-btn, .match-save-one, [data-save-one], [data-predict-one]');
+    if(!btn) return;
+
+    setTimeout(function(){
+      rememberAllVisibleScores();
+      restoreVisibleScores();
+    }, 80);
+
+    setTimeout(function(){
+      rememberAllVisibleScores();
+      restoreVisibleScores();
+    }, 450);
+
+    setTimeout(function(){
+      restoreVisibleScores();
+    }, 1200);
+  }, true);
+
+  const originalRenderMatches = window.renderMatches;
+
+  if(typeof originalRenderMatches === 'function'){
+    window.renderMatches = function(){
+      rememberAllVisibleScores();
+
+      const result = originalRenderMatches.apply(this, arguments);
+
+      setTimeout(restoreVisibleScores, 30);
+      setTimeout(restoreVisibleScores, 250);
+
+      return result;
+    };
+  }
+
+  const originalSaveAll = window.saveAllPredictions || window.savePredictions;
+
+  if(typeof originalSaveAll === 'function'){
+    const saveName = window.saveAllPredictions ? 'saveAllPredictions' : 'savePredictions';
+
+    window[saveName] = async function(){
+      rememberAllVisibleScores();
+
+      const result = await originalSaveAll.apply(this, arguments);
+
+      restoreVisibleScores();
+
+      setTimeout(restoreVisibleScores, 300);
+      setTimeout(restoreVisibleScores, 900);
+
+      return result;
+    };
+  }
+
+})();
+
+  
 </script>
 
 </body>
