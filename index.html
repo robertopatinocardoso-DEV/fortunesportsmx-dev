@@ -474,43 +474,6 @@ body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
   }
 }
 
-
-/* =============================================================
-   PATCH PRD PC - ANCHO BOTONES EDITAR / GUARDAR
-   Solo diseño para escritorio. No modifica lógica ni funciones.
-   ============================================================= */
-@media (min-width: 701px){
-  .match-actions .edit-score-btn,
-  .match-actions .match-save-one,
-  .fs-match-card .edit-score-btn,
-  .fs-match-card .match-save-one{
-    min-width: 118px !important;
-    width: auto !important;
-    max-width: none !important;
-    padding: 10px 18px !important;
-    font-size: 13px !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    justify-content: center !important;
-    text-align: center !important;
-  }
-
-  .match-actions{
-    gap: 12px !important;
-  }
-
-  .match-actions .fs-pill.saved,
-  .match-actions .lock,
-  .fs-match-card .fs-pill.saved,
-  .fs-match-card .lock{
-    min-width: 160px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    justify-content: center !important;
-    text-align: center !important;
-  }
-}
-
 </style>
 
 </head>
@@ -4095,6 +4058,537 @@ window.addEventListener('load',()=>{
 })();
 
   
+
+
+/* =============================================================
+   PATCH PRD - CONTROL DE CIERRE + PROGRESO DE PARTICIPANTES
+   Objetivo:
+   - No modifica la lógica actual de login, guardado, edición ni simulación.
+   - Agrega revisión final antes de cerrar al 100%.
+   - Agrega pantalla de avance por usuario para todos los perfiles.
+   - Bloquea el caso donde el usuario cree que terminó pero aún tiene partidos pendientes.
+   ============================================================= */
+(function(){
+  if(window.__fsCloseProgressPatchLoaded) return;
+  window.__fsCloseProgressPatchLoaded = true;
+
+  const $ = (id)=>document.getElementById(id);
+  const safe = (v)=>String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const txt = (v)=>String(v ?? '').trim();
+
+  function injectCloseProgressStyles(){
+    if($('fsCloseProgressStyles')) return;
+    const css = `
+      .fs-progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px}
+      .fs-progress-card{background:#fff;border:1px solid #dbeafe;border-radius:22px;padding:16px;box-shadow:0 12px 28px rgba(15,23,42,.07)}
+      .fs-progress-card h3{color:var(--azul);margin-bottom:8px;font-size:17px}
+      .fs-progress-bar{height:14px;border-radius:999px;background:#dbeafe;overflow:hidden;margin:10px 0}.fs-progress-fill{height:100%;background:linear-gradient(90deg,var(--verde),var(--oro),var(--rojo));width:0%}
+      .fs-progress-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#64748b;font-weight:850;font-size:12px}.fs-complete{color:#166534;font-weight:950}.fs-pending{color:#b45309;font-weight:950}
+      .fs-review-backdrop{position:fixed;inset:0;background:rgba(7,17,31,.68);z-index:1300;display:none;align-items:center;justify-content:center;padding:16px}.fs-review-backdrop.active{display:flex}
+      .fs-review-card{background:#fff;border:1px solid #dbeafe;border-radius:28px;max-width:980px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden}
+      .fs-review-head{padding:20px 22px;border-bottom:1px solid #e5eef9;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.fs-review-head h2{color:var(--azul);font-size:24px;margin:0}.fs-review-head p{color:#64748b;font-weight:800;margin-top:4px;line-height:1.35}
+      .fs-review-body{padding:16px 22px;overflow:auto}.fs-review-actions{padding:14px 22px;border-top:1px solid #e5eef9;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+      .fs-review-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}.fs-review-chip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:12px;text-align:center;font-weight:950;color:#1e3a8a}.fs-review-chip b{display:block;font-size:24px;color:var(--azul)}
+      .fs-review-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.fs-review-item{border:1px solid #e5eef9;border-radius:16px;padding:11px;background:#f8fbff;font-weight:850;color:#334155}.fs-review-item b{color:#0f172a}.fs-review-ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.fs-review-warn{background:#fff7ed;border-color:#fed7aa;color:#92400e}
+      .fs-review-table{width:100%;border-collapse:collapse;font-size:13px}.fs-review-table th,.fs-review-table td{padding:9px;border-bottom:1px solid #edf2f7;text-align:left}.fs-review-table th{background:#f1f5f9;color:#1e3a8a}
+      body.dark-mode .fs-progress-card,body.dark-mode .fs-review-card{background:#0f172a;color:#e5e7eb;border-color:#334155}body.dark-mode .fs-review-head,body.dark-mode .fs-review-actions{border-color:#334155}body.dark-mode .fs-review-item{background:#111827;border-color:#334155;color:#cbd5e1}body.dark-mode .fs-review-item b{color:#f8fafc}body.dark-mode .fs-review-table th{background:#1e293b;color:#bfdbfe}body.dark-mode .fs-review-table td{border-color:#334155}body.dark-mode .fs-review-chip{background:#082f49;color:#bae6fd;border-color:#0e7490}
+      @media(max-width:700px){.fs-review-card{border-radius:22px;max-height:90vh}.fs-review-head{padding:16px}.fs-review-body{padding:12px 16px}.fs-review-actions{padding:12px 16px}.fs-review-table{font-size:12px}.fs-review-table th,.fs-review-table td{padding:8px;white-space:nowrap}.fs-progress-grid{grid-template-columns:1fr}}
+    `;
+    const st=document.createElement('style'); st.id='fsCloseProgressStyles'; st.textContent=css; document.head.appendChild(st);
+  }
+
+  function ensureReviewModal(){
+    if($('fsReviewModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="fsReviewModal" class="fs-review-backdrop">
+        <div class="fs-review-card">
+          <div class="fs-review-head">
+            <div><h2 id="fsReviewTitle">Revisión de quiniela</h2><p id="fsReviewSubtitle">Valida tu avance antes de continuar.</p></div>
+            <button type="button" class="btn-light" id="fsReviewClose">Cerrar</button>
+          </div>
+          <div id="fsReviewBody" class="fs-review-body"></div>
+          <div id="fsReviewActions" class="fs-review-actions"></div>
+        </div>
+      </div>`);
+    $('fsReviewClose').addEventListener('click', closeReviewModal);
+    $('fsReviewModal').addEventListener('click', function(e){ if(e.target.id==='fsReviewModal') closeReviewModal(); });
+  }
+  function openReviewModal(){ ensureReviewModal(); $('fsReviewModal').classList.add('active'); }
+  function closeReviewModal(){ const m=$('fsReviewModal'); if(m) m.classList.remove('active'); }
+
+  function getPredMatchId(p){ return String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido'],'')); }
+  function visibleInputScore(id){
+    const l=$(`l-${id}`), v=$(`v-${id}`);
+    if(l && v && l.value!=='' && v.value!=='') return {local:l.value, visitante:v.value, source:'visible'};
+    return null;
+  }
+  function currentPredictionScore(id){
+    const p = typeof getUserPrediction==='function' ? getUserPrediction(id) : null;
+    if(!p) return null;
+    return {
+      local: pick(p,['Local','Marcador_Local','Marcador Local','Participante_Local'],''),
+      visitante: pick(p,['Visitante','Marcador_Visitante','Marcador Visitante','Participante_Visitante'],''),
+      source:'saved'
+    };
+  }
+  function expectedFilledIdsAfterVisibleSave(){
+    const ids=new Set();
+    if(typeof currentUserPredictions==='function'){
+      (currentUserPredictions()||[]).forEach(p=>{ const id=getPredMatchId(p); if(id) ids.add(id); });
+    }
+    if(typeof collectPendingPredictionRows==='function'){
+      (collectPendingPredictionRows()||[]).forEach(r=>{ const id=String(r.Partido_ID || pick(r,['Partido_ID','Partido ID'],'')); if(id) ids.add(id); });
+    }
+    return ids;
+  }
+  function getMissingMatches(){
+    const ids=expectedFilledIdsAfterVisibleSave();
+    return (state.matches||[]).filter(m=>!ids.has(String(matchId(m))));
+  }
+
+  function showPendingReview(){
+    const total=(state.matches||[]).length;
+    const filled=expectedFilledIdsAfterVisibleSave().size;
+    const missing=getMissingMatches();
+    $('fsReviewTitle').textContent='⚠️ Aún faltan partidos por llenar';
+    $('fsReviewSubtitle').textContent='Para cerrar tu quiniela necesitas tener todos los partidos completos y guardados.';
+    $('fsReviewBody').innerHTML=`
+      <div class="fs-review-summary">
+        <div class="fs-review-chip"><span>Total</span><b>${total}</b></div>
+        <div class="fs-review-chip"><span>Completos detectados</span><b>${filled}</b></div>
+        <div class="fs-review-chip"><span>Pendientes</span><b>${Math.max(total-filled,0)}</b></div>
+      </div>
+      <div class="fs-review-item fs-review-warn">No se cerrará tu quiniela todavía. Usa el filtro de pendientes y revisa la lista de abajo.</div>
+      <div class="fs-review-list" style="margin-top:12px">
+        ${missing.slice(0,40).map(m=>`<div class="fs-review-item"><b>${safe(getRound(m))}</b><br>${safe(getLocalTeam(m))} vs ${safe(getVisitTeam(m))}<br><small>${safe(formatDateDisplay(getDate(m)))} · ${safe(formatHourDisplay(getHour(m)))}</small></div>`).join('')}
+        ${missing.length>40?`<div class="fs-review-item">Y ${missing.length-40} partidos pendientes más...</div>`:''}
+      </div>`;
+    $('fsReviewActions').innerHTML=`
+      <button type="button" class="btn-light" id="fsCloseReviewBtn">Cerrar</button>
+      <button type="button" class="btn" id="fsGoPendingBtn">Ir a pendientes</button>`;
+    $('fsCloseReviewBtn').onclick=closeReviewModal;
+    $('fsGoPendingBtn').onclick=function(){
+      closeReviewModal();
+      if($('statusFilter')) $('statusFilter').value='pending';
+      if($('searchBox')) $('searchBox').value='';
+      if($('roundFilter')) $('roundFilter').value='';
+      if($('rondaOnlyFilter')) $('rondaOnlyFilter').value='';
+      if(typeof renderMatches==='function') renderMatches();
+      const mv=$('matchesView'); if(mv) mv.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    openReviewModal();
+  }
+
+  function showFinalReviewThenSave(originalSave){
+    const total=(state.matches||[]).length;
+    const rows = typeof collectPendingPredictionRows==='function' ? (collectPendingPredictionRows()||[]) : [];
+    const byId={};
+    (state.matches||[]).forEach(m=>{
+      const id=String(matchId(m));
+      const input=visibleInputScore(id);
+      const saved=currentPredictionScore(id);
+      byId[id]=input || saved || {local:'',visitante:'',source:'missing'};
+    });
+    $('fsReviewTitle').textContent='✅ Revisión final de tu quiniela';
+    $('fsReviewSubtitle').textContent='Revisa tus marcadores. Al confirmar el 100%, la quiniela quedará cerrada y solo podrás consultar.';
+    $('fsReviewBody').innerHTML=`
+      <div class="fs-review-summary">
+        <div class="fs-review-chip"><span>Partidos</span><b>${total}</b></div>
+        <div class="fs-review-chip"><span>Listos</span><b>${expectedFilledIdsAfterVisibleSave().size}</b></div>
+        <div class="fs-review-chip"><span>Por guardar ahora</span><b>${rows.length}</b></div>
+      </div>
+      <div class="fs-review-item fs-review-ok">Si todo está correcto, confirma el cierre. Después no podrás editar marcadores.</div>
+      <div class="table-wrap" style="margin-top:12px"><table class="fs-review-table"><thead><tr><th>#</th><th>Partido</th><th>Marcador</th><th>Estado</th></tr></thead><tbody>
+        ${(state.matches||[]).map((m,i)=>{ const id=String(matchId(m)); const s=byId[id]||{}; const estado=s.source==='visible'?'Listo por guardar':s.source==='saved'?'Guardado':'Pendiente'; return `<tr><td>${i+1}</td><td>${safe(getLocalTeam(m))} vs ${safe(getVisitTeam(m))}</td><td><b>${safe(s.local)} - ${safe(s.visitante)}</b></td><td>${estado}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+    $('fsReviewActions').innerHTML=`
+      <button type="button" class="btn-light" id="fsCancelFinalBtn">Seguir revisando</button>
+      <button type="button" class="btn-green" id="fsConfirmFinalBtn">Confirmar y guardar cierre</button>`;
+    $('fsCancelFinalBtn').onclick=closeReviewModal;
+    $('fsConfirmFinalBtn').onclick=async function(){
+      closeReviewModal();
+      const oldConfirm=window.confirm;
+      window.confirm=function(msg){
+        if(String(msg||'').includes('Estás a punto de cerrar')) return true;
+        return oldConfirm(msg);
+      };
+      try{ await originalSave(); }
+      finally{ window.confirm=oldConfirm; }
+    };
+    openReviewModal();
+  }
+
+  function installSaveGuard(){
+    const btn=$('saveBtn');
+    if(!btn || btn.dataset.fsCloseGuard==='1') return;
+    btn.dataset.fsCloseGuard='1';
+    const originalSave = (typeof window.saveAllPredictions==='function') ? window.saveAllPredictions.bind(window) : (typeof saveAllPredictions==='function' ? saveAllPredictions : null);
+    btn.addEventListener('click', function(e){
+      if(!originalSave) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if(typeof isQuinielaClosed==='function' && isQuinielaClosed()){
+        alert('Tu quiniela ya está cerrada al 100%. Solo puedes consultarla.');
+        return;
+      }
+      ensureReviewModal();
+      const total=(state.matches||[]).length;
+      const filledAfter=expectedFilledIdsAfterVisibleSave().size;
+      if(total && filledAfter<total) showPendingReview();
+      else showFinalReviewThenSave(originalSave);
+    }, true);
+  }
+
+  async function loadProgressData(){
+    let users=[];
+    let predictions=[];
+    try{ users = normalizeRows(await loadSheetJSONP('Users') || []); }catch(e){ users = state.users || []; }
+    try{ predictions = normalizeRows(await loadSheetJSONP('predictions') || []); }catch(e){ predictions = state.predictions || []; }
+    if(!users.length) users = state.users || [];
+    if(!predictions.length) predictions = state.predictions || [];
+    return {users,predictions};
+  }
+
+  function computeProgressRows(users,predictions){
+    const total=(state.matches||[]).length || 72;
+    const activeUsers=(users||[]).filter(u=>{
+      const profile=String(getUserProfile(u)||'').toLowerCase();
+      const status=String(getUserStatus(u)||'').toLowerCase();
+      return profile!=='administrador' && (!status || status==='activo' || status==='inactivo');
+    });
+    return activeUsers.map(u=>{
+      const usuario=txt(pick(u,['Usuario']));
+      const uid=txt(pick(u,['ID_Usuario','ID Usuario','Usuario_ID','ID','Usuario']));
+      const ids=new Set();
+      let last='';
+      (predictions||[]).forEach(p=>{
+        const pu=txt(pick(p,['Usuario','Participante']));
+        const pid=txt(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']));
+        if((usuario && pu===usuario) || (uid && pid===uid)){
+          const mid=getPredMatchId(p); if(mid) ids.add(mid);
+          const f=txt(pick(p,['Fecha_Actualizacion','Fecha Actualizacion','Fecha_Registro','Fecha Registro'],''));
+          if(f>last) last=f;
+        }
+      });
+      const filled=ids.size;
+      const pct=total?Math.round((filled/total)*100):0;
+      return {usuario,nombre:pick(u,['Nombre_Completo','Nombre Completo','Nombre','Usuario']),filled,pending:Math.max(total-filled,0),pct,last,status:pct>=100?'Completa':'En progreso'};
+    }).sort((a,b)=>b.pct-a.pct || a.usuario.localeCompare(b.usuario));
+  }
+
+  async function renderProgressView(){
+    const body=$('progressBody'), cards=$('progressCards');
+    if(!body || !cards) return;
+    cards.innerHTML='<div class="empty">Cargando avance de participantes...</div>'; body.innerHTML='';
+    const data=await loadProgressData();
+    const rows=computeProgressRows(data.users,data.predictions);
+    const complete=rows.filter(r=>r.pct>=100).length;
+    const avg=rows.length?Math.round(rows.reduce((s,r)=>s+r.pct,0)/rows.length):0;
+    cards.innerHTML=`
+      <div class="metric"><small>Participantes</small><b>${rows.length}</b></div>
+      <div class="metric"><small>Completos</small><b>${complete}</b></div>
+      <div class="metric"><small>Promedio avance</small><b>${avg}%</b></div>
+      <div class="metric"><small>Pendientes</small><b>${Math.max(rows.length-complete,0)}</b></div>`;
+    rows.forEach(r=>{
+      body.insertAdjacentHTML('beforeend',`<tr><td><b>${safe(r.usuario)}</b><br><small>${safe(r.nombre)}</small></td><td>${r.filled}</td><td>${r.pending}</td><td><div class="fs-progress-bar"><div class="fs-progress-fill" style="width:${r.pct}%"></div></div><b>${r.pct}%</b></td><td class="${r.pct>=100?'fs-complete':'fs-pending'}">${r.status}</td><td>${safe(r.last||'Sin registro')}</td></tr>`);
+    });
+  }
+
+  function ensureProgressScreen(){
+    if($('tabProgress')) return;
+    const tabs=document.querySelector('.tabs');
+    const dash=$('dashboardView');
+    if(tabs && $('tabDash')) $('tabDash').insertAdjacentHTML('afterend','<button type="button" id="tabProgress" class="tab">📋 Avance</button>');
+    if(dash) dash.insertAdjacentHTML('afterend',`
+      <section id="progressView" class="hidden">
+        <div class="hero"><div><h1>Avance de participantes</h1><p class="sub">Consulta el progreso de llenado por usuario para evitar que alguien deje partidos pendientes.</p></div><button type="button" class="btn-light" id="reloadProgressBtn">🔄 Actualizar avance</button></div>
+        <div id="progressCards" class="summary-cards"></div>
+        <div class="panel"><h3>📋 Progreso por usuario</h3><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Guardados</th><th>Pendientes</th><th>Avance</th><th>Estado</th><th>Última actualización</th></tr></thead><tbody id="progressBody"></tbody></table></div></div>
+      </section>`);
+    const tab=$('tabProgress');
+    if(tab) tab.addEventListener('click', function(){ showProgressTab(); });
+    const reload=$('reloadProgressBtn');
+    if(reload) reload.addEventListener('click', renderProgressView);
+  }
+
+  function showProgressTab(){
+    ['matches','dashboard','users','progress'].forEach(t=>{
+      const view=$(t+'View'); if(view) view.classList.toggle('hidden',t!=='progress');
+    });
+    ['tabMatches','tabDash','tabUsers','tabProgress'].forEach(id=>{ const b=$(id); if(b) b.classList.toggle('active',id==='tabProgress'); });
+    renderProgressView();
+  }
+
+  function wrapShowTabForProgress(){
+    if(window.__fsProgressShowTabWrapped) return;
+    window.__fsProgressShowTabWrapped=true;
+    const original=window.showTab || showTab;
+    window.showTab = showTab = function(tab){
+      if(tab==='progress') return showProgressTab();
+      const res=original.apply(this,arguments);
+      const pv=$('progressView'); if(pv) pv.classList.add('hidden');
+      const pt=$('tabProgress'); if(pt) pt.classList.remove('active');
+      return res;
+    };
+  }
+
+  function initCloseProgressPatch(){
+    injectCloseProgressStyles();
+    ensureReviewModal();
+    ensureProgressScreen();
+    wrapShowTabForProgress();
+    installSaveGuard();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initCloseProgressPatch);
+  else initCloseProgressPatch();
+  window.addEventListener('load', function(){ setTimeout(initCloseProgressPatch,400); });
+})();
+
+
+/* =========================================================
+   PATCH PRD PERFORMANCE - AUTOGUARDADO EN COLA + GUARDAR VISIBLES
+   Objetivo:
+   - Evitar que el autoguardado compita contra el llenado del usuario.
+   - Guardar en segundo plano por lotes más pequeños y menos frecuentes.
+   - Mantener visibles los marcadores capturados mientras Google Sheets responde.
+   - Agregar botón "Guardar visibles" sin modificar estructura existente.
+========================================================= */
+(function(){
+  if(window.__fsQueueAutoSavePatchApplied) return;
+  window.__fsQueueAutoSavePatchApplied = true;
+
+  window.__fsSaveQueue = window.__fsSaveQueue || new Map();
+  window.__fsSaveQueueBusy = false;
+  window.__fsSaveQueueTimer = null;
+  window.__fsLastSavedAt = window.__fsLastSavedAt || '';
+
+  const QUEUE_BATCH_SIZE = 6;
+  const QUEUE_WAIT_MS = 30000;
+
+  function $(id){ return document.getElementById(id); }
+
+  function setQueueStatus(text, mode){
+    if(typeof setAutoSaveStatus === 'function'){
+      setAutoSaveStatus(text, mode || '');
+      return;
+    }
+    const box = $('autosaveStatus');
+    if(box) box.textContent = text;
+  }
+
+  function rowId(row){
+    return String(row?.Partido_ID || row?.['Partido ID'] || (typeof pick === 'function' ? pick(row,['Partido_ID','Partido ID'],'') : '') || '').trim();
+  }
+
+  function queueRows(rows){
+    (rows || []).forEach(row=>{
+      const id = rowId(row);
+      if(id) window.__fsSaveQueue.set(id, row);
+    });
+  }
+
+  function getVisibleCompletedRows(){
+    const rows = [];
+    document.querySelectorAll('#matchesContainer .match[data-match-id], #matchesContainer .fs-match-card[data-match-id]').forEach(card=>{
+      const id = card.getAttribute('data-match-id');
+      if(!id) return;
+      const l = document.getElementById(`l-${id}`);
+      const v = document.getElementById(`v-${id}`);
+      if(!l || !v || l.value === '' || v.value === '') return;
+
+      const saved = typeof getUserPrediction === 'function' ? !!getUserPrediction(id) : false;
+      const editing = l.dataset.editing === 'true' || v.dataset.editing === 'true';
+      if(saved && !editing) return;
+
+      if(typeof buildRow === 'function'){
+        const row = buildRow(id);
+        if(row) rows.push(row);
+        return;
+      }
+
+      if(typeof collectPendingPredictionRows === 'function'){
+        const found = (collectPendingPredictionRows() || []).find(r=>rowId(r) === String(id));
+        if(found) rows.push(found);
+      }
+    });
+    return rows;
+  }
+
+  function getAllPendingRowsSafe(){
+    try{
+      if(typeof collectPendingPredictionRows === 'function') return collectPendingPredictionRows() || [];
+    }catch(e){
+      console.warn('No se pudieron recolectar pendientes:', e);
+    }
+    return [];
+  }
+
+  function backupVisibleValues(){
+    if(typeof window.__fsLocalScores !== 'object') window.__fsLocalScores = {};
+    document.querySelectorAll('input[id^="l-"]').forEach(input=>{
+      const id = input.id.replace('l-','');
+      const v = document.getElementById(`v-${id}`);
+      if(!v) return;
+      if(input.value !== '' || v.value !== ''){
+        window.__fsLocalScores[id] = {
+          local: input.value,
+          visitante: v.value,
+          ts: Date.now()
+        };
+      }
+    });
+  }
+
+  function restoreVisibleValues(){
+    const scores = window.__fsLocalScores || {};
+    Object.keys(scores).forEach(id=>{
+      const l = document.getElementById(`l-${id}`);
+      const v = document.getElementById(`v-${id}`);
+      const s = scores[id];
+      if(!l || !v || !s) return;
+      if(l.value === '' && s.local !== '') l.value = s.local;
+      if(v.value === '' && s.visitante !== '') v.value = s.visitante;
+    });
+  }
+
+  function updateQueueMessage(){
+    const pending = window.__fsSaveQueue.size;
+    if(window.__fsSaveQueueBusy){
+      setQueueStatus(`Guardando en segundo plano... ${pending} pendiente(s)`, 'saving');
+      return;
+    }
+    if(pending > 0){
+      setQueueStatus(`Cambios pendientes por guardar: ${pending}. Puedes seguir llenando.`, 'warn');
+      return;
+    }
+    if(window.__fsLastSavedAt){
+      setQueueStatus(`Último guardado: ${window.__fsLastSavedAt}`, 'ok');
+      return;
+    }
+    setQueueStatus('Guardado en segundo plano activo. Puedes llenar sin esperar.');
+  }
+
+  async function flushQueue(reason){
+    if(window.__fsSaveQueueBusy) return false;
+    if(!window.__fsSaveQueue.size){
+      updateQueueMessage();
+      return false;
+    }
+    if(typeof persistPredictionRows !== 'function'){
+      console.warn('persistPredictionRows no está disponible.');
+      return false;
+    }
+
+    backupVisibleValues();
+    const rows = Array.from(window.__fsSaveQueue.values()).slice(0, QUEUE_BATCH_SIZE);
+    const ids = rows.map(rowId).filter(Boolean);
+
+    window.__fsSaveQueueBusy = true;
+    setQueueStatus(`Guardando ${rows.length} partido(s) en segundo plano...`, 'saving');
+
+    try{
+      const ok = await persistPredictionRows(rows, {silent:true});
+      if(ok !== false){
+        ids.forEach(id=>window.__fsSaveQueue.delete(id));
+        window.__fsLastSavedAt = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      }
+      setTimeout(restoreVisibleValues, 80);
+      setTimeout(restoreVisibleValues, 400);
+      return ok !== false;
+    }catch(error){
+      console.warn('Autoguardado en cola pendiente:', error);
+      setQueueStatus('Cambios pendientes. Usa Guardar visibles si la red está lenta.', 'warn');
+      return false;
+    }finally{
+      window.__fsSaveQueueBusy = false;
+      updateQueueMessage();
+      if(window.__fsSaveQueue.size >= QUEUE_BATCH_SIZE){
+        setTimeout(()=>flushQueue('continue'), 700);
+      }
+    }
+  }
+
+  window.scheduleAutoSave = function(){
+    backupVisibleValues();
+    const rows = getAllPendingRowsSafe();
+    queueRows(rows);
+    updateQueueMessage();
+
+    if(window.__fsSaveQueueTimer) clearTimeout(window.__fsSaveQueueTimer);
+
+    if(window.__fsSaveQueue.size >= QUEUE_BATCH_SIZE){
+      window.__fsSaveQueueTimer = setTimeout(()=>flushQueue('batch'), 900);
+    }else{
+      window.__fsSaveQueueTimer = setTimeout(()=>flushQueue('timer'), QUEUE_WAIT_MS);
+    }
+  };
+
+  window.autoSaveIfReady = function(){
+    window.scheduleAutoSave();
+  };
+
+  window.saveVisiblePredictions = async function(){
+    if(typeof isAdmin === 'function' && isAdmin()){
+      alert('El perfil administrador solo puede consultar partidos.');
+      return;
+    }
+    backupVisibleValues();
+    const rows = getVisibleCompletedRows();
+    if(!rows.length){
+      alert('No hay partidos visibles completos pendientes de guardar.');
+      return;
+    }
+    queueRows(rows);
+    await flushQueue('manual-visible');
+  };
+
+  function ensureSaveVisibleButton(){
+    const saveBtn = document.getElementById('saveBtn');
+    if(!saveBtn || document.getElementById('saveVisibleBtn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'saveVisibleBtn';
+    btn.className = saveBtn.className || 'btn-green';
+    btn.innerHTML = '💾 Guardar visibles';
+    btn.title = 'Guarda únicamente los partidos visibles que estén completos.';
+    btn.addEventListener('click', window.saveVisiblePredictions);
+    saveBtn.insertAdjacentElement('beforebegin', btn);
+  }
+
+  document.addEventListener('input', function(event){
+    const target = event.target;
+    if(!target || !target.id) return;
+    if(target.id.startsWith('l-') || target.id.startsWith('v-')){
+      window.scheduleAutoSave();
+    }
+  }, true);
+
+  document.addEventListener('click', function(event){
+    const btn = event.target.closest('.predict-btn, .match-save-one, .edit-score-btn');
+    if(!btn) return;
+    setTimeout(()=>{
+      backupVisibleValues();
+      updateQueueMessage();
+    }, 120);
+  }, true);
+
+  const originalRenderMatchesQueuePatch = window.renderMatches;
+  if(typeof originalRenderMatchesQueuePatch === 'function'){
+    window.renderMatches = function(){
+      backupVisibleValues();
+      const result = originalRenderMatchesQueuePatch.apply(this, arguments);
+      ensureSaveVisibleButton();
+      setTimeout(restoreVisibleValues, 40);
+      setTimeout(updateQueueMessage, 120);
+      return result;
+    };
+  }
+
+  ensureSaveVisibleButton();
+  updateQueueMessage();
+})();
+
 </script>
 
 </body>
