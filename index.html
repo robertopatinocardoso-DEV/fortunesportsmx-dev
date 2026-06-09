@@ -498,6 +498,337 @@ body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
     localStorage.removeItem('quinielaToken');
   }
 })();
+
+/* =========================================================
+   PATCH PRD - AVANCE SIN DEMO + EXPORTAR COMUNICADO ADMIN
+   Objetivo:
+   - Oculta la pestaña Avance al usuario demo/domIe.
+   - Mantiene Avance visible para usuarios reales.
+   - Agrega botón exclusivo administrador para exportar el avance como imagen PNG.
+   - No modifica lógica existente de guardado, partidos, dashboard ni Apps Script.
+========================================================= */
+(function(){
+  if(window.__fsAdminProgressImagePatchLoaded) return;
+  window.__fsAdminProgressImagePatchLoaded = true;
+
+  const $ = (id)=>document.getElementById(id);
+  const txt = (v)=>String(v ?? '').trim();
+  const safeText = (v)=>String(v ?? '').replace(/[\n\r\t]+/g,' ').trim();
+
+  function profile(){
+    try{ return String(getUserProfile(state.currentUser)||'').toLowerCase(); }catch(e){ return ''; }
+  }
+  function username(){
+    try{ return String(pick(state.currentUser||{},['Usuario'],'')).toLowerCase(); }catch(e){ return ''; }
+  }
+  function isDemoCurrent(){
+    return !!(state && (state.isDemo || username()==='domie'));
+  }
+  function isAdminCurrent(){
+    return !!(state && state.currentUser && !isDemoCurrent() && profile()==='administrador');
+  }
+
+  function applyDemoProgressVisibility(){
+    const tab = $('tabProgress');
+    if(tab) tab.classList.remove('hidden');
+
+    const btn = $('exportProgressImageBtn');
+    if(btn) btn.classList.toggle('hidden', !isAdminCurrent());
+  }
+
+  function injectAdminImageStyles(){
+    if($('fsAdminProgressImageStyles')) return;
+    const css = `
+      .fs-export-progress-btn{
+        background:linear-gradient(135deg,#003b8f,#00a86b)!important;
+        color:#fff!important;
+        border-radius:999px!important;
+        padding:12px 16px!important;
+        font-weight:950!important;
+        box-shadow:0 12px 26px rgba(0,59,143,.18)!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        gap:7px!important;
+      }
+      .fs-export-progress-btn:hover{transform:translateY(-2px);filter:saturate(1.08)}
+      @media(max-width:700px){.fs-export-progress-btn{width:100%!important}}
+    `;
+    const style=document.createElement('style');
+    style.id='fsAdminProgressImageStyles';
+    style.textContent=css;
+    document.head.appendChild(style);
+  }
+
+  async function loadProgressSourceForImage(){
+    let users=[];
+    let predictions=[];
+    try{ users = normalizeRows(await loadSheetJSONP('Users') || []); }catch(e){ users = state.users || []; }
+    try{ predictions = normalizeRows(await loadSheetJSONP('predictions') || []); }catch(e){ predictions = state.predictions || []; }
+    if(!users.length) users = state.users || [];
+    if(!predictions.length) predictions = state.predictions || [];
+    return {users,predictions};
+  }
+
+  function predMatchId(p){
+    return String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido'],''));
+  }
+
+  function buildProgressRows(users,predictions){
+    const total = (state.matches || []).length || 72;
+    const activeUsers = (users || []).filter(u=>{
+      const p = String(getUserProfile(u)||'').toLowerCase();
+      const usuario = String(pick(u,['Usuario'],'')).toLowerCase();
+      return p !== 'administrador' && usuario !== 'domie';
+    });
+
+    return activeUsers.map(u=>{
+      const usuario = txt(pick(u,['Usuario']));
+      const nombre = txt(pick(u,['Nombre_Completo','Nombre Completo','Nombre','Usuario']));
+      const uid = txt(pick(u,['ID_Usuario','ID Usuario','Usuario_ID','ID','Usuario']));
+      const ids = new Set();
+      let last = '';
+
+      (predictions || []).forEach(p=>{
+        const pu = txt(pick(p,['Usuario','Participante']));
+        const pid = txt(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']));
+        if((usuario && pu===usuario) || (uid && pid===uid)){
+          const mid = predMatchId(p);
+          if(mid) ids.add(mid);
+          const f = txt(pick(p,['Fecha_Actualizacion','Fecha Actualizacion','Fecha_Registro','Fecha Registro'],''));
+          if(f > last) last = f;
+        }
+      });
+
+      const filled = ids.size;
+      const pending = Math.max(total - filled, 0);
+      const pct = total ? Math.round((filled / total) * 100) : 0;
+      return {usuario,nombre,filled,pending,pct,last,status:pct>=100?'Completa':'En progreso'};
+    }).sort((a,b)=>b.pct-a.pct || a.usuario.localeCompare(b.usuario));
+  }
+
+  function roundedRect(ctx,x,y,w,h,r){
+    const radius=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+radius,y);
+    ctx.arcTo(x+w,y,x+w,y+h,radius);
+    ctx.arcTo(x+w,y+h,x,y+h,radius);
+    ctx.arcTo(x,y+h,x,y,radius);
+    ctx.arcTo(x,y,x+w,y,radius);
+    ctx.closePath();
+  }
+
+  function drawWrappedText(ctx,text,x,y,maxWidth,lineHeight,maxLines){
+    const words=String(text||'').split(' ');
+    let line='', lines=[];
+    for(const word of words){
+      const test=line ? line+' '+word : word;
+      if(ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line=word;
+      }else{
+        line=test;
+      }
+    }
+    if(line) lines.push(line);
+    if(maxLines && lines.length>maxLines){
+      lines=lines.slice(0,maxLines);
+      lines[lines.length-1]=lines[lines.length-1].replace(/\s+$/,'')+'…';
+    }
+    lines.forEach((ln,i)=>ctx.fillText(ln,x,y+(i*lineHeight)));
+    return y+(lines.length*lineHeight);
+  }
+
+  async function exportProgressImage(){
+    if(!isAdminCurrent()){
+      alert('Esta función solo está disponible para el perfil administrador.');
+      return;
+    }
+
+    const btn=$('exportProgressImageBtn');
+    if(btn){ btn.disabled=true; btn.textContent='⏳ Generando imagen...'; }
+
+    try{
+      const data = await loadProgressSourceForImage();
+      const rows = buildProgressRows(data.users,data.predictions);
+      const totalUsers = rows.length;
+      const complete = rows.filter(r=>r.pct>=100).length;
+      const avg = rows.length ? Math.round(rows.reduce((s,r)=>s+r.pct,0)/rows.length) : 0;
+      const totalMatches = (state.matches || []).length || 72;
+      const payment = typeof getPaymentSummary === 'function' ? getPaymentSummary() : {prize:0};
+      const now = new Date();
+      const dateLabel = now.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
+
+      const width = 1080;
+      const rowH = 62;
+      const topH = 330;
+      const bottomH = 140;
+      const height = Math.max(980, topH + (Math.max(rows.length,1) * rowH) + bottomH);
+      const canvas=document.createElement('canvas');
+      canvas.width=width;
+      canvas.height=height;
+      const ctx=canvas.getContext('2d');
+
+      const grad=ctx.createLinearGradient(0,0,width,height);
+      grad.addColorStop(0,'#003b8f');
+      grad.addColorStop(.45,'#0b62d6');
+      grad.addColorStop(1,'#00a86b');
+      ctx.fillStyle=grad;
+      ctx.fillRect(0,0,width,height);
+
+      ctx.fillStyle='rgba(255,255,255,.10)';
+      for(let i=0;i<12;i++){
+        ctx.beginPath();
+        ctx.arc(80+i*95,90+(i%3)*58,34+(i%4)*8,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle='#ffffff';
+      ctx.font='900 56px Arial, sans-serif';
+      ctx.fillText('🏆 Fortune Sports MX',60,78);
+      ctx.font='800 30px Arial, sans-serif';
+      ctx.fillText('Comunicado de avance de quiniela',60,124);
+      ctx.font='700 23px Arial, sans-serif';
+      ctx.fillStyle='rgba(255,255,255,.88)';
+      ctx.fillText(`Actualizado: ${dateLabel}`,60,160);
+
+      const cards=[
+        ['Participantes',String(totalUsers)],
+        ['Completos',String(complete)],
+        ['Promedio avance',`${avg}%`],
+        ['Bolsa a repartir',formatCurrencyMXN(payment.prize||0)]
+      ];
+      const cardW=230, cardH=106, gap=22;
+      cards.forEach((c,i)=>{
+        const x=60+i*(cardW+gap), y=198;
+        ctx.fillStyle='rgba(255,255,255,.94)';
+        roundedRect(ctx,x,y,cardW,cardH,24); ctx.fill();
+        ctx.fillStyle='#64748b'; ctx.font='800 21px Arial, sans-serif'; ctx.fillText(c[0],x+22,y+38);
+        ctx.fillStyle='#003b8f'; ctx.font='900 36px Arial, sans-serif'; ctx.fillText(c[1],x+22,y+82);
+      });
+
+      const tableX=60, tableY=345, tableW=960;
+      ctx.fillStyle='rgba(255,255,255,.96)';
+      roundedRect(ctx,tableX,tableY-46,tableW,(Math.max(rows.length,1)*rowH)+72,26); ctx.fill();
+
+      ctx.fillStyle='#003b8f';
+      ctx.font='900 26px Arial, sans-serif';
+      ctx.fillText(`📋 Avance por usuario (${totalMatches} partidos)`,tableX+28,tableY-12);
+
+      ctx.fillStyle='#eff6ff';
+      roundedRect(ctx,tableX+22,tableY+8,tableW-44,42,14); ctx.fill();
+      ctx.fillStyle='#1e3a8a';
+      ctx.font='900 18px Arial, sans-serif';
+      ctx.fillText('Usuario',tableX+44,tableY+35);
+      ctx.fillText('Guardados',tableX+470,tableY+35);
+      ctx.fillText('Pendientes',tableX+610,tableY+35);
+      ctx.fillText('Avance',tableX+760,tableY+35);
+
+      let y=tableY+68;
+      const displayRows = rows.length ? rows : [{usuario:'Sin usuarios',nombre:'',filled:0,pending:totalMatches,pct:0,status:'Sin avance'}];
+      displayRows.forEach((r,idx)=>{
+        ctx.fillStyle=idx%2===0?'#ffffff':'#f8fafc';
+        roundedRect(ctx,tableX+22,y-32,tableW-44,52,12); ctx.fill();
+
+        ctx.fillStyle='#0f172a';
+        ctx.font='900 20px Arial, sans-serif';
+        drawWrappedText(ctx,safeText(r.usuario),tableX+44,y-9,330,20,1);
+        ctx.fillStyle='#64748b';
+        ctx.font='700 14px Arial, sans-serif';
+        drawWrappedText(ctx,safeText(r.nombre),tableX+44,y+9,330,16,1);
+
+        ctx.fillStyle='#0f172a'; ctx.font='900 20px Arial, sans-serif';
+        ctx.fillText(String(r.filled),tableX+500,y);
+        ctx.fillText(String(r.pending),tableX+645,y);
+
+        const bx=tableX+760, by=y-18, bw=170, bh=18;
+        ctx.fillStyle='#dbeafe'; roundedRect(ctx,bx,by,bw,bh,9); ctx.fill();
+        const fillW=Math.max(6,Math.round(bw*(r.pct/100)));
+        const barGrad=ctx.createLinearGradient(bx,by,bx+bw,by);
+        barGrad.addColorStop(0,'#00a86b'); barGrad.addColorStop(.7,'#ffd166'); barGrad.addColorStop(1,'#ef476f');
+        ctx.fillStyle=barGrad; roundedRect(ctx,bx,by,fillW,bh,9); ctx.fill();
+        ctx.fillStyle=r.pct>=100?'#166534':'#92400e'; ctx.font='900 18px Arial, sans-serif';
+        ctx.fillText(`${r.pct}%`,tableX+945,y);
+        y+=rowH;
+      });
+
+      ctx.fillStyle='rgba(255,255,255,.92)';
+      roundedRect(ctx,60,height-112,960,72,24); ctx.fill();
+      ctx.fillStyle='#003b8f'; ctx.font='900 24px Arial, sans-serif';
+      ctx.fillText('⏳ Recuerda revisar tus pendientes y guardar tus marcadores antes del cierre.',90,height-72);
+      ctx.fillStyle='#64748b'; ctx.font='800 18px Arial, sans-serif';
+      ctx.fillText('Comparte este comunicado en el grupo para impulsar que todos terminen su quiniela.',90,height-43);
+
+      const dataUrl=canvas.toDataURL('image/png');
+      const a=document.createElement('a');
+      a.href=dataUrl;
+      a.download='comunicado_avance_fortune_sports_mx.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }catch(error){
+      console.error(error);
+      alert('No se pudo generar la imagen de avance. Intenta actualizar datos y vuelve a probar.');
+    }finally{
+      if(btn){ btn.disabled=false; btn.textContent='🖼️ Exportar comunicado'; }
+    }
+  }
+
+  function ensureAdminExportButton(){
+    injectAdminImageStyles();
+    const view=$('progressView');
+    if(!view) return;
+    const hero=view.querySelector('.hero');
+    if(!hero) return;
+
+    let btn=$('exportProgressImageBtn');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.id='exportProgressImageBtn';
+      btn.className='fs-export-progress-btn';
+      btn.textContent='🖼️ Exportar comunicado';
+      btn.addEventListener('click',exportProgressImage);
+      hero.appendChild(btn);
+    }
+
+    btn.classList.toggle('hidden',!isAdminCurrent());
+  }
+
+  const previousShowTab = window.showTab;
+  if(typeof previousShowTab === 'function' && !previousShowTab.__fsAdminProgressWrapped){
+    window.showTab = showTab = function(tab){
+      const result = previousShowTab.apply(this,arguments);
+      setTimeout(()=>{
+        applyDemoProgressVisibility();
+        ensureAdminExportButton();
+      },120);
+      return result;
+    };
+    window.showTab.__fsAdminProgressWrapped = true;
+  }
+
+  const previousShowApp = window.showApp;
+  if(typeof previousShowApp === 'function' && !previousShowApp.__fsAdminProgressWrapped){
+    window.showApp = showApp = function(user){
+      const result = previousShowApp.apply(this,arguments);
+      setTimeout(()=>{
+        applyDemoProgressVisibility();
+        ensureAdminExportButton();
+      },250);
+      return result;
+    };
+    window.showApp.__fsAdminProgressWrapped = true;
+  }
+
+  window.addEventListener('load',function(){
+    setTimeout(()=>{
+      applyDemoProgressVisibility();
+      ensureAdminExportButton();
+    },900);
+  });
+})();
+
 </script>
 
 <section id="loginScreen" class="center">
@@ -3168,7 +3499,22 @@ window.addEventListener('load',()=>{
     if(btn){ btn.disabled=true; btn.textContent='⏳ Guardando...'; }
     showUxLoader('Guardando partido','Registrando este marcador...');
     try{
-      await persistPredictionRows([row],{silent:true});
+      /*
+        HOTFIX CIERRE FINAL:
+        Guardar partido debe comportarse como guardado silencioso en partidos normales,
+        pero si este partido completa el 100% debe disparar la confirmación de cierre.
+        El autoguardado conserva silent:true porque usa persistPredictionRows directamente.
+      */
+      const totalMatches = (state.matches || []).length;
+      const savedIdsBefore = new Set(currentUserPredictions().map(p=>String(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))));
+      const alreadySavedBefore = savedIdsBefore.has(String(id));
+      if(!alreadySavedBefore) savedIdsBefore.add(String(id));
+      const willReach100 = totalMatches > 0 && savedIdsBefore.size >= totalMatches;
+      const savedOk = await persistPredictionRows([row],{silent:!willReach100});
+      if(willReach100 && savedOk === false){
+        if(btn){ btn.disabled=false; btn.textContent='💾 Guardar'; }
+        return false;
+      }
       state.predictions=(state.predictions||[]).filter(p=>!(txt(pick(p,['Partido_ID','Partido ID','ID_Partido','Partido']))===String(id) && (txt(pick(p,['Usuario','Participante']))===currentUsuario() || txt(pick(p,['ID_Usuario','ID Usuario','Usuario_ID']))===String(userId()))));
       state.predictions.push(normalizeRows([row])[0]);
       const l=$(`l-${id}`), v=$(`v-${id}`); if(l){l.dataset.editing=''; l.disabled=true;} if(v){v.dataset.editing=''; v.disabled=true;}
@@ -4280,6 +4626,17 @@ window.addEventListener('load',()=>{
     const body=$('progressBody'), cards=$('progressCards');
     if(!body || !cards) return;
     cards.innerHTML='<div class="empty">Cargando avance de participantes...</div>'; body.innerHTML='';
+
+    if(state && state.isDemo){
+      cards.innerHTML=`
+        <div class="metric"><small>Modo</small><b>Demo</b></div>
+        <div class="metric"><small>Datos reales</small><b>Ocultos</b></div>
+        <div class="metric"><small>Participantes</small><b>---</b></div>
+        <div class="metric"><small>Avance</small><b>Privado</b></div>`;
+      body.innerHTML='<tr><td colspan="6"><div class="empty"><b>Modo demo activo.</b><br>Esta pantalla te permite conocer la sección de avance, pero no muestra usuarios reales ni usuarios demo. Los porcentajes reales solo están disponibles para participantes activos y administradores.</div></td></tr>';
+      return;
+    }
+
     const data=await loadProgressData();
     const rows=computeProgressRows(data.users,data.predictions);
     const complete=rows.filter(r=>r.pct>=100).length;
@@ -4589,6 +4946,132 @@ window.addEventListener('load',()=>{
   updateQueueMessage();
 })();
 
+</script>
+
+
+
+<script>
+/* =============================================================
+   PATCH PRD - PUNTOS SOLO CON RESULTADOS OFICIALES
+   Objetivo:
+   - Evitar que “Mis puntos”, Ranking y Tipos de acierto se calculen
+     usando solo predictions antes de que existan marcadores en results.
+   - No modifica diseño, guardado, filtros, simulador ni Apps Script.
+   ============================================================= */
+(function(){
+  if(window.__fsOfficialResultsPointsPatchLoaded) return;
+  window.__fsOfficialResultsPointsPatchLoaded = true;
+
+  const $ = (id)=>document.getElementById(id);
+  const toNum = (v)=>{
+    const n = Number(String(v ?? '').replace(/[^0-9.-]/g,''));
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  function getVal(row, keys){
+    if(typeof pick === 'function') return pick(row || {}, keys, '');
+    const obj = row || {};
+    for(const k of keys){
+      if(obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k];
+    }
+    return '';
+  }
+
+  function officialResultRows(){
+    return (state.results || []).filter(r=>{
+      const id = String(getVal(r,['Partido_ID','Partido ID','ID_Partido','Partido'])).trim();
+      const local = toNum(getVal(r,['Marcador_Local','Marcador Local','Resultado_Local','Resultado Local','Local']));
+      const visit = toNum(getVal(r,['Marcador_Visitante','Marcador Visitante','Resultado_Visitante','Resultado Visitante','Visitante']));
+      return !!id && Number.isFinite(local) && Number.isFinite(visit);
+    });
+  }
+
+  function hasOfficialResults(){
+    return officialResultRows().length > 0;
+  }
+
+  function dashboardBaseRows(){
+    const raw = (state.secureDashboard && Array.isArray(state.secureDashboard.ranking))
+      ? state.secureDashboard.ranking
+      : (Array.isArray(state.ranking) ? state.ranking : []);
+    return raw.length ? raw : [{uid: (typeof userId === 'function' ? userId() : ''), usuario: getVal(state.currentUser,['Usuario']), name: getVal(state.currentUser,['Usuario'])}];
+  }
+
+  function displayName(row){
+    if(typeof rankingDisplayName === 'function') return rankingDisplayName(row);
+    return row.usuario || row.Usuario || row.uid || row.name || row.Nombre_Usuario || 'Usuario';
+  }
+
+  function zeroDashboardBeforeResults(){
+    if(hasOfficialResults()) return;
+
+    const pointsBox = $('mPoints');
+    if(pointsBox) pointsBox.textContent = '0';
+
+    const rows = dashboardBaseRows().map(r=>Object.assign({}, r, {points:0, exact:0, winner:0}));
+
+    const body = $('rankingBody');
+    if(body){
+      body.innerHTML = '';
+      rows.forEach((r,i)=>{
+        body.insertAdjacentHTML('beforeend', `<tr><td class="${i===0?'rank1':''}">${i+1}</td><td>${displayName(r)}</td><td><b>0</b></td><td>0</td><td>0</td></tr>`);
+      });
+    }
+
+    const facts = $('funFacts');
+    if(facts){
+      const pool = (typeof getPaymentSummary === 'function') ? getPaymentSummary() : {prize:0};
+      const money = (typeof formatCurrencyMXN === 'function') ? formatCurrencyMXN(pool.prize || 0) : `$${pool.prize || 0}`;
+      facts.innerHTML = `<p>🏆 Líder actual: <b>Disponible al cargar resultados oficiales</b></p><p>🎯 Marcadores exactos totales: <b>0</b></p><p>🔥 Aciertos de ganador/empate: <b>0</b></p><p>💰 Bolsa oficial a repartir: <b>${money}</b></p>`;
+    }
+
+    if(typeof Chart !== 'undefined' && $('rankingChart')){
+      const labels = rows.map(displayName);
+      const pts = rows.map(()=>0);
+
+      if(window.charts && charts.ranking) charts.ranking.destroy();
+      if(window.charts){
+        charts.ranking = new Chart($('rankingChart'),{
+          type:'bar',
+          data:{labels,datasets:[{label:'Puntos',data:pts,backgroundColor:'rgba(11,98,214,.65)',borderColor:'rgba(0,59,143,1)',borderWidth:1}]},
+          options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+        });
+      }
+
+      if(window.charts && charts.accuracy) charts.accuracy.destroy();
+      if(window.charts && $('accuracyChart')){
+        charts.accuracy = new Chart($('accuracyChart'),{
+          type:'doughnut',
+          data:{labels:['Exactos','Ganador/Empate'],datasets:[{data:[0,0],backgroundColor:['rgba(0,168,107,.75)','rgba(255,209,102,.9)']}]},
+          options:{responsive:true}
+        });
+      }
+    }
+  }
+
+  const previousRenderDashboard = window.renderDashboard;
+  if(typeof previousRenderDashboard === 'function'){
+    window.renderDashboard = renderDashboard = function(){
+      const result = previousRenderDashboard.apply(this, arguments);
+      zeroDashboardBeforeResults();
+      return result;
+    };
+  }
+
+  const previousUpdateProgress = window.updateProgress;
+  if(typeof previousUpdateProgress === 'function'){
+    window.updateProgress = updateProgress = function(){
+      const result = previousUpdateProgress.apply(this, arguments);
+      if(!hasOfficialResults()){
+        const pointsBox = $('mPoints');
+        if(pointsBox) pointsBox.textContent = '0';
+      }
+      return result;
+    };
+  }
+
+  window.addEventListener('load',()=>setTimeout(zeroDashboardBeforeResults,900));
+})();
 </script>
 
 </body>
