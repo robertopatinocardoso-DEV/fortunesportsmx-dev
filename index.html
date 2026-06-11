@@ -1209,7 +1209,7 @@ function getPaymentSummary(){
   const total = (state.users || []).reduce((sum,u)=>sum + getUserPayment(u),0);
   const dev = total * 0.10;
   const prize = total * 0.90;
-  return {total, dev, prize, first: prize*0.50, second: prize*0.30, third: prize*0.10};
+  return {total, dev, prize, first: total*0.50, second: total*0.25, third: total*0.15};
 }
 
 function updatePaymentDashboard(){
@@ -2787,11 +2787,24 @@ async function autoSaveIfReady(){
 }
 
 function getPaymentSummary(){
-  if(state.secureDashboard && state.secureDashboard.paymentSummary){
-    return state.secureDashboard.paymentSummary;
-  }
-  const total = (state.users || []).reduce((sum,u)=>sum + getUserPayment(u),0);
-  return {total, dev:total*.10, prize:total*.90, first:total*.50, second:total*.30, third:total*.10};
+  const backendSummary = (state.secureDashboard && state.secureDashboard.paymentSummary) ? state.secureDashboard.paymentSummary : null;
+  const total = backendSummary && Number(backendSummary.total || 0) > 0
+    ? Number(backendSummary.total || 0)
+    : (state.users || []).reduce((sum,u)=>sum + getUserPayment(u),0);
+
+  const dev = total * 0.10;
+  const prize = total * 0.90;
+
+  /*
+    Distribución oficial:
+    - 10% del acumulado se reserva para desarrollo.
+    - 90% se reparte entre ganadores.
+    - 1er lugar: 50% del acumulado total.
+    - 2do lugar: 25% del acumulado total.
+    - 3er lugar: 15% del acumulado total.
+    Ejemplo con $3,200: bolsa $2,880 = $1,600 + $800 + $480.
+  */
+  return {total, dev, prize, first: total*0.50, second: total*0.25, third: total*0.15};
 }
 
 function renderDashboard(){
