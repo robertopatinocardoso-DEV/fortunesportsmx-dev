@@ -6011,19 +6011,57 @@ body.dark-mode .mi-info{
     return rows.find(x=>safe(typeof pick==='function'?pick(x,['Partido_ID','Partido ID','ID_Partido','Partido'],''):(x.Partido_ID||x.Partido||''))===sid) || null;
   }
 
+  function currentUserWorldRows(){
+    let mine=[];
+    try{
+      if(typeof currentUserPredictions==='function'){
+        mine = hydrateWorldRows(currentUserPredictions() || []);
+      }
+    }catch(e){ mine=[]; }
+
+    if(!mine.length){
+      mine = (worldState.rows||[]).filter(isCurrentWorldUserRow);
+    }
+
+    // En demo/domIE puede no existir coincidencia exacta entre el nombre visible y los datos de ejemplo.
+    // En ese caso se toma el usuario demo base para que las tarjetas sí muestren análisis útil.
+    if(!mine.length && (state.isDemo || norm(safe(state.currentUser && (state.currentUser.Usuario||state.currentUser.Nombre||state.currentUser.Nombre_Completo))).includes('domie'))){
+      mine = (worldState.rows||[]).filter(r=>norm(r.usuario)==='domie' || norm(r.participante).includes('domie mundial'));
+    }
+
+    return mine;
+  }
+
+  function rowSameWorldUser(a,b){
+    if(!a || !b) return false;
+    const au=norm(a.usuario), bu=norm(b.usuario);
+    const ap=norm(a.participante), bp=norm(b.participante);
+    return (!!au && au===bu) || (!!ap && ap===bp);
+  }
+
   function updateMiMundialInsights(){
-    const mine=(worldState.filtered||[]).filter(isCurrentWorldUserRow);
+    const filtered = worldState.filtered || [];
+    const filteredMatchIds = new Set(filtered.map(r=>safe(r.partido)).filter(Boolean));
+    const mineAll = currentUserWorldRows();
+    const mine = mineAll.filter(r=>filteredMatchIds.has(safe(r.partido)));
     const myTotal=mine.length;
     let sameOthers=0, different=0, withResult=0;
-    mine.forEach(r=>{
-      const c=Number(r.coincidencias||0);
-      sameOthers += Math.max(0,c);
-      if(c<=0) different += 1;
-      if(officialResultForWorldMatch(r.partido)) withResult += 1;
+
+    mine.forEach(my=>{
+      const same = filtered.filter(r=>
+        safe(r.partido)===safe(my.partido) &&
+        safe(r.marcadorLocal)===safe(my.marcadorLocal) &&
+        safe(r.marcadorVisitante)===safe(my.marcadorVisitante) &&
+        !rowSameWorldUser(r,my)
+      ).length;
+      sameOthers += Math.max(0,same);
+      if(same<=0) different += 1;
+      if(officialResultForWorldMatch(my.partido)) withResult += 1;
     });
+
     const differentPct=myTotal ? Math.round((different/myTotal)*100) : 0;
     const remainingPct=myTotal ? Math.round(((myTotal-withResult)/myTotal)*100) : 0;
-    const chance=Math.max(0,Math.min(99,Math.round((differentPct*.55)+(remainingPct*.35)+(myTotal?10:0))));
+    const chance=myTotal ? Math.max(0,Math.min(99,Math.round((differentPct*.55)+(remainingPct*.35)+10))) : 0;
     const a=$('worldMyMatches'), b=$('worldUniquePicks'), c=$('worldUpChance');
     if(a) a.textContent=String(sameOthers);
     if(b) b.textContent=differentPct+'%';
