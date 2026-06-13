@@ -6570,5 +6570,220 @@ body.dark-mode .mi-info{
 })();
 </script>
 
+
+
+<style id="fsFinalHotfixUsersResultsBallStyles">
+/* HOTFIX final: Usuarios admin, conteo real de results, balón Mi Mundial */
+#worldView .mi-mundial-title .fs-world-ball-badge,
+.mi-mundial-title .fs-world-ball-badge{
+  width:86px!important;
+  height:86px!important;
+  min-width:86px!important;
+  flex:0 0 86px!important;
+  background-size:cover!important;
+  background-position:center!important;
+}
+@media(max-width:700px){
+  #worldView .mi-mundial-title .fs-world-ball-badge,
+  .mi-mundial-title .fs-world-ball-badge{
+    width:78px!important;
+    height:78px!important;
+    min-width:78px!important;
+    flex-basis:78px!important;
+  }
+}
+</style>
+<script id="fsFinalHotfixUsersResultsBall">
+/* =========================================================
+   HOTFIX FINAL CONTROLADO
+   - Corrige navegación del tab Usuarios administrador sin afectar otras pantallas.
+   - Corrige columna Resultados para contar solo partidos con marcador oficial cargado en results.
+   - Muestra Nombre en Dashboard para usuarios cuyo usuario empieza con "User".
+   - Iguala tamaño del balón en Mi Mundial.
+   No modifica guardado, predicciones, simulador, Apps Script ni lógica de captura.
+========================================================= */
+(function(){
+  if(window.__fsFinalUsersResultsBallHotfix) return;
+  window.__fsFinalUsersResultsBallHotfix = true;
+  const $ = (id)=>document.getElementById(id);
+  const safe = (v)=>(v==null?'':String(v)).trim();
+  const normalize = (v)=>safe(v).toLowerCase();
+  function pickSafe(obj, keys, fallback=''){
+    try{
+      if(typeof pick === 'function') return pick(obj, keys, fallback);
+    }catch(e){}
+    for(const k of keys){ if(obj && obj[k] != null && obj[k] !== '') return obj[k]; }
+    return fallback;
+  }
+  function isAdminSafe(){
+    try{
+      if(typeof isCurrentAdmin === 'function') return !!isCurrentAdmin();
+      if(typeof getUserProfile === 'function') return normalize(getUserProfile(state.currentUser)) === 'administrador';
+      return normalize(pickSafe(state.currentUser||{}, ['Perfil','Tipo','Rol','Role'])) === 'administrador';
+    }catch(e){ return false; }
+  }
+  function userDisplayMap(){
+    const map = {};
+    try{
+      (state.users || []).forEach(u=>{
+        const usuario = safe(pickSafe(u,['Usuario','usuario']));
+        const nombre = safe(pickSafe(u,['Nombre_Completo','Nombre Completo','Nombre','Nombre_Usuario','Nombre Usuario']));
+        if(usuario && nombre) map[normalize(usuario)] = nombre;
+      });
+      (state.adminUsers || []).forEach(u=>{
+        const usuario = safe(pickSafe(u,['Usuario','usuario']));
+        const nombre = safe(pickSafe(u,['Nombre_Completo','Nombre Completo','Nombre','Nombre_Usuario','Nombre Usuario']));
+        if(usuario && nombre) map[normalize(usuario)] = nombre;
+      });
+    }catch(e){}
+    return map;
+  }
+  function displayNameOnlyForUserLogin(value){
+    const raw = safe(value);
+    if(!/^user/i.test(raw)) return raw;
+    const name = userDisplayMap()[normalize(raw)];
+    return name || raw;
+  }
+
+  function activateUsersAdminTab(){
+    if(!isAdminSafe()) return;
+    try{
+      document.body.classList.remove('mi-world-active');
+      ['matchesView','dashboardView','worldView','progressView'].forEach(id=>$(id)?.classList.add('hidden'));
+      $('usersView')?.classList.remove('hidden');
+      ['tabMatches','tabDash','tabWorld','tabProgress'].forEach(id=>$(id)?.classList.remove('active'));
+      $('tabUsers')?.classList.add('active');
+      if(typeof loadAdminUsers === 'function') loadAdminUsers();
+    }catch(e){}
+  }
+
+  // Captura únicamente el click del tab Usuarios para que ningún hotfix de Mi Mundial lo regrese a Partidos.
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest ? e.target.closest('#tabUsers') : null;
+    if(!btn) return;
+    if(!isAdminSafe()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    activateUsersAdminTab();
+    setTimeout(activateUsersAdminTab, 80);
+    setTimeout(activateUsersAdminTab, 250);
+  }, true);
+
+  // Refuerzo si otra función invoca showTab('users').
+  const previousShowTab = window.showTab || (typeof showTab === 'function' ? showTab : null);
+  if(typeof previousShowTab === 'function' && !previousShowTab.__fsFinalUsersHotfix){
+    window.showTab = showTab = function(tab){
+      if(tab === 'users' && isAdminSafe()){
+        activateUsersAdminTab();
+        return;
+      }
+      return previousShowTab.apply(this, arguments);
+    };
+    window.showTab.__fsFinalUsersHotfix = true;
+  }
+
+  function readScore(row, side){
+    const localKeys = ['Marcador_Local','Marcador Local','Goles_Local','Goles Local','Resultado_Local','Resultado Local','Score_Local','Score Local','Local'];
+    const visitKeys = ['Marcador_Visitante','Marcador Visitante','Goles_Visitante','Goles Visitante','Resultado_Visitante','Resultado Visitante','Score_Visitante','Score Visitante','Visitante'];
+    const v = safe(pickSafe(row, side === 'local' ? localKeys : visitKeys, ''));
+    return /^\d+$/.test(v) ? v : '';
+  }
+  function hasOfficialResult(row){
+    const pid = safe(pickSafe(row, ['Partido_ID','Partido ID','ID_Partido','Partido','ID'], ''));
+    if(!pid) return false;
+    return readScore(row,'local') !== '' && readScore(row,'visitante') !== '';
+  }
+  function officialResultsCount(){
+    try{
+      const ids = new Set();
+      (state.results || []).forEach(r=>{
+        if(hasOfficialResult(r)) ids.add(safe(pickSafe(r, ['Partido_ID','Partido ID','ID_Partido','Partido','ID'], '')));
+      });
+      return ids.size;
+    }catch(e){ return 0; }
+  }
+
+  function patchDashboardRankingNamesAndResults(){
+    try{
+      const table = $('rankingBody')?.closest('table');
+      if(table){
+        const resultCount = officialResultsCount();
+        const head = table.querySelector('thead tr');
+        if(head && !head.querySelector('[data-results-col="1"]')){
+          const th = document.createElement('th');
+          th.dataset.resultsCol = '1';
+          th.textContent = 'Resultados';
+          head.appendChild(th);
+        }
+        table.querySelectorAll('tbody tr').forEach(tr=>{
+          const userCell = tr.children && tr.children[1];
+          if(userCell){
+            const current = safe(userCell.textContent);
+            if(/^user/i.test(current)) userCell.textContent = displayNameOnlyForUserLogin(current);
+          }
+          let td = tr.querySelector('[data-results-col="1"]');
+          if(!td){
+            td = document.createElement('td');
+            td.dataset.resultsCol = '1';
+            tr.appendChild(td);
+          }
+          td.textContent = String(resultCount);
+        });
+      }
+    }catch(e){}
+  }
+
+  // Ajusta nombres desde la fuente para tabla y gráfica del Dashboard, solo para usuarios User####.
+  try{
+    const previousRankingDisplayName = window.rankingDisplayName || (typeof rankingDisplayName === 'function' ? rankingDisplayName : null);
+    if(typeof previousRankingDisplayName === 'function' && !previousRankingDisplayName.__fsUserNameHotfix){
+      window.rankingDisplayName = rankingDisplayName = function(row){
+        const base = safe(previousRankingDisplayName.apply(this, arguments));
+        return displayNameOnlyForUserLogin(base);
+      };
+      window.rankingDisplayName.__fsUserNameHotfix = true;
+    }
+  }catch(e){}
+
+  // Reemplaza el cálculo anterior de resultados cargados después de cada render de dashboard.
+  const previousRenderDashboard = window.renderDashboard || (typeof renderDashboard === 'function' ? renderDashboard : null);
+  if(typeof previousRenderDashboard === 'function' && !previousRenderDashboard.__fsFinalResultsHotfix){
+    window.renderDashboard = renderDashboard = function(){
+      const out = previousRenderDashboard.apply(this, arguments);
+      setTimeout(patchDashboardRankingNamesAndResults, 20);
+      setTimeout(patchDashboardRankingNamesAndResults, 160);
+      return out;
+    };
+    window.renderDashboard.__fsFinalResultsHotfix = true;
+  }
+
+  // Tamaño del balón Mi Mundial igual al resto de pantallas.
+  function fixWorldBallSize(){
+    try{
+      document.querySelectorAll('#worldView .fs-world-ball-badge, #worldView .mi-mundial-title .fs-world-ball-badge').forEach(b=>{
+        b.style.setProperty('width','86px','important');
+        b.style.setProperty('height','86px','important');
+        b.style.setProperty('min-width','86px','important');
+        b.style.setProperty('flex-basis','86px','important');
+        b.style.setProperty('background-size','cover','important');
+        b.style.setProperty('background-position','center','important');
+      });
+    }catch(e){}
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    patchDashboardRankingNamesAndResults();
+    fixWorldBallSize();
+    let n=0;
+    const t=setInterval(()=>{patchDashboardRankingNamesAndResults();fixWorldBallSize(); if(++n>8) clearInterval(t);},500);
+  });
+  window.addEventListener('load',()=>{
+    patchDashboardRankingNamesAndResults();
+    fixWorldBallSize();
+  });
+})();
+</script>
+
 </body>
 </html>
