@@ -476,6 +476,39 @@ body.dark-mode .wc-unit{background:#e0f2fe;color:#0f172a}
 
 </style>
 
+
+<style id="miMundialFinalUxPatchStyles">
+/* PATCH final Mi Mundial: tabla, resultados y balón consistente */
+.mi-mundial-title .fs-world-ball-badge{width:86px!important;height:86px!important;min-width:86px!important;}
+#worldView .mi-mundial-table-wrap{overflow:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:20px!important;}
+#worldView .mi-mundial-table{min-width:980px!important;border-collapse:separate!important;border-spacing:0 8px!important;}
+#worldView .mi-mundial-table th{white-space:nowrap!important;text-align:left!important;position:sticky;top:0;z-index:2;}
+#worldView .mi-mundial-table td{vertical-align:middle!important;white-space:normal!important;}
+#worldView .mi-mundial-table .mi-mundial-score{text-align:center!important;font-weight:1000!important;font-size:18px!important;white-space:nowrap!important;}
+#worldView .mi-mundial-table .mi-mundial-eq{min-width:150px!important;}
+#worldView tr.world-has-result td{background:rgba(16,185,129,.10)!important;border-top:1px solid rgba(16,185,129,.22)!important;border-bottom:1px solid rgba(16,185,129,.22)!important;}
+#worldView tr.world-has-result td:first-child{border-left:4px solid #10b981!important;border-radius:12px 0 0 12px!important;}
+#worldView tr.world-has-result td:last-child{border-radius:0 12px 12px 0!important;}
+.world-real-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.28);color:#065f46;font-weight:900;font-size:12px;margin-top:4px;}
+.mi-info{font-size:0!important;width:30px!important;height:30px!important;border-radius:999px!important;background:linear-gradient(135deg,#dbeafe,#eff6ff)!important;border:1px solid #93c5fd!important;color:#0b3f91!important;box-shadow:0 6px 16px rgba(37,99,235,.16)!important;}
+.mi-info:before{content:'ℹ️';font-size:17px!important;line-height:1!important;}
+.mi-mundial-kpi b .kpi-sub{display:block;font-size:15px;font-weight:900;color:#64748b;margin-top:2px;}
+.world-calendar-modal{position:fixed;inset:0;background:rgba(2,6,23,.62);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;}
+.world-calendar-card{width:min(980px,96vw);max-height:88vh;overflow:auto;background:linear-gradient(180deg,#ffffff,#eff6ff);border-radius:28px;padding:20px;box-shadow:0 24px 80px rgba(2,6,23,.35);border:1px solid rgba(147,197,253,.65);}
+.world-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.world-calendar-head h2{margin:0;color:#0b3f91;font-size:clamp(24px,4vw,38px);}
+.world-calendar-tools{display:grid;grid-template-columns:1fr auto auto;gap:10px;margin:12px 0;}
+.world-calendar-list{display:grid;gap:12px;}
+.world-game-card{border:1px solid rgba(147,197,253,.65);border-radius:18px;padding:14px;background:rgba(255,255,255,.88);box-shadow:0 10px 26px rgba(15,23,42,.08);}
+.world-game-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:900;color:#0f172a;margin-bottom:8px;}
+.world-game-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;text-align:center;font-size:18px;font-weight:1000;}
+.world-game-vs .score-real{font-size:24px;color:#0b3f91;}
+body.dark-mode .world-calendar-card{background:linear-gradient(180deg,#111827,#020617);color:#e5e7eb;border-color:rgba(59,130,246,.5)}
+body.dark-mode .world-game-card{background:rgba(15,23,42,.88);border-color:rgba(59,130,246,.45)}
+body.dark-mode .world-game-top,body.dark-mode .world-calendar-head h2{color:#e5e7eb}
+body.dark-mode .world-real-pill{background:rgba(16,185,129,.18);color:#bbf7d0;}
+@media(max-width:700px){.mi-mundial-title .fs-world-ball-badge{width:64px!important;height:64px!important;min-width:64px!important}.world-calendar-tools{grid-template-columns:1fr}.world-game-vs{grid-template-columns:1fr;gap:6px}.world-game-vs .score-real{font-size:22px}}
+</style>
 </head>
 <body>
 
@@ -5852,6 +5885,7 @@ body.dark-mode .mi-info{
               <div class="field-mini"><label>Equipo</label><select id="worldTeamFilter"><option value="">Todos los equipos</option></select></div>
               <div class="field-mini"><label>Fecha</label><select id="worldDateFilter"><option value="">Todas las fechas</option></select></div>
               <div class="field-mini"><label>Ronda / Grupo</label><select id="worldRoundFilter"><option value="">Todas las rondas</option></select></div>
+              <div class="field-mini"><label>Resultado oficial</label><select id="worldResultFilter"><option value="">Todos</option><option value="with">Con resultado</option><option value="pending">Sin resultado</option></select></div>
               <div class="field-mini"><label>Buscar</label><input id="worldSearchFilter" placeholder="Usuario, equipo, estadio..."></div>
             </div>
           </details>
@@ -5877,7 +5911,7 @@ body.dark-mode .mi-info{
       $('worldSummaryBtn')?.addEventListener('click',showMiMundialSummary);
       document.querySelectorAll('#worldView .mi-info').forEach(i=>{ if(i.dataset.bound) return; i.dataset.bound='1'; i.addEventListener('click',(ev)=>{ ev.preventDefault(); ev.stopPropagation(); alert(i.dataset.tip || i.title || 'Información de cálculo.'); }); });
       $('worldMoreBtn')?.addEventListener('click',()=>{ worldState.visible += getWorldStep(); renderMiMundialRows(); });
-      ['worldUserFilter','worldTeamFilter','worldDateFilter','worldRoundFilter','worldSearchFilter'].forEach(id=>{
+      ['worldUserFilter','worldTeamFilter','worldDateFilter','worldRoundFilter','worldResultFilter','worldSearchFilter'].forEach(id=>{
         $(id)?.addEventListener(id==='worldSearchFilter'?'input':'change',()=>{ worldState.visible=getWorldBatchSize(); applyMiMundialFilters(); });
       });
       document.querySelectorAll('#worldView th[data-world-sort]').forEach(th=>{
@@ -5897,6 +5931,37 @@ body.dark-mode .mi-info{
   function getMatchById(id){
     const sid=safe(id);
     return (state.matches||[]).find(m=>safe(typeof matchId==='function'?matchId(m):(m.Partido_ID||m.Partido_ID))===sid) || null;
+  }
+
+
+  function worldFrontendName(row){
+    const usuario=safe(row && row.usuario);
+    const participante=safe(row && row.participante);
+    const looksGeneric = /^user/i.test(usuario) || /^user/i.test(participante);
+    if(!looksGeneric) return participante || usuario || 'Participante';
+    const users = state.users || [];
+    const found = users.find(u=>safe(typeof pick==='function'?pick(u,['Usuario'],''):(u.Usuario||u.usuario||''))===usuario);
+    if(found){
+      const name=safe(typeof pick==='function'?pick(found,['Nombre_Completo','Nombre Completo','Nombre','Nombre_Usuario'],''):(found.Nombre_Completo||found.Nombre||found.Nombre_Usuario||''));
+      if(name) return name;
+    }
+    return participante || usuario || 'Participante';
+  }
+
+  function worldResultInfo(partido){
+    const sid=safe(partido);
+    const r=(state.results||[]).find(x=>safe(typeof pick==='function'?pick(x,['Partido_ID','Partido ID','ID_Partido','Partido'],''):(x.Partido_ID||x.Partido||x.ID_Partido||''))===sid);
+    if(!r) return null;
+    const l=safe(typeof pick==='function'?pick(r,['Local','Marcador_Local','MarcadorLocal','Resultado_Local','Goles_Local'],''):(r.Local||r.Marcador_Local||r.Resultado_Local||r.Goles_Local||''));
+    const v=safe(typeof pick==='function'?pick(r,['Visitante','Marcador_Visitante','MarcadorVisitante','Resultado_Visitante','Goles_Visitante'],''):(r.Visitante||r.Marcador_Visitante||r.Resultado_Visitante||r.Goles_Visitante||''));
+    return {row:r, local:l, visitante:v, has:l!=='' && v!==''};
+  }
+
+  function worldPointsForName(nameOrUser){
+    const key=norm(nameOrUser);
+    const rows=state.ranking||[];
+    const found=rows.find(r=>[r.name,r.usuario,r.uid,r.Nombre_Usuario].some(x=>norm(safe(x))===key));
+    return Number(found && (found.points||found.Puntos||found.puntos))||0;
   }
 
   function hydrateWorldRows(rows){
@@ -5922,13 +5987,14 @@ body.dark-mode .mi-info{
         estadio:safe((m && getStadium(m)) || r.Estadio || ''),
         actualizacion:safe(r.Fecha_Actualizacion || r.Fecha_Registro || r.Actualizacion || '')
       };
+      row.participante=worldFrontendName(row);
       const k=[row.partido,row.marcadorLocal,row.marcadorVisitante].join('|');
       counts[k]=(counts[k]||0)+1;
       row._countKey=k;
       row._search=norm([row.participante,row.usuario,row.partido,row.equipoLocal,row.equipoVisitante,row.fecha,row.hora,row.ronda,row.estadio,row.marcadorLocal,row.marcadorVisitante].join(' '));
       return row;
     });
-    hydrated.forEach(r=>r.coincidencias=Math.max(0,(counts[r._countKey]||1)-1));
+    hydrated.forEach(r=>{ const c=(counts[r._countKey]||1); r.coincidencias=(c>1?c:0); });
     sortWorldRows(hydrated, 'participante', 'asc');
     return hydrated;
   }
@@ -5990,6 +6056,13 @@ body.dark-mode .mi-info{
     fillSelect('worldTeamFilter',worldState.rows.flatMap(r=>[r.equipoLocal,r.equipoVisitante]),'Todos los equipos');
     fillSelect('worldDateFilter',worldState.rows.map(r=>r.fecha),'Todas las fechas');
     fillSelect('worldRoundFilter',worldState.rows.map(r=>r.ronda),'Todas las rondas');
+    const s=$('worldUserFilter');
+    const admin = (typeof isCurrentAdmin==='function' && isCurrentAdmin()) || (typeof isAdmin==='function' && isAdmin());
+    if(s && !admin && !Array.from(s.selectedOptions).some(o=>o.value)){
+      const mine=currentUserWorldRows();
+      const names=[...new Set(mine.map(r=>r.participante).filter(Boolean))];
+      Array.from(s.options).forEach(o=>{ o.selected = names.includes(o.value); });
+    }
   }
 
   function currentWorldUserKeys(){
@@ -6006,9 +6079,8 @@ body.dark-mode .mi-info{
   }
 
   function officialResultForWorldMatch(partido){
-    const sid=safe(partido);
-    const rows=state.results || [];
-    return rows.find(x=>safe(typeof pick==='function'?pick(x,['Partido_ID','Partido ID','ID_Partido','Partido'],''):(x.Partido_ID||x.Partido||''))===sid) || null;
+    const info=worldResultInfo(partido);
+    return info && info.has ? info.row : null;
   }
 
   function currentUserWorldRows(){
@@ -6041,31 +6113,52 @@ body.dark-mode .mi-info{
 
   function updateMiMundialInsights(){
     const filtered = worldState.filtered || [];
-    const filteredMatchIds = new Set(filtered.map(r=>safe(r.partido)).filter(Boolean));
-    const mineAll = currentUserWorldRows();
-    const mine = mineAll.filter(r=>filteredMatchIds.has(safe(r.partido)));
-    const myTotal=mine.length;
-    let sameOthers=0, different=0, withResult=0;
-
-    mine.forEach(my=>{
-      const same = filtered.filter(r=>
-        safe(r.partido)===safe(my.partido) &&
-        safe(r.marcadorLocal)===safe(my.marcadorLocal) &&
-        safe(r.marcadorVisitante)===safe(my.marcadorVisitante) &&
-        !rowSameWorldUser(r,my)
-      ).length;
-      sameOthers += Math.max(0,same);
-      if(same<=0) different += 1;
-      if(officialResultForWorldMatch(my.partido)) withResult += 1;
+    const total = filtered.length;
+    const pool = (worldState.rows||[]).filter(r=>{
+      const team=safe($('worldTeamFilter')?.value);
+      const date=safe($('worldDateFilter')?.value);
+      const round=safe($('worldRoundFilter')?.value);
+      const resultStatus=safe($('worldResultFilter')?.value);
+      const q=norm($('worldSearchFilter')?.value);
+      if(team && r.equipoLocal!==team && r.equipoVisitante!==team) return false;
+      if(date && r.fecha!==date) return false;
+      if(round && r.ronda!==round) return false;
+      const hasResult=!!officialResultForWorldMatch(r.partido);
+      if(resultStatus==='with' && !hasResult) return false;
+      if(resultStatus==='pending' && hasResult) return false;
+      if(q && !r._search.includes(q)) return false;
+      return true;
     });
+    const counts={};
+    pool.forEach(r=>{ const k=[safe(r.partido),safe(r.marcadorLocal),safe(r.marcadorVisitante)].join('|'); counts[k]=(counts[k]||0)+1; });
+    let repeated=0, different=0, pending=0;
+    filtered.forEach(r=>{
+      const k=[safe(r.partido),safe(r.marcadorLocal),safe(r.marcadorVisitante)].join('|');
+      const c=counts[k]||1;
+      if(c>1) repeated++; else different++;
+      if(!officialResultForWorldMatch(r.partido)) pending++;
+    });
+    const repeatedPct=total?Math.round((repeated/total)*100):0;
+    const differentPct=total?Math.round((different/total)*100):0;
 
-    const differentPct=myTotal ? Math.round((different/myTotal)*100) : 0;
-    const remainingPct=myTotal ? Math.round(((myTotal-withResult)/myTotal)*100) : 0;
-    const chance=myTotal ? Math.max(0,Math.min(99,Math.round((differentPct*.55)+(remainingPct*.35)+10))) : 0;
+    const users=selectedWorldUsers();
+    let selectedName = users.length===1 ? users[0] : '';
+    if(!selectedName && !(typeof isCurrentAdmin==='function' && isCurrentAdmin()) && filtered.length){ selectedName=filtered[0].participante; }
+    const currentPts = selectedName ? worldPointsForName(selectedName) : 0;
+    const leaderPts = Math.max(0,...(state.ranking||[]).map(r=>Number(r.points||r.Puntos||r.puntos)||0));
+    const maxPossible = currentPts + (pending*3);
+    let chance = 0;
+    if(total && selectedName){
+      if(leaderPts<=0) chance = pending ? 90 : 0;
+      else chance = Math.max(0,Math.min(99,Math.round((maxPossible/Math.max(leaderPts,1))*100)));
+    }else if(total){
+      chance = Math.max(0,Math.min(99,Math.round((differentPct*.45)+(Math.min(100,(pending/Math.max(total,1))*100)*.45)+10)));
+    }
+
     const a=$('worldMyMatches'), b=$('worldUniquePicks'), c=$('worldUpChance');
-    if(a) a.textContent=String(sameOthers);
-    if(b) b.textContent=differentPct+'%';
-    if(c) c.textContent=chance+'%';
+    if(a) a.innerHTML=String(repeated)+`<span class="kpi-sub">${repeatedPct}% de ${total} pronósticos</span>`;
+    if(b) b.innerHTML=String(different)+`<span class="kpi-sub">${differentPct}% de ${total} pronósticos</span>`;
+    if(c) c.innerHTML=String(chance)+'%';
     const box=$('worldInsights');
     if(box) box.classList.toggle('hidden', !worldState.loaded);
   }
@@ -6161,12 +6254,16 @@ body.dark-mode .mi-info{
     const team=safe($('worldTeamFilter')?.value);
     const date=safe($('worldDateFilter')?.value);
     const round=safe($('worldRoundFilter')?.value);
+    const resultStatus=safe($('worldResultFilter')?.value);
     const q=norm($('worldSearchFilter')?.value);
     worldState.filtered=worldState.rows.filter(r=>{
       if(users.length && !users.includes(r.participante)) return false;
       if(team && r.equipoLocal!==team && r.equipoVisitante!==team) return false;
       if(date && r.fecha!==date) return false;
       if(round && r.ronda!==round) return false;
+      const hasResult=!!officialResultForWorldMatch(r.partido);
+      if(resultStatus==='with' && !hasResult) return false;
+      if(resultStatus==='pending' && hasResult) return false;
       if(q && !r._search.includes(q)) return false;
       return true;
     });
@@ -6184,17 +6281,17 @@ body.dark-mode .mi-info{
     }else if(!rows.length){
       body.innerHTML='<tr><td colspan="9" class="mi-mundial-empty">No hay marcadores con los filtros seleccionados.</td></tr>';
     }else{
-      body.innerHTML=rows.map(r=>`<tr>
+      body.innerHTML=rows.map(r=>{ const ri=worldResultInfo(r.partido); const has=ri&&ri.has; return `<tr class="${has?'world-has-result':''}">
         <td><b>${escapeHtml(r.participante)}</b>${r.usuario?`<br><small>${escapeHtml(r.usuario)}</small>`:''}</td>
         <td>${escapeHtml(r.fecha)}${r.hora?`<br><small>${escapeHtml(r.hora)}</small>`:''}</td>
         <td>${escapeHtml(r.ronda)}</td>
-        <td>${escapeHtml(r.partido)}</td>
+        <td>${escapeHtml(r.partido)}${has?`<br><span class="world-real-pill">✅ Resultado ${escapeHtml(ri.local)}-${escapeHtml(ri.visitante)}</span>`:''}</td>
         <td class="mi-mundial-eq">${typeof teamLabel==='function'?teamLabel(r.equipoLocal):escapeHtml(r.equipoLocal)}</td>
         <td class="mi-mundial-score">${escapeHtml(r.marcadorLocal)} - ${escapeHtml(r.marcadorVisitante)}</td>
         <td class="mi-mundial-eq">${typeof teamLabel==='function'?teamLabel(r.equipoVisitante):escapeHtml(r.equipoVisitante)}</td>
-        <td><span class="mi-mundial-same">👥 ${r.coincidencias} igual</span></td>
+        <td><span class="mi-mundial-same">👥 ${r.coincidencias}</span></td>
         <td>${escapeHtml(r.actualizacion)}</td>
-      </tr>`).join('');
+      </tr>`; }).join('');
     }
     const status=$('worldStatus');
     if(status){
@@ -6211,7 +6308,7 @@ body.dark-mode .mi-info{
   }
 
   function clearMiMundialFilters(){
-    ['worldUserFilter','worldTeamFilter','worldDateFilter','worldRoundFilter','worldSearchFilter'].forEach(id=>{
+    ['worldUserFilter','worldTeamFilter','worldDateFilter','worldRoundFilter','worldResultFilter','worldSearchFilter'].forEach(id=>{
       const x=$(id); if(!x) return;
       if(x.multiple) Array.from(x.options).forEach(o=>o.selected=false);
       else x.value='';
@@ -6353,6 +6450,123 @@ body.dark-mode .mi-info{
   },true);
   document.addEventListener('DOMContentLoaded',function(){ fsWorldVisualSync(); setTimeout(fsWorldVisualSync,600); });
   window.addEventListener('load',function(){ fsWorldVisualSync(); var n=0,t=setInterval(function(){fsWorldVisualSync(); if(++n>10) clearInterval(t);},500); });
+})();
+</script>
+
+
+<script id="miMundialFinalFunctionalPatch">
+/* =========================================================
+   PATCH FINAL Mi Mundial + Dashboard
+   - Corrige tab Usuarios admin.
+   - Agrega modal de resultados/calendario.
+   - Agrega columna de resultados cargados en tabla de posiciones.
+   No toca guardado, predicciones ni Apps Script.
+========================================================= */
+(function(){
+  const $=id=>document.getElementById(id);
+  const safe=v=>(v==null?'':String(v)).trim();
+  function getPick(obj,keys){
+    if(typeof pick==='function') return pick(obj,keys,'');
+    for(const k of keys){ if(obj && obj[k]!=null) return obj[k]; }
+    return '';
+  }
+  function resultInfo(pid){
+    const sid=safe(pid);
+    const r=(state.results||[]).find(x=>safe(getPick(x,['Partido_ID','Partido ID','ID_Partido','Partido']))===sid);
+    if(!r) return null;
+    const l=safe(getPick(r,['Local','Marcador_Local','MarcadorLocal','Resultado_Local','Goles_Local']));
+    const v=safe(getPick(r,['Visitante','Marcador_Visitante','MarcadorVisitante','Resultado_Visitante','Goles_Visitante']));
+    return {row:r, local:l, visitante:v, has:l!==''&&v!==''};
+  }
+  function matchIdSafe(m,i){ try{return safe(typeof matchId==='function'?matchId(m):getPick(m,['Partido_ID','Partido ID','ID_Partido','Partido','ID'])) || String(i+1);}catch(e){return String(i+1);} }
+  function teamLocal(m){ try{return safe(typeof getLocalTeam==='function'?getLocalTeam(m):getPick(m,['Local','Equipo_Local','Local_Nombre']));}catch(e){return '';} }
+  function teamVisit(m){ try{return safe(typeof getVisitTeam==='function'?getVisitTeam(m):getPick(m,['Visitante','Equipo_Visitante','Visitante_Nombre']));}catch(e){return '';} }
+  function matchDate(m){ try{return safe(typeof getDate==='function'?getDate(m):getPick(m,['Fecha','Date']));}catch(e){return '';} }
+  function matchHour(m){ try{return safe(typeof getHour==='function'?getHour(m):getPick(m,['Hora','Time']));}catch(e){return '';} }
+  function matchRound(m){ try{return safe(typeof getRound==='function'?getRound(m):getPick(m,['Ronda','Grupo','Fase']));}catch(e){return '';} }
+  function teamPretty(n){ try{return typeof teamLabel==='function'?teamLabel(n):safe(n);}catch(e){return safe(n);} }
+
+  function forceUsersTab(){
+    try{
+      document.body.classList.remove('mi-world-active');
+      ['matchesView','dashboardView','worldView','progressView'].forEach(id=>$(id)?.classList.add('hidden'));
+      $('usersView')?.classList.remove('hidden');
+      ['tabMatches','tabDash','tabWorld','tabProgress'].forEach(id=>$(id)?.classList.remove('active'));
+      $('tabUsers')?.classList.add('active');
+      if(typeof loadAdminUsers==='function') loadAdminUsers();
+    }catch(e){console.warn('No se pudo activar Usuarios',e);}
+  }
+  document.addEventListener('click',e=>{ if(e.target && (e.target.id==='tabUsers' || (e.target.closest&&e.target.closest('#tabUsers')))){ setTimeout(forceUsersTab,20); setTimeout(forceUsersTab,180); } },true);
+
+  function ensureCalendarModal(){
+    if($('worldCalendarModal')) return;
+    const div=document.createElement('div');
+    div.id='worldCalendarModal';
+    div.className='world-calendar-modal hidden';
+    div.innerHTML=`<div class="world-calendar-card">
+      <div class="world-calendar-head"><h2>🛰️ Centro Mundialista</h2><button type="button" class="btn-light" id="worldCalendarClose">Cerrar</button></div>
+      <p class="sub">Consulta marcadores oficiales cargados y calendario de próximos partidos.</p>
+      <div class="world-calendar-tools"><select id="worldCalendarDate"><option value="">Todas las fechas</option></select><select id="worldCalendarStatus"><option value="">Todos</option><option value="done">Con resultado</option><option value="pending">Por jugar / sin resultado</option></select><button type="button" class="btn" id="worldCalendarRefresh">Actualizar vista</button></div>
+      <div id="worldCalendarList" class="world-calendar-list"></div>
+    </div>`;
+    document.body.appendChild(div);
+    $('worldCalendarClose')?.addEventListener('click',()=>div.classList.add('hidden'));
+    $('worldCalendarRefresh')?.addEventListener('click',renderCalendarModal);
+    $('worldCalendarDate')?.addEventListener('change',renderCalendarModal);
+    $('worldCalendarStatus')?.addEventListener('change',renderCalendarModal);
+  }
+  function openCalendarModal(){ ensureCalendarModal(); populateCalendarDates(); renderCalendarModal(); $('worldCalendarModal')?.classList.remove('hidden'); }
+  function populateCalendarDates(){
+    const s=$('worldCalendarDate'); if(!s) return;
+    const val=s.value;
+    const dates=[...new Set((state.matches||[]).map(matchDate).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'es',{numeric:true}));
+    s.innerHTML='<option value="">Todas las fechas</option>'+dates.map(d=>`<option value="${d}">${d}</option>`).join('');
+    if(dates.includes(val)) s.value=val;
+  }
+  function renderCalendarModal(){
+    const list=$('worldCalendarList'); if(!list) return;
+    const date=safe($('worldCalendarDate')?.value), status=safe($('worldCalendarStatus')?.value);
+    let rows=(state.matches||[]).map((m,i)=>{ const pid=matchIdSafe(m,i); const ri=resultInfo(pid); return {m,i,pid,ri,date:matchDate(m),hour:matchHour(m),round:matchRound(m),local:teamLocal(m),visit:teamVisit(m)}; });
+    rows=rows.filter(r=>{ if(date && r.date!==date) return false; if(status==='done' && !(r.ri&&r.ri.has)) return false; if(status==='pending' && (r.ri&&r.ri.has)) return false; return true; });
+    rows.sort((a,b)=>String(a.date+' '+a.hour).localeCompare(String(b.date+' '+b.hour),'es',{numeric:true}));
+    if(!rows.length){ list.innerHTML='<div class="notice">No hay partidos con esos filtros.</div>'; return; }
+    list.innerHTML=rows.slice(0,120).map(r=>`<div class="world-game-card">
+      <div class="world-game-top"><span>📅 ${r.date||'Sin fecha'} · ${r.hour||''}</span><span>${r.round||''}</span></div>
+      <div class="world-game-vs"><div>${teamPretty(r.local)}</div><div class="score-real">${r.ri&&r.ri.has?`${r.ri.local} - ${r.ri.visitante}`:'VS'}</div><div>${teamPretty(r.visit)}</div></div>
+    </div>`).join('');
+  }
+  function ensureCalendarButtons(){
+    const dashHero=document.querySelector('#dashboardView .hero > div:last-child') || document.querySelector('#dashboardView .hero');
+    if(dashHero && !$('dashboardCalendarBtn')){
+      const b=document.createElement('button'); b.type='button'; b.id='dashboardCalendarBtn'; b.className='btn-light'; b.textContent='🛰️ Resultados y calendario'; b.addEventListener('click',openCalendarModal); dashHero.appendChild(b);
+    }
+    const worldActions=document.querySelector('#worldView .mi-mundial-actions');
+    if(worldActions && !$('worldCalendarBtn')){
+      const b=document.createElement('button'); b.type='button'; b.id='worldCalendarBtn'; b.className='btn-light'; b.textContent='🛰️ Resultados'; b.addEventListener('click',openCalendarModal); worldActions.appendChild(b);
+    }
+  }
+
+  function patchRankingResultsColumn(){
+    try{
+      const table=$('rankingBody')?.closest('table'); if(!table) return;
+      const resultCount=(state.results||[]).filter(r=>{ const pid=getPick(r,['Partido_ID','Partido ID','ID_Partido','Partido']); return pid!==''; }).length;
+      const head=table.querySelector('thead tr');
+      if(head && !head.querySelector('[data-results-col="1"]')){ const th=document.createElement('th'); th.dataset.resultsCol='1'; th.textContent='Resultados'; head.appendChild(th); }
+      table.querySelectorAll('tbody tr').forEach(tr=>{
+        let td=tr.querySelector('[data-results-col="1"]');
+        if(!td){ td=document.createElement('td'); td.dataset.resultsCol='1'; tr.appendChild(td); }
+        td.textContent=String(resultCount);
+      });
+    }catch(e){}
+  }
+
+  const oldRender=window.renderDashboard || (typeof renderDashboard==='function'?renderDashboard:null);
+  if(typeof oldRender==='function' && !oldRender.__worldFinalWrapped){
+    window.renderDashboard = renderDashboard = function(){ const r=oldRender.apply(this,arguments); setTimeout(()=>{patchRankingResultsColumn(); ensureCalendarButtons();},80); return r; };
+    window.renderDashboard.__worldFinalWrapped=true;
+  }
+  document.addEventListener('DOMContentLoaded',()=>{ ensureCalendarButtons(); setTimeout(()=>{ensureCalendarButtons(); patchRankingResultsColumn();},600); });
+  window.addEventListener('load',()=>{ let n=0,t=setInterval(()=>{ensureCalendarButtons(); patchRankingResultsColumn(); if(++n>8) clearInterval(t);},700); });
 })();
 </script>
 
