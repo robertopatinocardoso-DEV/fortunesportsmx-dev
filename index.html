@@ -6785,5 +6785,492 @@ body.dark-mode .mi-info{
 })();
 </script>
 
+<!-- CODEX CLEAN FASE 2 - Arena agregada sobre la version publicada estable -->
+<style id="codexCleanArenaStyles">
+  #tabArena{background:white;color:#0f172a;border:1px solid #e2e8f0;box-shadow:0 8px 20px rgba(15,23,42,.07)}
+  #tabArena.active{background:linear-gradient(135deg,#0077ff,#00a86b);color:#fff;border-color:transparent}
+  #arenaView{display:block}
+  #arenaView.hidden{display:none!important}
+  .arena-shell{display:grid;gap:18px}
+  .arena-hero{background:linear-gradient(135deg,#ffffff,#eef6ff);border:1px solid #dbeafe;border-radius:28px;padding:22px;box-shadow:0 14px 38px rgba(6,59,142,.09);display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+  .arena-hero h1{font-size:30px;color:var(--azul,#003b8f);margin:0}
+  .arena-hero p{color:#475569;line-height:1.45;margin-top:6px}
+  .arena-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 12px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;font-weight:950;font-size:12px}
+  .arena-grid{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:14px;align-items:stretch}
+  .arena-card{background:#fff;border:1px solid #dbeafe;border-radius:22px;padding:16px;box-shadow:0 12px 28px rgba(15,23,42,.08);display:flex;flex-direction:column;min-height:245px}
+  .arena-icon{font-size:32px;margin-bottom:8px}
+  .arena-card h2{font-size:19px;color:#003b8f;margin:0 0 8px;min-height:46px;line-height:1.18}
+  .arena-card p{color:#475569;font-weight:800;font-size:13px;line-height:1.35;margin:0 0 12px;min-height:54px}
+  .arena-price{margin-top:auto;font-weight:1000;color:#00a86b;border-top:1px solid #edf2f7;padding-top:12px}
+  .arena-card button,.arena-btn{margin-top:12px;border:0;border-radius:999px;padding:11px 14px;font-weight:1000;cursor:pointer;background:linear-gradient(135deg,#0077ff,#00a86b);color:#fff;min-height:42px;width:100%;box-shadow:0 10px 22px rgba(0,119,255,.16)}
+  .arena-note{background:#eef6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:18px;padding:14px 16px;font-weight:900}
+  .arena-panel{background:#fff;border:1px solid #dbeafe;border-radius:24px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.08)}
+  .arena-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .arena-toolbar input,.arena-toolbar select{border:1px solid #bfdbfe;border-radius:14px;padding:11px 12px;font-weight:900;min-width:210px;background:#fff}
+  .arena-progress-wrap{min-width:280px;flex:1;max-width:560px}
+  .arena-progress-label{display:flex;justify-content:space-between;font-weight:1000;margin-bottom:8px}
+  .arena-progress{height:18px;border-radius:999px;background:#dbeafe;overflow:hidden}
+  .arena-progress-bar{height:100%;width:0;background:linear-gradient(90deg,#00a86b,#ffd166,#ef476f);transition:.25s}
+  .arena-ko-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
+  .arena-ko-card{border:1px solid #dbeafe;border-radius:20px;padding:14px;background:linear-gradient(180deg,#fff,#f8fbff);min-width:0;overflow:hidden}
+  .arena-ko-head{display:flex;justify-content:space-between;gap:10px;color:#475569;font-weight:900;font-size:12px;margin-bottom:12px}
+  .arena-ko-vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;min-width:0}
+  .arena-team{border:1px solid #dbeafe;border-radius:16px;padding:10px;text-align:center;min-height:92px;display:grid;place-items:center;font-weight:1000;background:#fff;min-width:0;overflow:hidden}
+  .arena-team div{min-width:0;max-width:100%;overflow-wrap:anywhere;line-height:1.14}
+  .arena-team small{display:inline-flex;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:3px 7px;margin-top:6px;font-size:10px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+  .arena-score{display:flex;align-items:center;justify-content:center;gap:7px;font-weight:1000;min-width:116px}
+  .arena-score input{width:48px;height:48px;border:1px solid #cbd5e1;border-radius:15px;text-align:center;font-size:20px;font-weight:1000;min-width:0}
+  .arena-advance{margin-top:12px;display:grid;gap:8px}
+  .arena-advance select{border:1px solid #bfdbfe;border-radius:14px;padding:10px;font-weight:900;background:#fff}
+  .arena-penalty{display:none;margin-top:8px;border:1px dashed #f59e0b;border-radius:14px;padding:10px;background:#fff7ed;max-width:100%;overflow:hidden}
+  .arena-penalty.open{display:block}
+  .arena-penalty .arena-score{min-width:0;width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+  .arena-penalty .arena-score input{width:100%;max-width:150px;justify-self:center;font-size:14px}
+  .arena-status{margin-top:10px;font-weight:900;color:#475569}
+  .arena-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:2500;display:flex;align-items:center;justify-content:center;padding:18px}
+  .arena-modal-backdrop.hidden{display:none!important}
+  .arena-modal{background:#fff;border-radius:24px;border:1px solid #dbeafe;box-shadow:0 30px 90px rgba(0,0,0,.32);max-width:560px;width:100%;padding:22px}
+  .arena-modal h2{color:#003b8f;margin-bottom:8px}
+  .arena-modal p{color:#475569;line-height:1.45}
+  .arena-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .arena-modal-actions button{flex:1;min-width:180px;border:0;border-radius:999px;padding:12px 14px;font-weight:1000;cursor:pointer}
+  .arena-modal-primary{background:linear-gradient(135deg,#0077ff,#00a86b);color:#fff}
+  .arena-modal-light{background:#eef6ff;color:#1e3a8a}
+  body.dark-mode #tabArena,body.dark-mode .arena-card,body.dark-mode .arena-panel,body.dark-mode .arena-team{background:#0f172a;color:#e5e7eb;border-color:#334155}
+  body.dark-mode .arena-hero{background:linear-gradient(135deg,#0f172a,#111827);border-color:#334155}
+  body.dark-mode .arena-hero h1,body.dark-mode .arena-card h2{color:#bfdbfe}
+  body.dark-mode .arena-hero p,body.dark-mode .arena-card p{color:#cbd5e1}
+  @media(max-width:1100px){.arena-grid{grid-template-columns:repeat(2,minmax(180px,1fr))}}
+  @media(max-width:700px){.arena-grid,.arena-ko-grid{grid-template-columns:1fr}.arena-ko-vs{grid-template-columns:1fr}.arena-score{justify-content:center}.arena-toolbar input,.arena-toolbar select,.arena-toolbar button{width:100%;min-width:100%}.arena-progress-wrap{min-width:100%}}
+</style>
+<script id="codexCleanArenaScript">
+(function(){
+  if(window.__codexCleanArenaLoaded) return;
+  window.__codexCleanArenaLoaded = true;
+
+  const API = 'https://script.google.com/macros/s/AKfycbxDsjrY_CAiRddxrXQgFmRWpHBFL_eCf1afiOuJFtl1cB998Qw3qHEDKinuOk3YxeBGJg/exec';
+  const ELIMINATORIAS_START_AT = new Date('2026-06-27T23:59:00-06:00');
+  const $ = id => document.getElementById(id);
+  const txt = value => String(value == null ? '' : value).trim();
+  const norm = value => txt(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+  function escapeHtml(value){
+    return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function getToken(){
+    return (window.state && window.state.authToken) || localStorage.getItem('quinielaToken') || '';
+  }
+
+  function pick(obj, keys, fallback=''){
+    try{ if(typeof window.pick === 'function') return window.pick(obj || {}, keys, fallback); }catch(e){}
+    for(const key of keys){
+      if(obj && obj[key] != null && txt(obj[key]) !== '') return obj[key];
+      const underscored = String(key).replaceAll(' ','_');
+      if(obj && obj[underscored] != null && txt(obj[underscored]) !== '') return obj[underscored];
+    }
+    return fallback;
+  }
+
+  function jsonp(params){
+    return new Promise(resolve => {
+      const cb = 'arena_cb_' + Date.now() + '_' + Math.floor(Math.random()*99999);
+      const script = document.createElement('script');
+      const timer = setTimeout(()=>{ cleanup(); resolve({status:'error',message:'Tiempo agotado'}); }, 14000);
+      function cleanup(){
+        clearTimeout(timer);
+        try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+        if(script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cb] = data => { cleanup(); resolve(data || {}); };
+      script.onerror = () => { cleanup(); resolve({status:'error',message:'No se pudo consultar sandbox'}); };
+      script.src = API + '?' + new URLSearchParams({...params, callback:cb, t:Date.now()}).toString();
+      document.body.appendChild(script);
+    });
+  }
+
+  async function postSandbox(action, payload){
+    try{
+      await fetch(API, {
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action, ...payload})
+      });
+      return {status:'ok'};
+    }catch(error){
+      return {status:'error',message:error.message};
+    }
+  }
+
+  function eliminatoriasNotStarted(){
+    return Date.now() < ELIMINATORIAS_START_AT.getTime();
+  }
+
+  function currentUser(){
+    try{ return (window.state && window.state.currentUser) || JSON.parse(localStorage.getItem('quinielaUser') || '{}'); }
+    catch(e){ return {}; }
+  }
+
+  function ensureArenaRegistrationModal(){
+    if($('arenaRegisterModal')) return;
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="arenaRegisterModal" class="arena-modal-backdrop hidden">
+        <div class="arena-modal">
+          <h2>Registro a Arena Mundialista</h2>
+          <p>¿Quieres registrarte con tu mismo usuario o prefieres crear un usuario nuevo para la Arena?</p>
+          <div id="arenaRegisterStatus" class="arena-status"></div>
+          <div class="arena-modal-actions">
+            <button type="button" class="arena-modal-primary" id="arenaRegisterSameUser">Usar mi mismo usuario</button>
+            <button type="button" class="arena-modal-light" id="arenaRegisterNewUser">Crear usuario nuevo</button>
+            <button type="button" class="arena-modal-light" id="arenaRegisterCancel">Cancelar</button>
+          </div>
+        </div>
+      </div>`);
+    $('arenaRegisterCancel')?.addEventListener('click', closeArenaRegistration);
+    $('arenaRegisterModal')?.addEventListener('click', event => { if(event.target.id === 'arenaRegisterModal') closeArenaRegistration(); });
+    $('arenaRegisterNewUser')?.addEventListener('click', () => {
+      closeArenaRegistration();
+      if(typeof window.toggleAuth === 'function') {
+        $('app')?.classList.add('hidden');
+        $('loginScreen')?.classList.remove('hidden');
+        window.toggleAuth('register');
+      } else {
+        alert('Para crear un usuario nuevo, sal de la sesión actual y usa Solicitar registro.');
+      }
+    });
+    $('arenaRegisterSameUser')?.addEventListener('click', registerArenaSameUser);
+  }
+
+  function openArenaRegistration(){
+    ensureArenaRegistrationModal();
+    const status = $('arenaRegisterStatus');
+    if(status) status.textContent = '';
+    $('arenaRegisterModal')?.classList.remove('hidden');
+  }
+
+  function closeArenaRegistration(){
+    $('arenaRegisterModal')?.classList.add('hidden');
+  }
+
+  async function registerArenaSameUser(){
+    const status = $('arenaRegisterStatus');
+    const token = getToken();
+    if(!token){
+      if(status) status.textContent = 'Inicia sesión antes de registrarte en Arena.';
+      return;
+    }
+    if(status) status.textContent = 'Registrando acceso...';
+    await postSandbox('registerArenaSameUser', {token, modulo:'ARENA'});
+    if(status) status.textContent = 'Registro enviado. Tu acceso a Arena queda pendiente de confirmación.';
+  }
+
+  function isAdmin(){
+    const user = currentUser();
+    const profile = norm(typeof window.getUserProfile === 'function' ? window.getUserProfile(user) : pick(user,['Perfil del Usuario','Perfil_del_Usuario','Rol','Perfil']));
+    return profile === 'administrador' || profile === 'admin';
+  }
+
+  function ensureArenaTab(){
+    const tabs = document.querySelector('.tabs');
+    if(!tabs || $('tabArena')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'tabArena';
+    btn.className = 'tab';
+    btn.textContent = '🏟️ Arena Mundialista';
+    const dash = $('tabDash');
+    if(dash && dash.parentNode === tabs) dash.insertAdjacentElement('afterend', btn);
+    else tabs.appendChild(btn);
+    btn.addEventListener('click', showArenaMenu);
+  }
+
+  function ensureArenaView(){
+    const main = document.querySelector('#app main');
+    if(!main || $('arenaView')) return;
+    const section = document.createElement('section');
+    section.id = 'arenaView';
+    section.className = 'hidden';
+    main.appendChild(section);
+  }
+
+  function markArenaActive(){
+    ['tabMatches','tabDash','tabUsers','tabProgress','tabWorld'].forEach(id => $(id)?.classList.remove('active'));
+    $('tabArena')?.classList.add('active');
+  }
+
+  function hideCoreViews(){
+    ['matchesView','dashboardView','usersView','progressView','worldView'].forEach(id => $(id)?.classList.add('hidden'));
+  }
+
+  function showArenaShell(html){
+    ensureArenaTab();
+    ensureArenaView();
+    hideCoreViews();
+    markArenaActive();
+    const view = $('arenaView');
+    view.classList.remove('hidden');
+    view.innerHTML = html;
+  }
+
+  const modules = [
+    {id:'eliminatorias', icon:'⚔️', title:'Eliminatorias Directas', desc:'Pronostica marcador, ganador del cruce y penales si aplica.', price:'$100', cta:'Entrar'},
+    {id:'rapidas', icon:'⚡', title:'Quinielas Rápidas', desc:'Participaciones cortas por partido para mantener viva la competencia.', price:'Desde $10', cta:'Ver partidos'},
+    {id:'campeon', icon:'👑', title:'Campeón Mundial', desc:'Elige la selección que levantará la copa antes de la fase final.', price:'$200', cta:'Elegir campeón'},
+    {id:'tombola', icon:'🎲', title:'Tómbola Mundialista', desc:'Gira la suerte y recibe una selección asignada para participar.', price:'$50', cta:'Girar tómbola'},
+    {id:'vip', icon:'💎', title:'Camino VIP', desc:'Bracket premium para quienes quieren una experiencia más completa.', price:'$500+', cta:'Ver VIP'}
+  ];
+
+  function showArenaMenu(){
+    const cards = modules.map(m => `
+      <article class="arena-card">
+        <div class="arena-icon">${m.icon}</div>
+        <h2>${m.title}</h2>
+        <p>${m.desc}</p>
+        <div class="arena-price">${m.price}</div>
+        <button type="button" data-arena-module="${m.id}">${m.cta}</button>
+      </article>`).join('');
+    showArenaShell(`
+      <div class="arena-shell">
+        <div class="arena-hero">
+          <div>
+            <span class="arena-badge">Arena Mundialista</span>
+            <h1>Arena Mundialista</h1>
+            <p>Da click en el módulo que quieras jugar y comienza tu camino en la Arena Mundialista.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;max-width:460px">
+            <button type="button" class="arena-btn" style="max-width:220px" id="arenaRegisterBtn">Registrarme en Arena</button>
+            <button type="button" class="arena-btn" style="max-width:220px" id="arenaBackToMatches">Volver a partidos</button>
+          </div>
+        </div>
+        <div class="arena-grid">${cards}</div>
+        <div class="arena-note">Da click en el módulo que quieras jugar y comienza tu camino en la <b>Arena Mundialista</b>. Puedes volver a este menú cuando quieras cambiar de dinámica.</div>
+      </div>`);
+    $('arenaBackToMatches')?.addEventListener('click', () => window.showTab('matches'));
+    $('arenaRegisterBtn')?.addEventListener('click', openArenaRegistration);
+    document.querySelectorAll('[data-arena-module]').forEach(btn => {
+      btn.addEventListener('click', () => openModule(btn.dataset.arenaModule));
+    });
+  }
+
+  function openModule(id){
+    if(id === 'eliminatorias') return renderEliminatorias();
+    if(id === 'campeon') return renderCampeon();
+    if(id === 'tombola') return renderTombola();
+    if(id === 'rapidas') return renderSimpleModule('⚡', 'Quinielas Rápidas', 'Este módulo queda listo para conectar con FS_Rapidas_Partidos y FS_Rapidas_Apuestas.', 'Veremos partidos rápidos, costo por entrada y botón de participación.');
+    if(id === 'vip') return renderSimpleModule('💎', 'Camino VIP', 'Este módulo queda listo para conectar con FS_VIP_Picks.', 'Aquí construiremos el bracket premium por fases.');
+  }
+
+  async function renderEliminatorias(){
+    showArenaShell(`
+      <div class="arena-shell">
+        <div class="arena-hero">
+          <div>
+            <span class="arena-badge">Entrada $100</span>
+            <h1>Eliminatorias Directas</h1>
+            <p>Los equipos de este módulo comenzarán a definirse el 27 de junio al finalizar la fase de grupos. Puedes ir apartando tu lugar registrando tu acceso.</p>
+          </div>
+          <div class="arena-progress-wrap">
+            <div class="arena-progress-label"><span>Progreso de eliminatorias</span><span id="arenaKoProgressText">0%</span></div>
+            <div class="arena-progress"><div id="arenaKoProgressBar" class="arena-progress-bar"></div></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="button" class="arena-btn" style="max-width:220px" id="arenaRegisterBtn">Registrarme en Arena</button>
+            <button type="button" class="arena-btn" style="max-width:220px" id="arenaMenuBtn">Arena Mundialista</button>
+          </div>
+        </div>
+        <div class="arena-panel"><div class="arena-toolbar"><select id="arenaRoundFilter"><option value="">Todas las rondas</option></select><input id="arenaSearch" placeholder="Buscar equipo o partido"><button type="button" class="arena-btn" style="max-width:190px" id="arenaRefreshKo">Actualizar</button></div><div id="arenaKoStatus" class="arena-status">Cargando cruces...</div><div id="arenaKoGrid" class="arena-ko-grid"></div></div>
+      </div>`);
+    $('arenaMenuBtn')?.addEventListener('click', showArenaMenu);
+    $('arenaRegisterBtn')?.addEventListener('click', openArenaRegistration);
+    $('arenaRefreshKo')?.addEventListener('click', renderEliminatorias);
+    const res = await jsonp({action:'fsKnockoutMatches'});
+    let rows = (res && res.status === 'ok' && Array.isArray(res.data)) ? res.data : [];
+    if(!rows.length){
+      rows = [
+        {Partido_ID:'DEMO-OF1',Ronda:'Octavos',Equipo_Local:'1A / Por definir',Equipo_Visitante:'2B / Por definir',Fecha:'Por definir',Hora:''},
+        {Partido_ID:'DEMO-OF2',Ronda:'Octavos',Equipo_Local:'1C / Por definir',Equipo_Visitante:'2D / Por definir',Fecha:'Por definir',Hora:''}
+      ];
+    }
+    window.__arenaKoRows = rows;
+    const rounds = [...new Set(rows.map(r => pick(r,['Ronda'],'')).filter(Boolean))];
+    $('arenaRoundFilter').innerHTML = '<option value="">Todas las rondas</option>' + rounds.map(r => `<option>${escapeHtml(r)}</option>`).join('');
+    $('arenaRoundFilter').addEventListener('change', drawKoRows);
+    $('arenaSearch').addEventListener('input', drawKoRows);
+    drawKoRows();
+  }
+
+  function koOrigin(row, side){
+    return side === 'l'
+      ? pick(row,['Grupo_Origen_Local','Grupo Origen Local','Origen_Local'],'')
+      : pick(row,['Grupo_Origen_Visitante','Grupo Origen Visitante','Origen_Visitante'],'');
+  }
+
+  function teamCell(name, origin){
+    return `<div class="arena-team"><div>${escapeHtml(name || 'Por definir')}<small>${escapeHtml(origin || 'Cruce pendiente')}</small></div></div>`;
+  }
+
+  function drawKoRows(){
+    const rows = window.__arenaKoRows || [];
+    const round = $('arenaRoundFilter')?.value || '';
+    const q = norm($('arenaSearch')?.value || '');
+    const filtered = rows.filter(row => {
+      const local = pick(row,['Equipo_Local','Equipo Local','Local'],'');
+      const visit = pick(row,['Equipo_Visitante','Equipo Visitante','Visitante'],'');
+      const haystack = norm([pick(row,['Partido_ID'],''), pick(row,['Ronda'],''), local, visit].join(' '));
+      return (!round || pick(row,['Ronda'],'') === round) && (!q || haystack.includes(q));
+    });
+    const grid = $('arenaKoGrid');
+    if(!grid) return;
+    if(!filtered.length){
+      grid.innerHTML = '<div class="arena-panel">No hay cruces con esos filtros.</div>';
+    }else{
+      grid.innerHTML = filtered.map((row,index) => koCard(row,index)).join('');
+      filtered.forEach((row,index) => wireKoCard(row,index));
+    }
+    const status = $('arenaKoStatus');
+    if(status) status.textContent = `${filtered.length} cruces visibles`;
+    updateKoProgress();
+  }
+
+  function updateKoProgress(){
+    const rows = window.__arenaKoRows || [];
+    const total = rows.length || 0;
+    let filled = 0;
+    document.querySelectorAll('#arenaKoGrid .arena-ko-card').forEach(card => {
+      const inputs = card.querySelectorAll('.arena-score input');
+      const advance = card.querySelector('select');
+      const l = inputs[0]?.value ?? '';
+      const v = inputs[1]?.value ?? '';
+      if(l !== '' && v !== '' && advance?.value) filled++;
+    });
+    const pct = total ? Math.round((filled / total) * 100) : 0;
+    const bar = $('arenaKoProgressBar');
+    const textNode = $('arenaKoProgressText');
+    if(bar) bar.style.width = pct + '%';
+    if(textNode) textNode.textContent = pct + '%';
+  }
+
+  function koCard(row,index){
+    const id = txt(pick(row,['Partido_ID'],'KO_'+index));
+    const dom = 'arenaKo_' + index + '_' + id.replace(/[^a-zA-Z0-9_-]/g,'_');
+    const local = pick(row,['Equipo_Local','Equipo Local','Local'],'Por definir');
+    const visit = pick(row,['Equipo_Visitante','Equipo Visitante','Visitante'],'Por definir');
+    const ronda = pick(row,['Ronda'],'Eliminatoria');
+    const fecha = [pick(row,['Fecha'],''),pick(row,['Hora'],'')].filter(Boolean).join(' · ') || 'Fecha por definir';
+    return `
+      <article class="arena-ko-card" data-ko-id="${escapeHtml(id)}">
+        <div class="arena-ko-head"><span>${escapeHtml(id)} · ${escapeHtml(ronda)}</span><span>${escapeHtml(fecha)}</span></div>
+        <div class="arena-ko-vs">
+          ${teamCell(local, koOrigin(row,'l'))}
+          <div class="arena-score"><input id="${dom}_L" type="number" min="0" inputmode="numeric" placeholder="0"><b>VS</b><input id="${dom}_V" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+          ${teamCell(visit, koOrigin(row,'v'))}
+        </div>
+        <div class="arena-advance">
+          <select id="${dom}_ADV"><option value="">Selecciona quién avanza</option><option value="${escapeHtml(local)}">${escapeHtml(local)}</option><option value="${escapeHtml(visit)}">${escapeHtml(visit)}</option></select>
+          <label><input type="checkbox" id="${dom}_PEN"> Se van a penales</label>
+          <div id="${dom}_PBOX" class="arena-penalty"><div class="arena-score"><input id="${dom}_PL" type="number" min="0" inputmode="numeric" placeholder="Pen. local"><b>PSO</b><input id="${dom}_PV" type="number" min="0" inputmode="numeric" placeholder="Pen. visita"></div></div>
+          <button type="button" class="arena-btn" id="${dom}_SAVE">Guardar pronóstico</button>
+          <div class="arena-status" id="${dom}_STATUS"></div>
+        </div>
+      </article>`;
+  }
+
+  function wireKoCard(row,index){
+    const id = txt(pick(row,['Partido_ID'],'KO_'+index));
+    const dom = 'arenaKo_' + index + '_' + id.replace(/[^a-zA-Z0-9_-]/g,'_');
+    const pen = $(`${dom}_PEN`);
+    pen?.addEventListener('change', () => $(`${dom}_PBOX`)?.classList.toggle('open', pen.checked));
+    [`${dom}_L`,`${dom}_V`,`${dom}_ADV`,`${dom}_PL`,`${dom}_PV`].forEach(inputId => {
+      $(inputId)?.addEventListener('input', updateKoProgress);
+      $(inputId)?.addEventListener('change', updateKoProgress);
+    });
+    $(`${dom}_SAVE`)?.addEventListener('click', async () => {
+      const l = $(`${dom}_L`)?.value ?? '';
+      const v = $(`${dom}_V`)?.value ?? '';
+      const adv = $(`${dom}_ADV`)?.value ?? '';
+      const usePen = !!$(`${dom}_PEN`)?.checked;
+      const pl = $(`${dom}_PL`)?.value ?? '';
+      const pv = $(`${dom}_PV`)?.value ?? '';
+      const status = $(`${dom}_STATUS`);
+      if(l === '' || v === '' || !adv){ status.textContent = 'Completa marcador y selecciona quién avanza.'; return; }
+      if(usePen && String(l) !== String(v)){ status.textContent = 'Los penales solo aplican si el marcador principal queda empatado.'; return; }
+      if(usePen && (pl === '' || pv === '')){ status.textContent = 'Captura ambos marcadores de penales.'; return; }
+      if(eliminatoriasNotStarted()){
+        status.textContent = 'Los equipos de este módulo comenzarán a definirse el 27 de junio al finalizar la fase de grupos. Puedes ir apartando tu lugar registrando tu acceso.';
+        openArenaRegistration();
+        return;
+      }
+      status.textContent = 'Guardando...';
+      await postSandbox('saveKnockoutPrediction', {
+        token:getToken(),
+        partido_id:id,
+        marcador_local:l,
+        marcador_visitante:v,
+        equipo_avanza:adv,
+        penales:usePen?'SI':'NO',
+        penales_local:usePen?pl:'',
+        penales_visitante:usePen?pv:''
+      });
+      status.textContent = 'Pronóstico registrado para Eliminatorias Directas.';
+    });
+  }
+
+  function renderCampeon(){
+    const teams = ['México','Argentina','Brasil','Francia','España','Inglaterra','Alemania','Portugal','Estados Unidos','Uruguay','Colombia','Países Bajos'];
+    showArenaShell(`<div class="arena-shell"><div class="arena-hero"><div><span class="arena-badge">Entrada $200</span><h1>Campeón Mundial</h1><p>Selecciona tu campeón para registrar el pick en Arena.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="arena-btn" style="max-width:220px" id="arenaRegisterBtn">Registrarme en Arena</button><button type="button" class="arena-btn" style="max-width:220px" id="arenaMenuBtn">Arena Mundialista</button></div></div><div class="arena-panel"><div class="arena-toolbar"><select id="arenaChampion"><option value="">Elige selección campeona</option>${teams.map(t=>`<option>${t}</option>`).join('')}</select><button type="button" class="arena-btn" style="max-width:220px" id="arenaSaveChampion">Guardar campeón</button></div><div id="arenaChampionStatus" class="arena-status"></div></div></div>`);
+    $('arenaMenuBtn')?.addEventListener('click', showArenaMenu);
+    $('arenaRegisterBtn')?.addEventListener('click', openArenaRegistration);
+    $('arenaSaveChampion')?.addEventListener('click', async () => {
+      const equipo = $('arenaChampion')?.value || '';
+      const status = $('arenaChampionStatus');
+      if(!equipo){ status.textContent = 'Selecciona una selección.'; return; }
+      status.textContent = 'Guardando...';
+      await postSandbox('saveChampionPick', {token:getToken(), equipo});
+      status.textContent = 'Selección registrada para Arena. Acceso pendiente de confirmación.';
+    });
+  }
+
+  function renderTombola(){
+    const teams = ['México','Argentina','Brasil','Francia','España','Inglaterra','Alemania','Portugal','Estados Unidos','Uruguay','Colombia','Países Bajos'];
+    showArenaShell(`<div class="arena-shell"><div class="arena-hero"><div><span class="arena-badge">Entrada $50</span><h1>Tómbola Mundialista</h1><p>Gira la tómbola para simular la asignación de selección.</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="arena-btn" style="max-width:220px" id="arenaRegisterBtn">Registrarme en Arena</button><button type="button" class="arena-btn" style="max-width:220px" id="arenaMenuBtn">Arena Mundialista</button></div></div><div class="arena-panel" style="text-align:center"><div style="font-size:76px">🎲</div><button type="button" class="arena-btn" style="max-width:260px;margin:auto" id="arenaSpin">Girar tómbola</button><div id="arenaTombolaResult" class="arena-status" style="font-size:22px;margin-top:18px"></div></div></div>`);
+    $('arenaMenuBtn')?.addEventListener('click', showArenaMenu);
+    $('arenaRegisterBtn')?.addEventListener('click', openArenaRegistration);
+    $('arenaSpin')?.addEventListener('click', () => {
+      const team = teams[Math.floor(Math.random()*teams.length)];
+      $('arenaTombolaResult').textContent = `Tu selección asignada: ${team}`;
+    });
+  }
+
+  function renderSimpleModule(icon,title,desc,next){
+    showArenaShell(`<div class="arena-shell"><div class="arena-hero"><div><span class="arena-badge">${icon} Arena Mundialista</span><h1>${title}</h1><p>${desc}</p></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="arena-btn" style="max-width:220px" id="arenaRegisterBtn">Registrarme en Arena</button><button type="button" class="arena-btn" style="max-width:220px" id="arenaMenuBtn">Arena Mundialista</button></div></div><div class="arena-panel"><h3>Siguiente adecuación</h3><p class="sub">${next}</p></div></div>`);
+    $('arenaMenuBtn')?.addEventListener('click', showArenaMenu);
+    $('arenaRegisterBtn')?.addEventListener('click', openArenaRegistration);
+  }
+
+  function patchShowTab(){
+    const original = window.showTab;
+    if(typeof original !== 'function' || original.__codexArenaClean) return;
+    window.showTab = showTab = function(tab){
+      if(tab === 'arena') return showArenaMenu();
+      $('arenaView')?.classList.add('hidden');
+      $('tabArena')?.classList.remove('active');
+      return original.apply(this, arguments);
+    };
+    window.showTab.__codexArenaClean = true;
+  }
+
+  function bootArena(){
+    ensureArenaTab();
+    ensureArenaView();
+    patchShowTab();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootArena);
+  else bootArena();
+  window.addEventListener('load', bootArena);
+})();
+</script>
+
 </body>
 </html>
