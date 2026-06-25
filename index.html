@@ -1016,7 +1016,7 @@ body.dark-mode .world-real-pill{background:rgba(16,185,129,.18);color:#bbf7d0;}
     Esta lectura se hace con JSONP para que funcione incluso abriendo
     el index.html desde C:/Users/... sin servidor local.
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbw-BCuPDSCnM4EYeQvZKXWLrXI1YDgYvG1aKf37b15Mq8sSusiOcgSe7iRa8jKkoFqSOA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwhH6efsmSM0MN091wJ_Rs4VQEazhB2K43CZ9nLEnGxjziiBowj8cGhab29evFLaxhoqw/exec';
 
 /*
   NOTA DE SEGURIDAD:
@@ -1440,30 +1440,61 @@ async function loadSheetJSONP(key){
 }
 
 async function loadFromAppsScript(key){
-  try{
-    const url = `${API_URL}?action=list&sheet=${encodeURIComponent(key)}&t=${Date.now()}`;
-    const response = await fetch(url, { method:'GET', cache:'no-store' });
-    const json = await response.json();
+  /* Android / GitHub Pages fix:
+     Apps Script se consulta por JSONP, no por fetch().
+     En Android, fetch() contra script.google.com puede fallar por CORS/cookies,
+     aunque la implementación esté pública. JSONP evita ese bloqueo. */
+  return new Promise((resolve)=>{
+    try{
+      const callbackName = 'fsApiList_' + String(key).replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+      const script = document.createElement('script');
+      const timeout = setTimeout(()=>{
+        cleanup();
+        console.warn('Tiempo agotado leyendo Apps Script por JSONP:', key);
+        resolve([]);
+      }, 18000);
 
-    console.log('Respuesta API', key, json);
+      function cleanup(){
+        clearTimeout(timeout);
+        try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+        if(script && script.parentNode) script.parentNode.removeChild(script);
+      }
 
-    if(Array.isArray(json)){
-      return normalizeRows(json);
+      window[callbackName] = function(json){
+        try{
+          console.log('Respuesta API JSONP', key, json);
+          let rows=[];
+          if(Array.isArray(json)) rows=json;
+          else if(json && Array.isArray(json.data)) rows=json.data;
+          else if(json && Array.isArray(json.rows)) rows=json.rows;
+          cleanup();
+          resolve(normalizeRows(rows));
+        }catch(error){
+          console.warn('Error convirtiendo respuesta JSONP Apps Script:', key, error);
+          cleanup();
+          resolve([]);
+        }
+      };
+
+      script.onerror = function(){
+        cleanup();
+        console.warn('No se pudo cargar Apps Script JSONP:', key);
+        resolve([]);
+      };
+
+      const query = new URLSearchParams({
+        action:'list',
+        sheet:key,
+        callback:callbackName,
+        t:String(Date.now())
+      });
+      script.src = `${API_URL}?${query.toString()}`;
+      document.body.appendChild(script);
+    }catch(error){
+      console.warn('No se pudo leer desde Apps Script por JSONP:', key, error);
+      resolve([]);
     }
-
-    if(json && Array.isArray(json.data)){
-      return normalizeRows(json.data);
-    }
-
-    if(json && Array.isArray(json.rows)){
-      return normalizeRows(json.rows);
-    }
-
-    return [];
-  }catch(error){
-    console.warn('No se pudo leer desde Apps Script:', key, error);
-    return [];
-  }
+  });
 }
 
 function loadFromEditableSheet(key){
@@ -7486,8 +7517,8 @@ body.fs-route-matches #matchesView{display:block!important;visibility:visible!im
    ============================================================= */
 (function(){
   'use strict';
-  var PROD_API_URL = 'https://script.google.com/macros/s/AKfycbw-BCuPDSCnM4EYeQvZKXWLrXI1YDgYvG1aKf37b15Mq8sSusiOcgSe7iRa8jKkoFqSOA/exec';
-  var PROD_API_FALLBACK_URL = 'https://script.google.com/macros/s/AKfycbxB3uPU__EvxdMbHLPJxZOXiX-wDYgei-hSOo6a8CkU9hjc1711I50x4TJW1-F2MyfiGA/exec';
+  var PROD_API_URL = 'https://script.google.com/macros/s/AKfycbwhH6efsmSM0MN091wJ_Rs4VQEazhB2K43CZ9nLEnGxjziiBowj8cGhab29evFLaxhoqw/exec';
+  var PROD_API_FALLBACK_URL = 'https://script.google.com/macros/s/AKfycbwhH6efsmSM0MN091wJ_Rs4VQEazhB2K43CZ9nLEnGxjziiBowj8cGhab29evFLaxhoqw/exec';
   window.FS_PROD_API_URL = PROD_API_URL;
   window.FS_PROD_API_URLS = [PROD_API_URL, PROD_API_FALLBACK_URL].filter(function(v,i,a){ return v && a.indexOf(v)===i; });
 
@@ -7698,6 +7729,76 @@ body.fs-route-matches #matchesView{display:block!important;visibility:visible!im
       if(fs$('tabArena')?.classList.contains('active')) showCleanModule('arena');
     },700);
   });
+})();
+</script>
+
+
+
+<style id="fsProductionArenaV6MatchesVisibleFixCss">
+body.fs-route-matches #matchesView{display:block!important;visibility:visible!important;pointer-events:auto!important;opacity:1!important;}
+body.fs-route-matches #arenaView,
+body.fs-route-matches #worldView,
+body.fs-route-matches #dashboardView,
+body.fs-route-matches #usersView,
+body.fs-route-matches #progressView{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+#tabArena{min-width:150px!important;font-weight:950!important;}
+</style>
+<script id="fsProductionArenaV6ApiMatchesFix">
+(function(){
+  'use strict';
+  var NEW_API='https://script.google.com/macros/s/AKfycbwhH6efsmSM0MN091wJ_Rs4VQEazhB2K43CZ9nLEnGxjziiBowj8cGhab29evFLaxhoqw/exec';
+  try{
+    window.FS_PROD_API_URL = NEW_API;
+    window.FS_PROD_API_URLS = [NEW_API];
+  }catch(e){}
+
+  function $(id){ return document.getElementById(id); }
+  function hide(id){ var el=$(id); if(!el) return; el.classList.add('hidden'); el.classList.remove('fs-core-visible','fs-v8-visible','fs-v9-visible','fs-v10-visible'); el.style.setProperty('display','none','important'); el.style.setProperty('visibility','hidden','important'); el.style.setProperty('pointer-events','none','important'); }
+  function show(id){ var el=$(id); if(!el) return; el.classList.remove('hidden','fs-v8-hidden','fs-v9-force-hidden'); el.classList.add('fs-core-visible'); el.style.setProperty('display','block','important'); el.style.setProperty('visibility','visible','important'); el.style.setProperty('pointer-events','auto','important'); el.style.setProperty('opacity','1','important'); }
+  function active(tab){ ['tabMatches','tabDash','tabUsers','tabWorld','tabProgress','tabArena'].forEach(function(id){ $(id)?.classList.remove('active'); }); $(tab)?.classList.add('active'); }
+  function resetRoutes(){ document.body.classList.remove('mi-world-active','fs-route-arena','fs-route-world','fs-route-dashboard','fs-route-users','fs-route-progress','fs-route-matches'); }
+  function canMatches(){
+    try{
+      if(window.state && state.isDemo) return false;
+      var u=(window.state&&state.currentUser)||JSON.parse(localStorage.getItem('quinielaUser')||'{}')||{};
+      var perfil=String(u['Perfil del Usuario']||u.Perfil_del_Usuario||u.Perfil||'').toLowerCase();
+      var estatus=String(u.Estatus||u.Estado||'activo').toLowerCase();
+      return perfil.indexOf('admin')>-1 || (perfil==='user' && (!estatus || estatus==='activo' || estatus==='active'));
+    }catch(e){ return true; }
+  }
+  function showMatches(){
+    if(!canMatches()){ if(window.fsCoreRoute) return window.fsCoreRoute('arena'); return; }
+    resetRoutes(); document.body.classList.add('fs-route-matches');
+    ['arenaView','worldView','dashboardView','usersView','progressView'].forEach(hide);
+    show('matchesView'); active('tabMatches');
+    try{ if(typeof renderMatches==='function') renderMatches(); }catch(e){ console.warn('renderMatches error',e); }
+    try{ if(window.state && (!state.matches || !state.matches.length) && typeof reloadAll==='function') reloadAll(); }catch(e){}
+  }
+  function showArena(){
+    resetRoutes(); document.body.classList.add('fs-route-arena');
+    ['matchesView','worldView','dashboardView','usersView','progressView'].forEach(hide);
+    if(window.fsCoreRoute){ try{ window.fsCoreRoute('arena'); }catch(e){ console.warn(e); } }
+    show('arenaView'); active('tabArena');
+  }
+  document.addEventListener('click', function(ev){
+    var t=ev.target && ev.target.closest && ev.target.closest('#tabMatches,[data-route="matches"],#tabArena,[data-route="arena"]');
+    if(!t) return;
+    ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+    if(t.id==='tabMatches' || t.dataset.route==='matches') showMatches();
+    else showArena();
+  }, true);
+  window.fsShowMatchesV6=showMatches;
+  window.fsShowArenaV6=showArena;
+  window.fsApiHealthCheck=function(){
+    return new Promise(function(resolve,reject){
+      var cb='fsHealth_'+Date.now(); var s=document.createElement('script'); var timer=setTimeout(function(){ cleanup(); reject(new Error('Timeout API')); },12000);
+      function cleanup(){ clearTimeout(timer); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); }
+      window[cb]=function(data){ cleanup(); resolve(data); };
+      s.onerror=function(){ cleanup(); reject(new Error('No se pudo cargar API')); };
+      s.src=NEW_API+'?action=ping&callback='+cb+'&t='+Date.now();
+      document.body.appendChild(s);
+    });
+  };
 })();
 </script>
 
