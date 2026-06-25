@@ -1016,7 +1016,7 @@ body.dark-mode .world-real-pill{background:rgba(16,185,129,.18);color:#bbf7d0;}
     Esta lectura se hace con JSONP para que funcione incluso abriendo
     el index.html desde C:/Users/... sin servidor local.
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxB3uPU__EvxdMbHLPJxZOXiX-wDYgei-hSOo6a8CkU9hjc1711I50x4TJW1-F2MyfiGA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw-BCuPDSCnM4EYeQvZKXWLrXI1YDgYvG1aKf37b15Mq8sSusiOcgSe7iRa8jKkoFqSOA/exec';
 
 /*
   NOTA DE SEGURIDAD:
@@ -6960,7 +6960,8 @@ body.dark-mode .mi-info{
     if(!state.authToken){ if(st) st.textContent='Sesión no válida. Vuelve a iniciar sesión.'; return; }
     if(st) st.textContent='Guardando...';
     try{
-      await apiPostDirect('saveKnockoutPrediction',{token:state.authToken,partido_id:id,marcador_local:l,marcador_visitante:v,equipo_avanza:w,penales:pen?'SI':'NO',penales_local:pl||'',penales_visitante:pv||''});
+      const saveRes = await apiPostDirect('saveKnockoutPrediction',{token:state.authToken,partido_id:id,marcador_local:l,marcador_visitante:v,equipo_avanza:w,penales:pen?'SI':'NO',penales_local:pl||'',penales_visitante:pv||''});
+      if(saveRes && saveRes.status && saveRes.status !== 'ok') throw new Error(saveRes.message || 'No autorizado');
       if(st) st.textContent='Pronóstico enviado para Eliminatorias Directas.';
     }catch(e){
       if(st) st.textContent='No se pudo guardar. Intenta de nuevo.';
@@ -6970,9 +6971,18 @@ body.dark-mode .mi-info{
 
   async function apiPostDirect(action,payload){
     try{
-      await fetch(FASE2_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action},payload||{}))});
-      return {ok:true};
-    }catch(error){ console.warn('POST directo falló',error); return {ok:false,error:error.message}; }
+      if(typeof jsonp==='function'){
+        const res = await jsonp(FASE2_API, Object.assign({action:action}, payload||{}));
+        if(res && res.status && res.status !== 'ok') throw new Error(res.message || 'La API rechazó la operación.');
+        return res || {status:'ok'};
+      }
+      if(window.apiGetJSONP){
+        const res = await window.apiGetJSONP(Object.assign({action:action}, payload||{}));
+        if(res && res.status && res.status !== 'ok') throw new Error(res.message || 'La API rechazó la operación.');
+        return res || {status:'ok'};
+      }
+      throw new Error('JSONP no disponible.');
+    }catch(error){ console.warn('JSONP escritura falló',error); return {status:'error',ok:false,error:error.message,message:error.message}; }
   }
   async function populateArenaModuleSelect(defaultName){
     const sel=$('regArenaModule'); if(!sel) return;
@@ -7445,6 +7455,27 @@ body.dark-mode .mi-info{
 
 
 
+<style id="fsProductionArenaV4HardIsolationCss">
+body.fs-route-arena #matchesView,
+body.fs-route-arena #worldView,
+body.fs-route-arena #dashboardView,
+body.fs-route-arena #usersView,
+body.fs-route-arena #progressView{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body.fs-route-arena #arenaView{display:block!important;visibility:visible!important;pointer-events:auto!important;}
+body.fs-route-world #matchesView,
+body.fs-route-world #arenaView,
+body.fs-route-world #dashboardView,
+body.fs-route-world #usersView,
+body.fs-route-world #progressView{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body.fs-route-world #worldView{display:block!important;visibility:visible!important;pointer-events:auto!important;}
+body.fs-route-matches #worldView,
+body.fs-route-matches #arenaView,
+body.fs-route-matches #dashboardView,
+body.fs-route-matches #usersView,
+body.fs-route-matches #progressView{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body.fs-route-matches #matchesView{display:block!important;visibility:visible!important;pointer-events:auto!important;}
+</style>
+
 <script id="fsProductionArenaV3CleanApiRouterFix">
 /* =============================================================
    FORTUNE SPORTS MX - PRODUCCIÓN ARENA V3
@@ -7455,7 +7486,7 @@ body.dark-mode .mi-info{
    ============================================================= */
 (function(){
   'use strict';
-  var PROD_API_URL = 'https://script.google.com/macros/s/AKfycbxB3uPU__EvxdMbHLPJxZOXiX-wDYgei-hSOo6a8CkU9hjc1711I50x4TJW1-F2MyfiGA/exec';
+  var PROD_API_URL = 'https://script.google.com/macros/s/AKfycbw-BCuPDSCnM4EYeQvZKXWLrXI1YDgYvG1aKf37b15Mq8sSusiOcgSe7iRa8jKkoFqSOA/exec';
   window.FS_PROD_API_URL = PROD_API_URL;
 
   function fs$(id){ return document.getElementById(id); }
@@ -7486,7 +7517,7 @@ body.dark-mode .mi-info{
     fs$(tabId)?.classList.add('active');
   }
   function resetVisualState(){
-    document.body.classList.remove('mi-world-active');
+    document.body.classList.remove('mi-world-active','fs-route-arena','fs-route-world','fs-route-matches','fs-route-dashboard','fs-route-users','fs-route-progress');
     allViews().forEach(hideView);
   }
   function canShowMatches(){
@@ -7516,14 +7547,17 @@ body.dark-mode .mi-info{
 
     if(module==='arena'){
       resetVisualState();
-      // Usa el render existente de Arena, pero después blindamos visibilidad.
-      if(window.fsCoreRoute) safeCall(function(){ window.fsCoreRoute('arena'); });
+      document.body.classList.add('fs-route-arena');
+      // Renderiza Arena solo si el contenedor aún no fue construido. Evita reentradas de routers viejos.
+      var av=fs$('arenaView');
+      if(window.fsCoreRoute && (!av || !av.innerHTML || av.innerHTML.indexOf('arena-card')===-1)) safeCall(function(){ window.fsCoreRoute('arena'); });
       hideView('matchesView'); hideView('dashboardView'); hideView('usersView'); hideView('worldView'); hideView('progressView');
       showView('arenaView'); setActive('tabArena');
       return;
     }
     if(module==='world'){
       resetVisualState();
+      document.body.classList.add('fs-route-world');
       showView('worldView');
       document.body.classList.add('mi-world-active');
       setActive('tabWorld');
@@ -7531,19 +7565,19 @@ body.dark-mode .mi-info{
       return;
     }
     if(module==='dashboard'){
-      resetVisualState(); showView('dashboardView'); setActive('tabDash');
+      resetVisualState(); document.body.classList.add('fs-route-dashboard'); showView('dashboardView'); setActive('tabDash');
       safeCall(function(){ if(typeof renderDashboard==='function') renderDashboard(); });
       return;
     }
     if(module==='users'){
-      resetVisualState(); showView('usersView'); setActive('tabUsers');
+      resetVisualState(); document.body.classList.add('fs-route-users'); showView('usersView'); setActive('tabUsers');
       safeCall(function(){ if(typeof loadUsersAdmin==='function') loadUsersAdmin(); });
       return;
     }
     if(module==='progress'){
-      resetVisualState(); showView('progressView'); setActive('tabProgress'); return;
+      resetVisualState(); document.body.classList.add('fs-route-progress'); showView('progressView'); setActive('tabProgress'); return;
     }
-    resetVisualState(); showView('matchesView'); setActive('tabMatches');
+    resetVisualState(); document.body.classList.add('fs-route-matches'); showView('matchesView'); setActive('tabMatches');
     safeCall(function(){ if(typeof renderMatches==='function') renderMatches(); });
   }
 
@@ -7592,6 +7626,14 @@ body.dark-mode .mi-info{
       try{ return await originalLoadFromAppsScript(key); }catch(e){ return []; }
     };
   }
+
+
+  window.fsApiHealthCheck = function(){
+    return window.apiGetJSONP({action:'ping'}).then(function(res){
+      console.log('FS API Health Check:', res);
+      return res;
+    });
+  };
 
   // Captura en WINDOW: corre antes que listeners viejos en document y evita módulos pegados.
   window.addEventListener('click', function(ev){
