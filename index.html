@@ -7443,5 +7443,194 @@ body.dark-mode .mi-info{
 })();
 </script>
 
+
+
+<script id="fsProductionArenaV3CleanApiRouterFix">
+/* =============================================================
+   FORTUNE SPORTS MX - PRODUCCIÓN ARENA V3
+   Objetivo:
+   1) Fortalecer acceso a API en Android usando JSONP robusto.
+   2) Evitar que Partidos / Mi Mundial queden visualmente pegados
+      al cambiar a Arena Mundialista.
+   ============================================================= */
+(function(){
+  'use strict';
+  var PROD_API_URL = 'https://script.google.com/macros/s/AKfycbxB3uPU__EvxdMbHLPJxZOXiX-wDYgei-hSOo6a8CkU9hjc1711I50x4TJW1-F2MyfiGA/exec';
+  window.FS_PROD_API_URL = PROD_API_URL;
+
+  function fs$(id){ return document.getElementById(id); }
+  function safeCall(fn){ try{ return fn && fn(); }catch(e){ console.warn(e); } }
+  function allViews(){ return ['matchesView','dashboardView','usersView','worldView','progressView','arenaView']; }
+  function allTabs(){ return ['tabMatches','tabDash','tabUsers','tabWorld','tabProgress','tabArena']; }
+
+  function hideView(id){
+    var el=fs$(id);
+    if(!el) return;
+    el.classList.add('hidden');
+    el.classList.remove('fs-core-visible','fs-v8-visible','fs-v9-visible','fs-v10-visible');
+    el.style.setProperty('display','none','important');
+    el.style.setProperty('visibility','hidden','important');
+    el.style.setProperty('pointer-events','none','important');
+  }
+  function showView(id){
+    var el=fs$(id);
+    if(!el) return;
+    el.classList.remove('hidden','fs-v8-hidden','fs-v9-force-hidden');
+    el.classList.add('fs-core-visible');
+    el.style.setProperty('display','block','important');
+    el.style.setProperty('visibility','visible','important');
+    el.style.setProperty('pointer-events','auto','important');
+  }
+  function setActive(tabId){
+    allTabs().forEach(function(id){ fs$(id)?.classList.remove('active'); });
+    fs$(tabId)?.classList.add('active');
+  }
+  function resetVisualState(){
+    document.body.classList.remove('mi-world-active');
+    allViews().forEach(hideView);
+  }
+  function canShowMatches(){
+    try{
+      if(window.state && state.isDemo) return false;
+      var u=(window.state&&state.currentUser)||{};
+      var perfil=String((u['Perfil del Usuario']||u.Perfil_del_Usuario||u.Perfil||'')).toLowerCase();
+      var estatus=String((u.Estatus||u.Estado||'activo')).toLowerCase();
+      return perfil.includes('admin') || (perfil==='user' && (!estatus || estatus==='activo' || estatus==='active'));
+    }catch(e){ return true; }
+  }
+
+  function refreshMiMundial(){
+    setTimeout(function(){
+      var btn=fs$('worldReloadBtn');
+      if(btn && !btn.disabled) btn.click();
+    },220);
+    setTimeout(function(){
+      var btn=fs$('worldReloadBtn');
+      if(btn && !btn.disabled) btn.click();
+    },900);
+  }
+
+  function showCleanModule(module){
+    module = module || 'arena';
+    if(module==='matches' && !canShowMatches()) module='arena';
+
+    if(module==='arena'){
+      resetVisualState();
+      // Usa el render existente de Arena, pero después blindamos visibilidad.
+      if(window.fsCoreRoute) safeCall(function(){ window.fsCoreRoute('arena'); });
+      hideView('matchesView'); hideView('dashboardView'); hideView('usersView'); hideView('worldView'); hideView('progressView');
+      showView('arenaView'); setActive('tabArena');
+      return;
+    }
+    if(module==='world'){
+      resetVisualState();
+      showView('worldView');
+      document.body.classList.add('mi-world-active');
+      setActive('tabWorld');
+      refreshMiMundial();
+      return;
+    }
+    if(module==='dashboard'){
+      resetVisualState(); showView('dashboardView'); setActive('tabDash');
+      safeCall(function(){ if(typeof renderDashboard==='function') renderDashboard(); });
+      return;
+    }
+    if(module==='users'){
+      resetVisualState(); showView('usersView'); setActive('tabUsers');
+      safeCall(function(){ if(typeof loadUsersAdmin==='function') loadUsersAdmin(); });
+      return;
+    }
+    if(module==='progress'){
+      resetVisualState(); showView('progressView'); setActive('tabProgress'); return;
+    }
+    resetVisualState(); showView('matchesView'); setActive('tabMatches');
+    safeCall(function(){ if(typeof renderMatches==='function') renderMatches(); });
+  }
+
+  // API JSONP robusto para Android / GitHub Pages.
+  window.apiGetJSONP = function(params){
+    params = params || {};
+    return new Promise(function(resolve){
+      var callbackName = 'fs_api_cb_' + Date.now() + '_' + Math.floor(Math.random()*1000000);
+      var script = document.createElement('script');
+      var finished=false;
+      var timeout=setTimeout(function(){ finish({status:'error',message:'No hay acceso a la API. Verifica que la Web App esté desplegada para cualquier usuario y vuelve a intentar.'}); },30000);
+      function finish(data){
+        if(finished) return;
+        finished=true;
+        clearTimeout(timeout);
+        try{ delete window[callbackName]; }catch(e){ window[callbackName]=undefined; }
+        try{ script.remove(); }catch(e){}
+        resolve(data||{});
+      }
+      window[callbackName]=finish;
+      script.async=true;
+      script.referrerPolicy='no-referrer';
+      script.onerror=function(){ finish({status:'error',message:'No se pudo consultar API. Revisa permisos de la implementación de Apps Script.'}); };
+      var query = new URLSearchParams(Object.assign({}, params, {callback:callbackName, t:Date.now()})).toString();
+      script.src = PROD_API_URL + '?' + query;
+      (document.head || document.body || document.documentElement).appendChild(script);
+    });
+  };
+
+  // Refuerzo para lecturas generales que intentaban fetch directo y podían fallar en Android por CORS.
+  window.fsLoadFromAppsScriptJSONP = function(key){
+    return window.apiGetJSONP({action:'list',sheet:key}).then(function(json){
+      try{
+        var rows = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : (Array.isArray(json.rows) ? json.rows : []));
+        return (typeof normalizeRows==='function') ? normalizeRows(rows) : rows;
+      }catch(e){ return []; }
+    });
+  };
+  if(typeof window.loadFromAppsScript === 'function'){
+    var originalLoadFromAppsScript = window.loadFromAppsScript;
+    window.loadFromAppsScript = loadFromAppsScript = async function(key){
+      try{
+        var fromJsonp = await window.fsLoadFromAppsScriptJSONP(key);
+        if(fromJsonp && fromJsonp.length) return fromJsonp;
+      }catch(e){ console.warn('JSONP API fallback falló:', key, e); }
+      try{ return await originalLoadFromAppsScript(key); }catch(e){ return []; }
+    };
+  }
+
+  // Captura en WINDOW: corre antes que listeners viejos en document y evita módulos pegados.
+  window.addEventListener('click', function(ev){
+    var target = ev.target && ev.target.closest && ev.target.closest('#tabMatches,#tabDash,#tabUsers,#tabWorld,#tabArena,#tabProgress,[data-route="matches"],[data-route="dashboard"],[data-route="users"],[data-route="world"],[data-route="arena"]');
+    if(!target) return;
+    var route = target.dataset && target.dataset.route;
+    if(target.id==='tabMatches') route='matches';
+    if(target.id==='tabDash') route='dashboard';
+    if(target.id==='tabUsers') route='users';
+    if(target.id==='tabWorld') route='world';
+    if(target.id==='tabArena') route='arena';
+    if(target.id==='tabProgress') route='progress';
+    if(!route) return;
+    ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+    showCleanModule(route);
+    return false;
+  }, true);
+
+  // Sustituye showTab final por un router limpio.
+  window.showTab = showTab = function(tab){
+    if(tab==='dashboard') return showCleanModule('dashboard');
+    if(tab==='world') return showCleanModule('world');
+    if(tab==='arena') return showCleanModule('arena');
+    if(tab==='users') return showCleanModule('users');
+    if(tab==='progress') return showCleanModule('progress');
+    return showCleanModule('matches');
+  };
+  window.fsProductionCleanRoute = showCleanModule;
+
+  window.addEventListener('load', function(){
+    var arenaBtn=fs$('tabArena');
+    if(arenaBtn){ arenaBtn.style.minWidth='220px'; arenaBtn.style.fontWeight='1000'; }
+    setTimeout(function(){
+      // Si por algún wrapper quedó Mi Mundial activo encima de Arena, lo corrige.
+      if(fs$('tabArena')?.classList.contains('active')) showCleanModule('arena');
+    },700);
+  });
+})();
+</script>
+
 </body>
 </html>
