@@ -2969,8 +2969,768 @@
     }
   })();
 
+
+  /* === V48 PERFORMANCE REAL: Dashboard/Mi Mundial/Eliminatorias sin recalcular innecesario === */
+  (function(){
+    if(!window.Modules || !window.jsonp || !window.state) return;
+    const V48_TTL = { dashF1: 6*60*60*1000, worldF1: 6*60*60*1000, koMatches: 10*60*1000, koDash: 60*1000 };
+    const now = () => Date.now();
+    const setC=(k,v)=>{ try{ sessionStorage.setItem(k, JSON.stringify({t:now(),v})); }catch(e){} };
+    const getC=(k,ttl)=>{ try{ const o=JSON.parse(sessionStorage.getItem(k)||'null'); if(o && (now()-o.t)<ttl) return o.v; }catch(e){} return null; };
+    const api=(action,params={})=>jsonp(action,Object.assign({token:state.token},params));
+    const money=n=>'$'+Number(n||0).toLocaleString('es-MX');
+    function dense(items){ const arr=[...(items||[])].sort((a,b)=>Number(b.points||b.Puntos||0)-Number(a.points||a.Puntos||0)); let rank=0,last=null; return arr.map(x=>{const pts=Number(x.points||x.Puntos||0); if(pts!==last){rank++;last=pts;} return Object.assign({},x,{__place:rank,rank});}); }
+    function gated(tab){ if(state.isDemo) return true; if(tab==='fase1') return true; if(typeof isAdmin==='function' && isAdmin()) return true; const moduleName=(typeof moduleNameForRoute==='function')?moduleNameForRoute(tab):tab; const a=state.arenaAccess && state.arenaAccess[moduleName]; return !!(a && (a.can || a.access==='active' || (a.registration && a.registration.active))); }
+    function blocked(targetId,tab){ const el=$(targetId); if(!el) return; const moduleName=(typeof moduleNameForRoute==='function')?moduleNameForRoute(tab):tab; el.innerHTML=`<div class="gate-card">🔒 Para consultar ${esc(moduleName)} necesitas tener registro activo y pago completo en esta competencia.<br><button class="btn" id="v48GoArena${targetId}">Ir a Arena</button></div>`; const b=$(`v48GoArena${targetId}`); if(b) b.onclick=()=>route('arena',{focusModule:moduleName}); }
+    function paintDashF1(data){
+      const d=data&&data.data?data.data:data||{}; const ranking=dense(d.ranking||[]); const total=Number(d.totalPaid||d.acumulado||d.bolsa||0); const played=Number(d.partidosJugados||d.played||72); const exact=ranking.reduce((a,x)=>a+Number(x.exact||x.Exactos||0),0); const result=ranking.reduce((a,x)=>a+Number(x.winner||x.Ganador||x.Aciertos||0),0); const pct=Math.min(100,Math.round((exact/Math.max(1,exact+result))*100));
+      $('dashBody').innerHTML=`<div class="phase1-frozen-pill">⚡ Fase 1 congelada · consulta histórica</div><div class="grid cols-3" style="margin-top:12px"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${money(total)}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${ranking.length}</div></div><div class="card kpi"><div class="label">Partidos jugados</div><div class="value">${played}/72</div></div></div><div class="dashboard-grid" style="margin-top:18px"><div class="card"><h2>🏆 Ranking Fase 1</h2><div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${esc(x.name||x.Usuario||x.usuario||'')}</div><div>${Number(x.points||x.Puntos||0)} pts</div><div class="exact-col">${Number(x.exact||x.Exactos||0)} exactos</div></div>`).join('')}</div></div><div class="card donut-card"><h2>🎯 Aciertos</h2><div class="donut-wrap"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${pct}%</div></div><p class="muted strong">Ranking denso: mismos puntos comparten lugar.</p><button class="btn" id="dashResultsBtn">🏁 Resultados del Mundial</button></div></div>`;
+      const b=$('dashResultsBtn'); if(b) b.onclick=()=>openResultsModal('fase1');
+    }
+    async function loadDashF1(force=false){
+      const key='fs_v48_dash_f1_'+(state.token||'demo');
+      const cached=!force && !state.isDemo ? getC(key,V48_TTL.dashF1) : null;
+      if(cached){ paintDashF1(cached); return; }
+      $('dashBody').innerHTML='<div class="card"><div class="loader" style="margin:auto"></div><h2 style="text-align:center">Cargando resumen histórico...</h2></div>';
+      try{ const r=state.isDemo?{status:'ok',data:{ranking:demoRanking(),totalPaid:3060,partidosJugados:72}}:await api('dashboardFase1FrozenSeguro'); const data=r.data||r; if(!state.isDemo) setC(key,data); paintDashF1(data); }catch(e){ $('dashBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+    async function loadDashKO(force=false){
+      if(!gated('eliminatorias')) return blocked('dashBody','eliminatorias');
+      const key='fs_v48_dash_ko_'+(state.token||'demo'); const cached=!force && !state.isDemo ? getC(key,V48_TTL.koDash) : null;
+      if(cached) return paintDashKO(cached);
+      $('dashBody').innerHTML='<div class="card"><div class="loader" style="margin:auto"></div><h2 style="text-align:center">Cargando ranking de Eliminatorias...</h2></div>';
+      try{ const r=state.isDemo?{status:'ok',data:{bolsa:900,participantes:10,partidosConResultado:2,partidosTotales:16,pronosticos:20,ranking:[{name:'Demo MX',points:15,exact:2,advance:1},{name:'Demo Pro',points:12,exact:1,advance:2},{name:'Demo Fan',points:9,exact:0,advance:3}]}}:await api('dashboardEliminatoriasSeguro'); const d=r.data||r; if(!state.isDemo) setC(key,d); paintDashKO(d); }catch(e){ $('dashBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+    function paintDashKO(d){
+      const ranking=dense(d.ranking||[]); const pct=Math.min(100,Math.round(Number(d.partidosConResultado||0)/Math.max(1,Number(d.partidosTotales||0))*100)); const max=Math.max(...ranking.map(x=>Number(x.points||0)),1);
+      $('dashBody').innerHTML=`<div class="grid cols-4"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${money(d.bolsa||0)}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${Number(d.participantes||ranking.length||0)}</div></div><div class="card kpi"><div class="label">Partidos con resultado</div><div class="value">${Number(d.partidosConResultado||0)}/${Number(d.partidosTotales||0)}</div></div><div class="card kpi"><div class="label">Pronósticos</div><div class="value">${Number(d.pronosticos||0)}</div></div></div><div class="dashboard-grid" style="margin-top:18px"><div class="card"><h2>🏆 Ranking Eliminatorias</h2><div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${esc(x.name||x.Usuario||x.usuario||'')}</div><div>${Number(x.points||0)} pts</div><div class="exact-col">${Number(x.exact||0)} exactos</div></div>`).join('')||'<div class="notice">Aún no hay ranking.</div>'}</div></div><div class="card"><h2>📈 Seguimiento</h2><div class="donut-wrap" style="margin:16px auto"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${pct}%</div></div><div class="rank-bars">${ranking.slice(0,8).map(x=>`<div class="rank-bar"><div class="pos">${x.__place}</div><div><b>${esc(x.name||x.usuario||'')}</b><div class="bar"><div class="fill" style="width:${Math.max(3,Math.round(Number(x.points||0)/max*100))}%"></div></div></div><div>${Number(x.points||0)} pts</div></div>`).join('')||'<div class="notice">Sin datos todavía.</div>'}</div><button class="btn" id="v48KoResultsBtn" style="margin-top:14px">🏁 Resultados Eliminatorias</button></div></div>`;
+      const b=$('v48KoResultsBtn'); if(b) b.onclick=()=> (typeof openKoResultsModalV45==='function'?openKoResultsModalV45():openResultsModal('eliminatorias'));
+    }
+    if(Modules.dashboard){
+      Modules.dashboard.render = async function(){
+        view.innerHTML=`<div class="hero"><h1>📊 Dashboard</h1><p>Ranking, bolsa, puntos y desempeño de la competencia.</p><button id="refreshDash" class="btn light" style="margin-top:12px">🔄 Actualizar dashboard</button></div><div class="subtabs"><button class="subtab active" data-dash-tab="fase1">Fase 1</button><button class="subtab" data-dash-tab="eliminatorias">Eliminatorias</button><button class="subtab" data-dash-tab="campeon">Campeón</button><button class="subtab" data-dash-tab="tombola">Sobre FIFA</button><button class="subtab" data-dash-tab="rapidas">Rápidas</button><button class="subtab" data-dash-tab="vip">VIP</button></div><div id="dashBody"><div class="card"><div class="loader" style="margin:auto"></div><h2 style="text-align:center">Preparando Dashboard...</h2></div></div>`;
+        let current='fase1';
+        $('refreshDash').onclick=()=> current==='fase1'?loadDashF1(true):current==='eliminatorias'?loadDashKO(true):(this.paintTab?this.paintTab(current):null);
+        view.querySelectorAll('[data-dash-tab]').forEach(b=>b.onclick=async()=>{ view.querySelectorAll('[data-dash-tab]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); current=b.dataset.dashTab; if(current==='fase1') return loadDashF1(false); if(current==='eliminatorias') return loadDashKO(false); if(!gated(current)) return blocked('dashBody',current); return this.paintTab?this.paintTab(current):null; });
+        setTimeout(()=>loadDashF1(false),30);
+      };
+      Modules.dashboard.paintTab=function(tab){ if(tab==='fase1') return loadDashF1(false); if(tab==='eliminatorias') return loadDashKO(false); if(!gated(tab)) return blocked('dashBody',tab); if($('dashBody')) $('dashBody').innerHTML='<div class="notice">Este tab se cargará sólo cuando tenga actividad registrada en su base.</div>'; };
+    }
+    if(Modules.world){
+      Modules.world.render=async function(){
+        view.innerHTML=`<div class="hero"><h1>🌎 Mi Mundial</h1><p>Consulta histórica de Fase 1 y competencias de Arena bajo demanda.</p><button id="refreshWorld" class="btn light" style="margin-top:12px">🔄 Actualizar Mi Mundial</button></div><div id="worldBody"><div class="card"><div class="loader" style="margin:auto"></div><h2 style="text-align:center">Cargando Mi Mundial histórico...</h2></div></div>`;
+        $('refreshWorld').onclick=()=>this.load(true);
+        setTimeout(()=>this.load(false),30);
+      };
+      const oldPaint=Modules.world.paint;
+      Modules.world.load=async function(force=false){
+        if(state.isDemo) return oldPaint?oldPaint.call(this, demoWorldRows?demoWorldRows():[]):null;
+        const key='fs_v48_world_f1_'+(state.token||''); const cached=!force?getC(key,V48_TTL.worldF1):null;
+        if(cached){ this.paint(cached); return; }
+        try{ const r=await api('worldFase1FrozenSeguro'); const rows=r.data||[]; setC(key,rows); this.paint(rows); }catch(e){ $('worldBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+      };
+    }
+    if(Modules.eliminatorias){
+      const oldLoad=Modules.eliminatorias.load;
+      Modules.eliminatorias.load=async function(force=false){
+        const keyM='fs_v48_ko_matches';
+        loading(true,'Cargando eliminatorias...');
+        try{
+          const cachedMatches=!force?getC(keyM,V48_TTL.koMatches):null;
+          const reqMatches=cachedMatches?Promise.resolve({data:cachedMatches}):api('fsKnockoutMatches');
+          const reqStatus=api('fsArenaRegistrationStatus',{Nombre_Modulo:'Eliminatorias Directas'}).catch(()=>({status:'ok',access:'none'}));
+          const reqPred=state.isDemo?Promise.resolve({data:[]}):api('fsKnockoutPredictionsMine').catch(()=>({data:[]}));
+          const [m,s,p]=await Promise.all([reqMatches,reqStatus,reqPred]);
+          loading(false);
+          state.koMatches=(m.data&&m.data.length?m.data:(typeof demoKoMatches==='function'?demoKoMatches():[]));
+          if(!cachedMatches && !state.isDemo) setC(keyM,state.koMatches);
+          state.koPredictions=p.data||[];
+          state.arenaAccess.eliminatorias=s;
+          this.fillFilters(); this.paint();
+        }catch(e){ loading(false); if(oldLoad) return oldLoad.call(this,force); $('koBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+      };
+      const oldRender=Modules.eliminatorias.render;
+      Modules.eliminatorias.render=async function(){ await oldRender.call(this); };
+    }
+  })();
+
+
+
+
+  /* === V49 LAZY RENDER REAL + DASHBOARD/MUNDIAL ELIMINATORIAS TIPO PARTIDOS === */
+  (function(){
+    if(!window.Modules || !window.jsonp) return;
+    const FS49_TTL={dashF1: 10*60*1000, worldF1: 10*60*1000, dashKo: 45*1000, koWorld: 45*1000, koMatches: 5*60*1000};
+    function fs49Now(){return Date.now();}
+    function fs49Get(k,ttl){try{const x=JSON.parse(sessionStorage.getItem(k)||'null'); if(x && fs49Now()-x.t<ttl) return x.v;}catch(e){} return null;}
+    function fs49Set(k,v){try{sessionStorage.setItem(k,JSON.stringify({t:fs49Now(),v}));}catch(e){}}
+    function fs49Api(action,p={}){return jsonp(action,Object.assign({token:state.token},p));}
+    function fs49Money(n){return '$'+Number(n||0).toLocaleString('es-MX');}
+    function fs49Mod(tab){return (typeof moduleNameForRoute==='function'?moduleNameForRoute(tab):({eliminatorias:'Eliminatorias Directas',campeon:'Campeón Mundial',tombola:'Sobre FIFA',rapidas:'Quinielas Rápidas',vip:'Camino al Campeón VIP'}[tab]||tab));}
+    function fs49Gate(tab){
+      if(state.isDemo || tab==='fase1') return true;
+      if(typeof isAdmin==='function' && isAdmin()) return true;
+      const m=fs49Mod(tab), byName=state.arenaAccess && (state.arenaAccess[m]||state.arenaAccess[tab]);
+      return !!(byName && (byName.can || byName.active || byName.access==='active' || (byName.registration&&byName.registration.active)));
+    }
+    function fs49Blocked(id,tab){
+      const el=$(id); if(!el) return; const m=fs49Mod(tab);
+      el.innerHTML=`<div class="gate-card">🔒 Para consultar ${esc(m)} necesitas registro activo y pago completo en esta competencia.<br><button class="btn" id="fs49GoArena_${id}">Ir a Arena</button></div>`;
+      const b=$(`fs49GoArena_${id}`); if(b) b.onclick=()=>route('arena',{focusModule:m});
+    }
+    function fs49Dense(items){
+      const arr=[...(items||[])].sort((a,b)=>Number(b.points||b.Puntos||0)-Number(a.points||a.Puntos||0));
+      let place=0,last=null; return arr.map(x=>{const pts=Number(x.points||x.Puntos||0); if(pts!==last){place++; last=pts;} return Object.assign({},x,{__place:place,rank:place});});
+    }
+    function fs49Skeleton(title='Cargando...'){
+      return `<div class="card fs49-skeleton-card"><div class="loader" style="margin:auto"></div><h2 style="text-align:center;margin:12px 0 2px">${esc(title)}</h2><p class="muted strong" style="text-align:center">La información se carga bajo demanda para mejorar velocidad.</p></div>`;
+    }
+    function fs49MatchStatus(m){
+      const rl=bestScore(m,'local'), rv=bestScore(m,'visit');
+      return (rl!=='' && rv!=='')?'Con resultado':'Sin resultado';
+    }
+    function fs49KoPredictionMap(preds){
+      const out={}; (preds||[]).forEach(p=>{ const id=safe(val(p,['Partido_ID','Partido ID','partido_id','ID'],'')); if(id) out[id]=p; }); return out;
+    }
+    function fs49KoScore(p,side){ return bestScore(p||{}, side); }
+    function fs49KoCard(m,p,opts={}){
+      const id=matchId(m)||safe(val(m,['Partido_ID','Partido ID','ID'],''));
+      const local=safe(val(m,['Equipo_Local','Equipo Local','Local','Equipo local'],''));
+      const visit=safe(val(m,['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],''));
+      const ronda=safe(val(m,['Ronda','Fase','Grupo'],''));
+      const sede=safe(val(m,['Sede','Estadio','Ciudad','Venue'],''));
+      const fecha=dateStr(m)||safe(val(m,['Fecha'],''));
+      const hora=hourStr(m)||safe(val(m,['Hora'],''));
+      const ml=fs49KoScore(p,'local'), mv=fs49KoScore(p,'visit');
+      const rl=bestScore(m,'local'), rv=bestScore(m,'visit');
+      const adv=safe(val(p||{},['Equipo_Avanza','Avanza','Ganador'],''));
+      const pen=safe(val(p||{},['Penales'],'')).toLowerCase();
+      const penTxt=(pen==='sí'||pen==='si'||pen==='true'||pen==='1')?' · Penales':' ';
+      const status=fs49MatchStatus(m);
+      return `<article class="match-card phase1-card readonly fs49-ko-card" data-date="${esc(fecha)}" data-teams="${esc(local+' '+visit)}" data-status="${esc(status)}">
+        <div class="match-head"><span>${esc(id)} · ${esc(ronda)}</span><span>${esc(fecha)} · ${esc(hora)}</span></div>
+        <div class="phase1-scoreboard"><div class="team"><div class="flag">${flagFor(local)}</div><div class="team-name">${esc(local)}</div></div><div class="phase1-score"><div class="score-box ${ml!==''?'has':''}">${ml!==''?esc(ml):'–'}</div><span class="vs">VS</span><div class="score-box ${mv!==''?'has':''}">${mv!==''?esc(mv):'–'}</div></div><div class="team"><div class="flag">${flagFor(visit)}</div><div class="team-name">${esc(visit)}</div></div></div>
+        ${sede?`<div class="stadium-line">🏟️ ${esc(sede)}</div>`:''}
+        <div class="fs49-ko-meta"><span class="status-badge ${status==='Con resultado'?'active':'inactive'}">${esc(status)}</span>${p?`<span class="admin-chip">Avanza: ${esc(adv||'Sin selección')}${esc(penTxt)}</span>`:'<span class="admin-chip">Sin pronóstico guardado</span>'}${rl!==''||rv!==''?`<span class="admin-chip">Real: ${esc(rl||'–')} - ${esc(rv||'–')}</span>`:''}</div>
+      </article>`;
+    }
+
+    function fs49PaintDashFase1(data){
+      const d=data&&data.data?data.data:data||{};
+      const ranking=fs49Dense(d.ranking||[]);
+      const total=Number(d.totalPaid||d.acumulado||d.bolsa||0), played=Number(d.partidosJugados||d.played||72);
+      const exact=ranking.reduce((a,x)=>a+Number(x.exact||x.Exactos||0),0), result=ranking.reduce((a,x)=>a+Number(x.winner||x.Ganador||x.Aciertos||0),0);
+      const pct=Math.min(100,Math.round(exact/Math.max(1,exact+result)*100));
+      $('dashBody').innerHTML=`<div class="phase1-frozen-pill">⚡ Fase 1 congelada · consulta histórica</div><div class="grid cols-3" style="margin-top:12px"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${fs49Money(total)}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${ranking.length}</div></div><div class="card kpi"><div class="label">Partidos jugados</div><div class="value">${played}/72</div></div></div><div class="dashboard-grid" style="margin-top:18px"><div class="card"><h2>🏆 Ranking Fase 1</h2><div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${esc(x.name||x.Usuario||x.usuario||'')}</div><div>${Number(x.points||x.Puntos||0)} pts</div><div class="exact-col">${Number(x.exact||x.Exactos||0)} exactos</div></div>`).join('')||'<div class="notice">Sin ranking cargado.</div>'}</div></div><div class="card donut-card"><h2>🎯 Aciertos</h2><div class="donut-wrap"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${pct}%</div></div><p class="muted strong">Ranking denso: mismos puntos comparten lugar.</p><button class="btn" id="dashResultsBtn">🏁 Resultados del Mundial</button></div></div>`;
+      const b=$('dashResultsBtn'); if(b) b.onclick=()=>openResultsModal('fase1');
+    }
+    function fs49PaintDashKo(data){
+      const d=data&&data.data?data.data:data||{}; const ranking=fs49Dense(d.ranking||[]); const max=Math.max(...ranking.map(x=>Number(x.points||0)),1);
+      const pct=Math.min(100,Math.round(Number(d.partidosConResultado||0)/Math.max(1,Number(d.partidosTotales||0))*100));
+      $('dashBody').innerHTML=`<div class="phase1-frozen-pill">⚡ Eliminatorias · actualización ligera</div><div class="grid cols-4" style="margin-top:12px"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${fs49Money(d.bolsa||0)}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${Number(d.participantes||ranking.length||0)}</div></div><div class="card kpi"><div class="label">Partidos con resultado</div><div class="value">${Number(d.partidosConResultado||0)}/${Number(d.partidosTotales||0)}</div></div><div class="card kpi"><div class="label">Pronósticos</div><div class="value">${Number(d.pronosticos||0)}</div></div></div><div class="dashboard-grid" style="margin-top:18px"><div class="card"><h2>🏆 Ranking Eliminatorias</h2><div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${esc(x.name||x.Usuario||x.usuario||'')}</div><div>${Number(x.points||0)} pts</div><div class="exact-col">${Number(x.exact||0)} exactos</div></div>`).join('')||'<div class="notice">Aún no hay ranking.</div>'}</div></div><div class="card"><h2>📈 Seguimiento</h2><div class="donut-wrap" style="margin:16px auto"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${pct}%</div></div><div class="rank-bars">${ranking.slice(0,8).map(x=>`<div class="rank-bar"><div class="pos">${x.__place}</div><div><b>${esc(x.name||x.usuario||'')}</b><div class="bar"><div class="fill" style="width:${Math.max(3,Math.round(Number(x.points||0)/max*100))}%"></div></div></div><div>${Number(x.points||0)} pts</div></div>`).join('')||'<div class="notice">Sin datos todavía.</div>'}</div><button class="btn" id="fs49KoResultsBtn" style="margin-top:14px">🏁 Resultados Eliminatorias</button></div></div>`;
+      const b=$('fs49KoResultsBtn'); if(b) b.onclick=()=> (typeof openKoResultsModalV45==='function'?openKoResultsModalV45():openResultsModal('eliminatorias'));
+    }
+    async function fs49DashF1(force=false){
+      const key='fs49_dash_f1_'+(state.token||'demo'); const cached=!force&&!state.isDemo?fs49Get(key,FS49_TTL.dashF1):null;
+      if(cached) return fs49PaintDashFase1(cached);
+      $('dashBody').innerHTML=fs49Skeleton('Cargando resumen histórico...');
+      try{ const r=state.isDemo?{status:'ok',data:{ranking:demoRanking(),totalPaid:3060,partidosJugados:72}}:await fs49Api('dashboardFase1FrozenSeguro'); const d=r.data||r; if(!state.isDemo) fs49Set(key,d); fs49PaintDashFase1(d); }catch(e){ $('dashBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+    async function fs49DashKo(force=false){
+      if(!fs49Gate('eliminatorias')) return fs49Blocked('dashBody','eliminatorias');
+      const key='fs49_dash_ko_'+(state.token||'demo'); const cached=!force&&!state.isDemo?fs49Get(key,FS49_TTL.dashKo):null;
+      if(cached) return fs49PaintDashKo(cached);
+      $('dashBody').innerHTML=fs49Skeleton('Cargando ranking de Eliminatorias...');
+      try{ const r=state.isDemo?{status:'ok',data:{bolsa:900,participantes:10,partidosConResultado:2,partidosTotales:16,pronosticos:20,ranking:[{name:'Demo MX',points:15,exact:2,advance:1},{name:'Demo Pro',points:12,exact:1,advance:2},{name:'Demo Fan',points:9,exact:0,advance:3}]}}:await fs49Api('dashboardEliminatoriasSeguro'); const d=r.data||r; if(!state.isDemo) fs49Set(key,d); fs49PaintDashKo(d); }catch(e){ $('dashBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+
+    function fs49WorldTabs(active='fase1'){
+      return `<div class="subtabs"><button class="subtab ${active==='fase1'?'active':''}" data-world-tab="fase1">Fase 1</button><button class="subtab ${active==='eliminatorias'?'active':''}" data-world-tab="eliminatorias">Eliminatorias</button><button class="subtab ${active==='campeon'?'active':''}" data-world-tab="campeon">Campeón</button><button class="subtab ${active==='tombola'?'active':''}" data-world-tab="tombola">Sobre FIFA</button><button class="subtab ${active==='rapidas'?'active':''}" data-world-tab="rapidas">Rápidas</button><button class="subtab ${active==='vip'?'active':''}" data-world-tab="vip">VIP</button></div>`;
+    }
+    async function fs49WorldF1(force=false){
+      const key='fs49_world_f1_'+(state.token||'demo'); const cached=!force&&!state.isDemo?fs49Get(key,FS49_TTL.worldF1):null;
+      if(cached && Modules.world.paint) return Modules.world.paint(cached);
+      $('worldBody').innerHTML=fs49Skeleton('Cargando Mi Mundial histórico...');
+      try{ const r=state.isDemo?{status:'ok',data:(typeof fs31DemoPredictions==='function'?fs31DemoPredictions():[])}:await fs49Api('worldFase1FrozenSeguro'); const rows=r.data||[]; if(!state.isDemo) fs49Set(key,rows); if(Modules.world.paint) Modules.world.paint(rows); }catch(e){ $('worldBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+    function fs49PaintWorldKo(payload){
+      const data=payload&&payload.data?payload.data:payload||{}; const matches=data.matches||[]; const preds=data.predictions||[]; const pmap=fs49KoPredictionMap(preds); const today=todayIsoV18?todayIsoV18():(new Date().toISOString().slice(0,10));
+      const dates=[...new Set(matches.map(m=>dateStr(m)||safe(val(m,['Fecha'],''))).filter(Boolean))].sort();
+      const teams=[...new Set(matches.flatMap(m=>[safe(val(m,['Equipo_Local','Equipo Local','Local','Equipo local'],'')),safe(val(m,['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],''))]).filter(Boolean))].sort();
+      $('worldBody').innerHTML=`<div class="grid cols-3 world-stats"><div class="card kpi"><div class="label">Partidos</div><div class="value">${matches.length}</div></div><div class="card kpi"><div class="label">Mis pronósticos</div><div class="value">${preds.length}</div></div><div class="card kpi"><div class="label">Con resultado</div><div class="value">${matches.filter(m=>fs49MatchStatus(m)==='Con resultado').length}</div></div></div><div class="world-filter-panel"><div class="world-filter-title">🎛️ Filtros Eliminatorias <span>⌄</span></div><div class="world-filter-body"><select id="fs49KoDate" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="fs49KoTeam" class="select"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="fs49KoStatus" class="select"><option value="">Todos los estatus</option><option>Con resultado</option><option>Sin resultado</option></select></div><div class="world-tools"><button id="fs49KoToday" class="today-chip">📅 Hoy</button><button id="fs49KoClear" class="btn light">🧹 Limpiar</button><button id="fs49KoResults" class="btn light">🏁 Resultados</button></div></div><div id="fs49KoCards" style="margin-top:18px"></div>`;
+      let todayOnly=false;
+      const render=()=>{
+        const df=$('fs49KoDate').value, tf=$('fs49KoTeam').value, sf=$('fs49KoStatus').value;
+        const rows=matches.filter(m=>{ const d=dateStr(m)||safe(val(m,['Fecha'],'')); const local=safe(val(m,['Equipo_Local','Equipo Local','Local','Equipo local'],'')); const visit=safe(val(m,['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],'')); const st=fs49MatchStatus(m); return (!todayOnly||d===today)&&(!df||d===df)&&(!tf||local===tf||visit===tf)&&(!sf||st===sf); });
+        const byDate={}; rows.forEach(m=>{ const d=dateStr(m)||safe(val(m,['Fecha'],''))||'Sin fecha'; (byDate[d]=byDate[d]||[]).push(m); });
+        $('fs49KoCards').innerHTML=Object.entries(byDate).map(([d,items])=>`<div class="match-day">🗓️ ${esc(d)}</div><div class="match-grid">${items.map(m=>fs49KoCard(m,pmap[matchId(m)||safe(val(m,['Partido_ID','Partido ID','ID'],''))])).join('')}</div>`).join('')||'<div class="notice warn">Sin partidos con esos filtros.</div>';
+      };
+      $('fs49KoDate').onchange=render; $('fs49KoTeam').onchange=render; $('fs49KoStatus').onchange=render;
+      $('fs49KoToday').onclick=()=>{todayOnly=!todayOnly; $('fs49KoToday').classList.toggle('active',todayOnly); render();};
+      $('fs49KoClear').onclick=()=>{todayOnly=false; $('fs49KoToday').classList.remove('active'); ['fs49KoDate','fs49KoTeam','fs49KoStatus'].forEach(id=>$(id).value=''); render();};
+      $('fs49KoResults').onclick=()=> (typeof openKoResultsModalV45==='function'?openKoResultsModalV45():openResultsModal('eliminatorias'));
+      render();
+    }
+    async function fs49WorldKo(force=false){
+      if(!fs49Gate('eliminatorias')) return fs49Blocked('worldBody','eliminatorias');
+      const key='fs49_world_ko_'+(state.token||'demo'); const cached=!force&&!state.isDemo?fs49Get(key,FS49_TTL.koWorld):null;
+      if(cached) return fs49PaintWorldKo(cached);
+      $('worldBody').innerHTML=fs49Skeleton('Cargando Mi Mundial Eliminatorias...');
+      try{ const r=state.isDemo?{status:'ok',data:{matches:(typeof demoKoMatches==='function'?demoKoMatches():[]),predictions:[]}}:await fs49Api('worldEliminatoriasSeguro'); const d=r.data||r; if(!state.isDemo) fs49Set(key,d); fs49PaintWorldKo(d); }catch(e){ $('worldBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+    }
+
+    if(Modules.dashboard){
+      Modules.dashboard.render=async function(){
+        view.innerHTML=`<div class="hero"><h1>📊 Dashboard</h1><p>Ranking, bolsa, puntos y desempeño de la competencia.</p><button id="refreshDash" class="btn light" style="margin-top:12px">🔄 Actualizar dashboard</button></div><div class="subtabs"><button class="subtab active" data-dash-tab="fase1">Fase 1</button><button class="subtab" data-dash-tab="eliminatorias">Eliminatorias</button><button class="subtab" data-dash-tab="campeon">Campeón</button><button class="subtab" data-dash-tab="tombola">Sobre FIFA</button><button class="subtab" data-dash-tab="rapidas">Rápidas</button><button class="subtab" data-dash-tab="vip">VIP</button></div><div id="dashBody">${fs49Skeleton('Preparando Dashboard...')}</div>`;
+        let current='fase1';
+        $('refreshDash').onclick=()=> current==='fase1'?fs49DashF1(true):current==='eliminatorias'?fs49DashKo(true):(Modules.dashboard.paintTab?Modules.dashboard.paintTab(current):null);
+        view.querySelectorAll('[data-dash-tab]').forEach(b=>b.onclick=()=>{ view.querySelectorAll('[data-dash-tab]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); current=b.dataset.dashTab; if(current==='fase1') return fs49DashF1(false); if(current==='eliminatorias') return fs49DashKo(false); if(!fs49Gate(current)) return fs49Blocked('dashBody',current); $('dashBody').innerHTML='<div class="notice">Este tab se cargará cuando tenga actividad registrada en su base.</div>'; });
+        setTimeout(()=>fs49DashF1(false),20);
+      };
+      Modules.dashboard.paintTab=function(tab){ if(tab==='fase1') return fs49DashF1(false); if(tab==='eliminatorias') return fs49DashKo(false); if(!fs49Gate(tab)) return fs49Blocked('dashBody',tab); if($('dashBody')) $('dashBody').innerHTML='<div class="notice">Este tab se cargará cuando tenga actividad registrada en su base.</div>'; };
+    }
+    if(Modules.world){
+      Modules.world.render=async function(){
+        view.innerHTML=`<div class="hero"><h1>🌎 Mi Mundial</h1><p>Consulta histórica de Fase 1 y tus competencias de Arena.</p><button id="refreshWorld" class="btn light" style="margin-top:12px">🔄 Actualizar Mi Mundial</button></div>${fs49WorldTabs('fase1')}<div id="worldBody">${fs49Skeleton('Preparando Mi Mundial...')}</div>`;
+        let current='fase1';
+        $('refreshWorld').onclick=()=>current==='fase1'?fs49WorldF1(true):current==='eliminatorias'?fs49WorldKo(true):null;
+        view.querySelectorAll('[data-world-tab]').forEach(b=>b.onclick=()=>{ view.querySelectorAll('[data-world-tab]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); current=b.dataset.worldTab; if(current==='fase1') return fs49WorldF1(false); if(current==='eliminatorias') return fs49WorldKo(false); if(!fs49Gate(current)) return fs49Blocked('worldBody',current); $('worldBody').innerHTML='<div class="notice">Este tab se cargará cuando tenga actividad registrada en su base.</div>'; });
+        setTimeout(()=>fs49WorldF1(false),20);
+      };
+      Modules.world.load=async function(force=false){ return fs49WorldF1(force); };
+    }
+    if(Modules.eliminatorias){
+      const oldElimRender=Modules.eliminatorias.render, oldElimPaint=Modules.eliminatorias.paint;
+      Modules.eliminatorias.load=async function(force=false){
+        if($('koBody')) $('koBody').innerHTML=fs49Skeleton('Cargando partidos de Eliminatorias...');
+        try{
+          const mk='fs49_ko_matches'; const cached=!force?fs49Get(mk,FS49_TTL.koMatches):null;
+          const [m,s,p]=await Promise.all([
+            cached?Promise.resolve({data:cached}):fs49Api('fsKnockoutMatches'),
+            fs49Api('fsArenaRegistrationStatus',{Nombre_Modulo:'Eliminatorias Directas'}).catch(()=>({status:'ok',access:'none'})),
+            state.isDemo?Promise.resolve({data:[]}):fs49Api('fsKnockoutPredictionsMine').catch(()=>({data:[]}))
+          ]);
+          state.koMatches=(m.data&&m.data.length?m.data:(typeof demoKoMatches==='function'?demoKoMatches():[]));
+          if(!cached && !state.isDemo) fs49Set(mk,state.koMatches);
+          state.koPredictions=p.data||[]; state.arenaAccess=state.arenaAccess||{}; state.arenaAccess.eliminatorias=s;
+          if(this.fillFilters) this.fillFilters();
+          if(oldElimPaint) oldElimPaint.call(this); else if(this.paint) this.paint();
+        }catch(e){ if($('koBody')) $('koBody').innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+      };
+      if(oldElimRender){ Modules.eliminatorias.render=async function(){ await oldElimRender.call(this); }; }
+    }
+    const st=document.createElement('style');
+    st.textContent=`.fs49-skeleton-card{min-height:180px;display:grid;place-items:center;text-align:center}.fs49-ko-meta{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:12px}.fs49-ko-card{animation:fs49Fade .18s ease-out}@keyframes fs49Fade{from{opacity:.2;transform:translateY(4px)}to{opacity:1;transform:none}}`;
+    document.head.appendChild(st);
+  })();
+
+
+
+  /* =========================
+     V50 PERFORMANCE UX + DASHBOARD ELIMINATORIAS DEFINITIVO
+     - No usa overlay global para Dashboard/Mi Mundial.
+     - Carga sólo el tab activo.
+     - Tab Eliminatorias Dashboard: bolsa 90%, ranking, gráfico partidos con resultado/total y popup resultados.
+     - Tab Eliminatorias Mi Mundial: diseño tipo Partidos con tarjetas, filtros y resultados.
+  ========================= */
+  (function(){
+    const V50_TTL = { f1: 21600000, koDash: 90000, koWorld: 90000 };
+
+    function v50Key(k){ return 'fs_v50_' + k + '_' + (state && state.token ? state.token : 'demo'); }
+    function v50Get(k, ttl){
+      try{
+        const raw = sessionStorage.getItem(k);
+        if(!raw) return null;
+        const o = JSON.parse(raw);
+        if(Date.now() - (o.t || 0) > ttl) return null;
+        return o.v;
+      }catch(e){ return null; }
+    }
+    function v50Set(k, v){
+      try{ sessionStorage.setItem(k, JSON.stringify({t:Date.now(), v})); }catch(e){}
+    }
+    function v50Api(action, params={}){
+      return jsonp(action, Object.assign({token: state.token}, params), 15000);
+    }
+    function v50Val(o, keys, def=''){
+      for(const k of keys){ if(o && o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k]; }
+      return def;
+    }
+    function v50Esc(x){ return esc(x == null ? '' : x); }
+    function v50Money(n){ return '$' + Number(n || 0).toLocaleString('es-MX'); }
+    function v50Date(o){
+      if(typeof dateStr === 'function') return dateStr(o);
+      return String(v50Val(o, ['Fecha','fecha'], '')).slice(0,10);
+    }
+    function v50Hour(o){
+      if(typeof hourStr === 'function') return hourStr(o);
+      return String(v50Val(o, ['Hora','hora'], '')).slice(0,5);
+    }
+    function v50Score(o, side){
+      if(typeof bestScore === 'function') return bestScore(o, side);
+      const keys = side === 'local' ? ['Resultado_Local','Marcador_Local','Local','Goles_Local','rl'] : ['Resultado_Visitante','Marcador_Visitante','Visitante','Goles_Visitante','rv'];
+      const v = v50Val(o, keys, '');
+      return v === null || v === undefined ? '' : String(v);
+    }
+    function v50MatchId(o){
+      if(typeof matchId === 'function') return matchId(o);
+      return String(v50Val(o, ['Partido_ID','Partido ID','ID','id'], ''));
+    }
+    function v50Team(o, side){
+      return side === 'local'
+        ? String(v50Val(o, ['Equipo_Local','Equipo Local','Local','Equipo local'], ''))
+        : String(v50Val(o, ['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'], ''));
+    }
+    function v50Dense(rows){
+      const arr = [...(rows || [])].sort((a,b)=>Number(b.points || b.Puntos || 0)-Number(a.points || a.Puntos || 0));
+      let rank = 0, last = null;
+      return arr.map(x=>{
+        const pts = Number(x.points || x.Puntos || 0);
+        if(pts !== last){ rank++; last = pts; }
+        return Object.assign({}, x, {rank, __place:rank});
+      });
+    }
+    function v50MiniLoader(title, msg='Carga ligera por tab activo.'){
+      return `<div class="card fs-v50-loader-card"><div class="spinner"></div><h2>${v50Esc(title)}</h2><p class="muted strong">${v50Esc(msg)}</p></div>`;
+    }
+    function v50NoAccess(target, modulo){
+      const el=$(target); if(!el) return;
+      el.innerHTML = `<div class="notice warn">🔒 Para ver este tab necesitas registro activo y pago completo en ${v50Esc(modulo)}.</div>`;
+    }
+    function v50Placeholder(target, modulo){
+      const el=$(target); if(!el) return;
+      el.innerHTML = `<div class="notice">Este tab se cargará cuando tenga actividad registrada en ${v50Esc(modulo)}.</div>`;
+    }
+    function v50Subtabs(kind, active){
+      const attr = kind === 'dash' ? 'data-v50-dash-tab' : 'data-v50-world-tab';
+      return `<div class="subtabs">
+        <button class="subtab ${active==='fase1'?'active':''}" ${attr}="fase1">Fase 1</button>
+        <button class="subtab ${active==='eliminatorias'?'active':''}" ${attr}="eliminatorias">Eliminatorias</button>
+        <button class="subtab ${active==='campeon'?'active':''}" ${attr}="campeon">Campeón</button>
+        <button class="subtab ${active==='tombola'?'active':''}" ${attr}="tombola">Sobre FIFA</button>
+        <button class="subtab ${active==='rapidas'?'active':''}" ${attr}="rapidas">Rápidas</button>
+        <button class="subtab ${active==='vip'?'active':''}" ${attr}="vip">VIP</button>
+      </div>`;
+    }
+
+    function v50PaintDashFase1(data){
+      const d = data && data.data ? data.data : (data || {});
+      const ranking = v50Dense(d.ranking || []);
+      const total = Number(d.totalPaid || d.acumulado || d.bolsa || 0);
+      const played = Number(d.partidosJugados || d.played || 72);
+      const exact = ranking.reduce((a,x)=>a+Number(x.exact || x.Exactos || 0),0);
+      const pct = Math.min(100, Math.round(played / 72 * 100));
+      $('dashBody').innerHTML = `<div class="phase1-frozen-pill">⚡ Fase 1 congelada · consulta histórica</div>
+        <div class="grid cols-4" style="margin-top:12px">
+          <div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${v50Money(total)}</div></div>
+          <div class="card kpi"><div class="label">Participantes</div><div class="value">${ranking.length}</div></div>
+          <div class="card kpi"><div class="label">Partidos jugados</div><div class="value">${played}/72</div></div>
+          <div class="card kpi"><div class="label">Exactos totales</div><div class="value">${exact}</div></div>
+        </div>
+        <div class="dashboard-grid" style="margin-top:18px">
+          <div class="card"><h2>🏆 Ranking Fase 1</h2><p class="muted strong">Ranking denso: mismos puntos comparten lugar.</p>
+            <div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${v50Esc(x.name || x.Usuario || x.usuario || '')}</div><div>${Number(x.points || x.Puntos || 0)} pts</div><div class="exact-col">${Number(x.exact || x.Exactos || 0)} exactos</div></div>`).join('') || '<div class="notice">Sin ranking cargado.</div>'}</div>
+          </div>
+          <div class="card donut-card"><h2>📈 Avance Fase 1</h2>
+            <div class="donut-wrap"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${played}/72</div></div>
+            <p class="muted strong">Partidos cerrados y congelados para consulta.</p>
+            <button class="btn" id="v50F1ResultsBtn">🏁 Resultados Fase 1</button>
+          </div>
+        </div>`;
+      const b=$('v50F1ResultsBtn'); if(b) b.onclick=()=>{ if(typeof openResultsModal==='function') openResultsModal('fase1'); };
+    }
+
+    function v50PaintDashKO(data){
+      const d = data && data.data ? data.data : (data || {});
+      const ranking = v50Dense(d.ranking || []);
+      const played = Number(d.partidosConResultado || 0);
+      const total = Number(d.partidosTotales || 0);
+      const pct = Math.min(100, Math.round(played / Math.max(1,total) * 100));
+      const max = Math.max(...ranking.map(x=>Number(x.points || 0)), 1);
+      $('dashBody').innerHTML = `<div class="phase1-frozen-pill">⚡ Eliminatorias · ranking y seguimiento</div>
+        <div class="grid cols-4" style="margin-top:12px">
+          <div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">${v50Money(d.bolsa || 0)}</div></div>
+          <div class="card kpi"><div class="label">Participantes</div><div class="value">${Number(d.participantes || ranking.length || 0)}</div></div>
+          <div class="card kpi"><div class="label">Partidos con resultado</div><div class="value">${played}/${total}</div></div>
+          <div class="card kpi"><div class="label">Pronósticos</div><div class="value">${Number(d.pronosticos || 0)}</div></div>
+        </div>
+        <div class="dashboard-grid" style="margin-top:18px">
+          <div class="card"><h2>🏆 Ranking Eliminatorias</h2><p class="muted strong">Marcador exacto 6 pts · Avanza 3 pts · Penales +3 pts.</p>
+            <div class="dashboard-ranking-list">${ranking.slice(0,15).map(x=>`<div class="dashboard-rank-row"><div class="place">${x.__place}</div><div>${v50Esc(x.name || x.usuario || x.Usuario || '')}</div><div>${Number(x.points || 0)} pts</div><div class="exact-col">${Number(x.exact || 0)} exactos</div></div>`).join('') || '<div class="notice">Aún no hay ranking.</div>'}</div>
+          </div>
+          <div class="card"><h2>📊 Partidos disputados</h2>
+            <div class="donut-wrap" style="margin:16px auto"><div class="donut" style="--pct:${pct}%"></div><div class="donut-label">${played}/${total}</div></div>
+            <div class="rank-bars">${ranking.slice(0,8).map(x=>`<div class="rank-bar"><div class="pos">${x.__place}</div><div><b>${v50Esc(x.name || x.usuario || '')}</b><div class="bar"><div class="fill" style="width:${Math.max(4, Math.round(Number(x.points || 0)/max*100))}%"></div></div></div><div>${Number(x.points||0)} pts</div></div>`).join('') || '<div class="notice">Sin puntos todavía.</div>'}</div>
+            <button class="btn" id="v50KoResultsBtn" style="margin-top:14px">🏁 Resultados Eliminatorias</button>
+          </div>
+        </div>`;
+      const b=$('v50KoResultsBtn'); if(b) b.onclick=v50OpenKOResults;
+    }
+
+    async function v50LoadDashTab(tab, force=false){
+      if(!$('dashBody')) return;
+      if(tab === 'fase1'){
+        const key=v50Key('dash_fase1');
+        const cached = !force && !state.isDemo ? v50Get(key, V50_TTL.f1) : null;
+        if(cached) return v50PaintDashFase1(cached);
+        $('dashBody').innerHTML = v50MiniLoader('Cargando Fase 1 congelada...');
+        try{
+          const r = state.isDemo ? {status:'ok',data:{ranking:demoRanking(),totalPaid:3060,partidosJugados:72}} : await v50Api('dashboardFase1FrozenSeguro');
+          const d = r.data || r; if(!state.isDemo) v50Set(key,d); v50PaintDashFase1(d);
+        }catch(e){ $('dashBody').innerHTML = `<div class="notice error">${v50Esc(e.message)}</div>`; }
+        return;
+      }
+      if(tab === 'eliminatorias'){
+        const key=v50Key('dash_ko');
+        const cached = !force && !state.isDemo ? v50Get(key, V50_TTL.koDash) : null;
+        if(cached) return v50PaintDashKO(cached);
+        $('dashBody').innerHTML = v50MiniLoader('Cargando Eliminatorias...');
+        try{
+          const r = state.isDemo ? {status:'ok',data:{bolsa:900,participantes:10,partidosConResultado:2,partidosTotales:16,pronosticos:20,ranking:[{name:'Demo MX',points:15,exact:2},{name:'Demo Pro',points:12,exact:1},{name:'Demo Fan',points:9,exact:0}]}} : await v50Api('dashboardEliminatoriasSeguro');
+          if(r.status && r.status !== 'ok') throw new Error(r.message || 'No autorizado');
+          const d = r.data || r; if(!state.isDemo) v50Set(key,d); v50PaintDashKO(d);
+        }catch(e){ $('dashBody').innerHTML = `<div class="notice error">${v50Esc(e.message)}</div>`; }
+        return;
+      }
+      v50Placeholder('dashBody', tab);
+    }
+
+    async function v50OpenKOResults(){
+      modal(`<button class="modal-x" type="button" onclick="closeModal()">×</button><h2>🏁 Resultados Eliminatorias</h2><p class="muted strong">Resultados alimentados desde FS_Eliminatorias_Partidos.</p><div id="v50KoResBody">${v50MiniLoader('Cargando resultados...', 'Sólo se consulta al abrir este popup.')}</div><div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
+      try{
+        const key=v50Key('ko_results');
+        let data = !state.isDemo ? v50Get(key, 90000) : null;
+        if(!data){
+          const r = state.isDemo ? {status:'ok',data:{matches:(typeof demoKoMatches==='function'?demoKoMatches():[])}} : await v50Api('worldEliminatoriasSeguro');
+          if(r.status && r.status !== 'ok') throw new Error(r.message || 'No se pudieron cargar resultados');
+          data = r.data || r; if(!state.isDemo) v50Set(key,data);
+        }
+        const matches = data.matches || data || [];
+        const dates = [...new Set(matches.map(v50Date).filter(Boolean))].sort();
+        const today = (typeof todayIsoV18==='function') ? todayIsoV18() : new Date().toISOString().slice(0,10);
+        const render = (filter='')=>{
+          const rows = matches.filter(m=>!filter || v50Date(m) === filter);
+          $('v50KoRows').innerHTML = rows.map(m=>{
+            const local=v50Team(m,'local'), visit=v50Team(m,'visit');
+            const rl=v50Score(m,'local'), rv=v50Score(m,'visit');
+            const done = rl !== '' && rv !== '';
+            return `<tr><td>${v50Esc(v50Date(m))}</td><td>${v50Esc(v50Hour(m))}</td><td>${v50Esc(v50Val(m,['Ronda','Fase'],''))}</td><td>${v50Esc(v50MatchId(m))}</td><td>${flagFor(local)} ${v50Esc(local)} vs ${flagFor(visit)} ${v50Esc(visit)}</td><td><b>${done?`${v50Esc(rl)} - ${v50Esc(rv)}`:'– - –'}</b></td><td>${done?'Finalizado':'Pendiente'}</td></tr>`;
+          }).join('') || '<tr><td colspan="7">Sin partidos para mostrar.</td></tr>';
+        };
+        $('v50KoResBody').innerHTML = `<div class="results-modal-tools"><select id="v50KoResDate" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${v50Esc(d)}</option>`).join('')}</select><button class="btn light" id="v50KoResToday">📅 Hoy</button><button class="btn light" id="v50KoResAll">Todos</button></div><div class="results-modal-table"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Ronda</th><th>ID</th><th>Partido</th><th>Resultado</th><th>Estatus</th></tr></thead><tbody id="v50KoRows"></tbody></table></div>`;
+        $('v50KoResDate').onchange = ()=>render($('v50KoResDate').value);
+        $('v50KoResToday').onclick = ()=>{ $('v50KoResDate').value=today; render(today); };
+        $('v50KoResAll').onclick = ()=>{ $('v50KoResDate').value=''; render(''); };
+        render('');
+      }catch(e){
+        if($('v50KoResBody')) $('v50KoResBody').innerHTML = `<div class="notice error">${v50Esc(e.message)}</div>`;
+      }
+    }
+
+    function v50PaintWorldKO(data){
+      const d = data && data.data ? data.data : (data || {});
+      const matches = d.matches || [];
+      const preds = d.predictions || [];
+      const pmap = {};
+      preds.forEach(p=>{ const id = String(v50Val(p,['Partido_ID','Partido ID','partido_id','ID'],'')); if(id) pmap[id]=p; });
+      const dates = [...new Set(matches.map(v50Date).filter(Boolean))].sort();
+      const teams = [...new Set(matches.flatMap(m=>[v50Team(m,'local'), v50Team(m,'visit')]).filter(Boolean))].sort();
+      $('worldBody').innerHTML = `<div class="grid cols-3 world-stats"><div class="card kpi"><div class="label">Partidos</div><div class="value">${matches.length}</div></div><div class="card kpi"><div class="label">Mis pronósticos</div><div class="value">${preds.length}</div></div><div class="card kpi"><div class="label">Con resultado</div><div class="value">${matches.filter(m=>v50Score(m,'local')!==''&&v50Score(m,'visit')!=='').length}</div></div></div>
+        <div class="world-filter-panel"><div class="world-filter-title">🎛️ Filtros Eliminatorias <span>⌄</span></div><div class="world-filter-body">
+          <select id="v50WorldKoDate" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${v50Esc(d)}</option>`).join('')}</select>
+          <select id="v50WorldKoTeam" class="select"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${v50Esc(t)}</option>`).join('')}</select>
+          <select id="v50WorldKoStatus" class="select"><option value="">Todos los estatus</option><option>Con resultado</option><option>Sin resultado</option></select>
+        </div><div class="world-tools"><button class="today-chip" id="v50WorldKoToday">📅 Hoy</button><button class="btn light" id="v50WorldKoClear">🧹 Limpiar</button><button class="btn light" id="v50WorldKoResults">🏁 Resultados</button></div></div>
+        <div id="v50WorldKoCards" style="margin-top:18px"></div>`;
+      const today = (typeof todayIsoV18==='function') ? todayIsoV18() : new Date().toISOString().slice(0,10);
+      let todayOnly=false;
+      const render=()=>{
+        const df=$('v50WorldKoDate').value, tf=$('v50WorldKoTeam').value, sf=$('v50WorldKoStatus').value;
+        const rows=matches.filter(m=>{
+          const d=v50Date(m), l=v50Team(m,'local'), v=v50Team(m,'visit');
+          const done = v50Score(m,'local')!==''&&v50Score(m,'visit')!=='';
+          const st = done ? 'Con resultado' : 'Sin resultado';
+          return (!todayOnly || d===today) && (!df || d===df) && (!tf || l===tf || v===tf) && (!sf || st===sf);
+        });
+        const grouped={}; rows.forEach(m=>{ const d=v50Date(m)||'Sin fecha'; (grouped[d]=grouped[d]||[]).push(m); });
+        $('v50WorldKoCards').innerHTML = Object.entries(grouped).map(([d,items])=>`<div class="match-day">🗓️ ${v50Esc(d)}</div><div class="match-grid">${items.map(m=>{
+          const id=v50MatchId(m), p=pmap[id]||{};
+          const local=v50Team(m,'local'), visit=v50Team(m,'visit'), ml=v50Score(p,'local'), mv=v50Score(p,'visit'), rl=v50Score(m,'local'), rv=v50Score(m,'visit');
+          return `<article class="match-card phase1-card readonly"><div class="match-head"><span>${v50Esc(id)} · ${v50Esc(v50Val(m,['Ronda','Fase'],''))}</span><span>${v50Esc(v50Date(m))} · ${v50Esc(v50Hour(m))}</span></div><div class="phase1-scoreboard"><div class="team"><div class="flag">${flagFor(local)}</div><div class="team-name">${v50Esc(local)}</div></div><div class="phase1-score"><div class="score-box">${ml!==''?v50Esc(ml):'–'}</div><span class="vs">VS</span><div class="score-box">${mv!==''?v50Esc(mv):'–'}</div></div><div class="team"><div class="flag">${flagFor(visit)}</div><div class="team-name">${v50Esc(visit)}</div></div></div><div class="fs49-ko-meta"><span class="admin-chip">Avanza: ${v50Esc(v50Val(p,['Equipo_Avanza','Avanza','Ganador'],'Sin selección'))}</span>${rl!==''||rv!==''?`<span class="admin-chip">Real: ${v50Esc(rl||'–')} - ${v50Esc(rv||'–')}</span>`:''}</div></article>`;
+        }).join('')}</div>`).join('') || '<div class="notice warn">Sin partidos con esos filtros.</div>';
+      };
+      $('v50WorldKoDate').onchange=render; $('v50WorldKoTeam').onchange=render; $('v50WorldKoStatus').onchange=render;
+      $('v50WorldKoToday').onclick=()=>{ todayOnly=!todayOnly; $('v50WorldKoToday').classList.toggle('active',todayOnly); render(); };
+      $('v50WorldKoClear').onclick=()=>{ todayOnly=false; $('v50WorldKoToday').classList.remove('active'); ['v50WorldKoDate','v50WorldKoTeam','v50WorldKoStatus'].forEach(id=>$(id).value=''); render(); };
+      $('v50WorldKoResults').onclick=v50OpenKOResults;
+      render();
+    }
+
+    async function v50LoadWorldTab(tab, force=false){
+      if(tab === 'fase1'){
+        if(!$('worldBody')) return;
+        $('worldBody').innerHTML = v50MiniLoader('Cargando Fase 1 histórica...');
+        try{
+          const r = state.isDemo ? {status:'ok',data:[]} : await v50Api('worldFase1FrozenSeguro');
+          const rows = r.data || r;
+          if(Modules.world && typeof Modules.world.paint === 'function') Modules.world.paint(rows);
+          else $('worldBody').innerHTML = `<div class="notice ok">Fase 1 cargada.</div>`;
+        }catch(e){ $('worldBody').innerHTML = `<div class="notice error">${v50Esc(e.message)}</div>`; }
+        return;
+      }
+      if(tab === 'eliminatorias'){
+        const key=v50Key('world_ko');
+        const cached = !force && !state.isDemo ? v50Get(key,V50_TTL.koWorld) : null;
+        if(cached) return v50PaintWorldKO(cached);
+        $('worldBody').innerHTML = v50MiniLoader('Cargando Eliminatorias...');
+        try{
+          const r = state.isDemo ? {status:'ok',data:{matches:(typeof demoKoMatches==='function'?demoKoMatches():[]),predictions:[]}} : await v50Api('worldEliminatoriasSeguro');
+          if(r.status && r.status !== 'ok') throw new Error(r.message || 'No autorizado');
+          const d = r.data || r; if(!state.isDemo) v50Set(key,d); v50PaintWorldKO(d);
+        }catch(e){ $('worldBody').innerHTML = `<div class="notice error">${v50Esc(e.message)}</div>`; }
+        return;
+      }
+      v50Placeholder('worldBody', tab);
+    }
+
+    if(Modules && Modules.dashboard){
+      Modules.dashboard.render = async function(){
+        view.innerHTML = `<div class="hero"><h1>📊 Dashboard</h1><p>Ranking, bolsa, puntos y desempeño por competencia.</p><button id="refreshDash" class="btn light" style="margin-top:12px">🔄 Actualizar tab</button></div>${v50Subtabs('dash','fase1')}<div id="dashBody">${v50MiniLoader('Preparando Dashboard...')}</div>`;
+        let current='fase1';
+        $('refreshDash').onclick = ()=>v50LoadDashTab(current,true);
+        view.querySelectorAll('[data-v50-dash-tab]').forEach(b=>b.onclick=()=>{
+          view.querySelectorAll('[data-v50-dash-tab]').forEach(x=>x.classList.remove('active'));
+          b.classList.add('active');
+          current=b.dataset.v50DashTab;
+          v50LoadDashTab(current,false);
+        });
+        setTimeout(()=>v50LoadDashTab('fase1',false),30);
+      };
+      Modules.dashboard.load = async function(force=false){ return v50LoadDashTab('fase1',force); };
+      Modules.dashboard.paintTab = function(tab){ return v50LoadDashTab(tab,false); };
+    }
+
+    if(Modules && Modules.world){
+      Modules.world.render = async function(){
+        view.innerHTML = `<div class="hero"><h1>🌎 Mi Mundial</h1><p>Consulta tus competencias y pronósticos con diseño tipo partidos.</p><button id="refreshWorld" class="btn light" style="margin-top:12px">🔄 Actualizar tab</button></div>${v50Subtabs('world','fase1')}<div id="worldBody">${v50MiniLoader('Preparando Mi Mundial...')}</div>`;
+        let current='fase1';
+        $('refreshWorld').onclick = ()=>v50LoadWorldTab(current,true);
+        view.querySelectorAll('[data-v50-world-tab]').forEach(b=>b.onclick=()=>{
+          view.querySelectorAll('[data-v50-world-tab]').forEach(x=>x.classList.remove('active'));
+          b.classList.add('active');
+          current=b.dataset.v50WorldTab;
+          v50LoadWorldTab(current,false);
+        });
+        setTimeout(()=>v50LoadWorldTab('fase1',false),30);
+      };
+      Modules.world.load = async function(force=false){ return v50LoadWorldTab('fase1',force); };
+    }
+
+    const st=document.createElement('style');
+    st.textContent = `.fs-v50-loader-card{min-height:180px;display:grid;place-items:center;text-align:center}.fs-v50-loader-card .loader{box-shadow:none}.phase1-frozen-pill{display:inline-flex;align-items:center;gap:8px;background:#ecfeff;border:1px solid #bde4ff;color:#003b8f;border-radius:999px;padding:10px 14px;font-weight:700;margin-bottom:8px}.admin-chip{display:inline-flex;align-items:center;gap:6px;background:#f1f7ff;border:1px solid #d8eaff;color:#003b8f;border-radius:999px;padding:7px 10px;font-weight:700}.world-tools{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.today-chip.active{background:linear-gradient(120deg,#0b84f3,#00a86b)!important;color:#fff!important}@media(max-width:720px){.dashboard-grid{grid-template-columns:1fr!important}.dashboard-rank-row{grid-template-columns:42px 1fr auto!important}.dashboard-rank-row .exact-col{display:none!important}}`;
+    document.head.appendChild(st);
+  })();
+
+
   init();
 })();
 </script>
+
+<script>
+/* =========================
+   V51 · MI MUNDIAL ELIMINATORIAS PRO
+   - Consulta pronósticos de todos los participantes activos.
+   - Filtro por usuario/participante.
+   - Tabla comparativa estilo Mi Mundial Fase 1 con marcación de partidos jugados.
+   - Gráfico UX interactivo sin recalcular Fase 1.
+   - No modifica módulos funcionales de Arena/Eliminatorias/Dashboard.
+========================= */
+(function(){
+  const TTL = { fase1:21600000, koWorld:90000 };
+  function $(id){ return document.getElementById(id); }
+  function esc2(x){ return (window.esc ? esc(x) : String(x==null?'':x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))); }
+  function val2(o, keys, def=''){ for(const k of keys){ if(o && o[k]!==undefined && o[k]!==null && o[k] !== '') return o[k]; } return def; }
+  function norm2(x){ return String(x||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function money2(n){ return '$' + Number(n||0).toLocaleString('es-MX'); }
+  function key2(k){ return 'fs_v51_' + k + '_' + ((window.state && state.token) ? state.token : 'demo'); }
+  function getCache(k,ttl){ try{ const raw=sessionStorage.getItem(k); if(!raw) return null; const o=JSON.parse(raw); if(Date.now()-(o.t||0)>ttl) return null; return o.v; }catch(e){ return null; } }
+  function setCache(k,v){ try{ sessionStorage.setItem(k,JSON.stringify({t:Date.now(),v})); }catch(e){} }
+  function api2(action, params={}){ return (window.jsonp ? jsonp(action,Object.assign({token:state.token},params),15000) : Promise.reject(new Error('API no disponible'))); }
+  function date2(o){ if(window.dateStr) return dateStr(o); return String(val2(o,['Fecha','fecha'],'')).slice(0,10); }
+  function hour2(o){ if(window.hourStr) return hourStr(o); return String(val2(o,['Hora','hora'],'')).slice(0,5); }
+  function matchId2(o){ if(window.matchId) return matchId(o); return String(val2(o,['Partido_ID','Partido ID','ID','id'],'')); }
+  function team2(o,side){ return side==='local' ? String(val2(o,['Equipo_Local','Equipo Local','Local','Equipo local'],'')) : String(val2(o,['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],'')); }
+  function score2(o,side){ if(window.bestScore) return bestScore(o,side); const keys=side==='local'?['Resultado_Local','Marcador_Local','Local','Goles_Local','rl','Pred_Local','Marcador Local']:['Resultado_Visitante','Marcador_Visitante','Visitante','Goles_Visitante','rv','Pred_Visitante','Marcador Visitante']; const v=val2(o,keys,''); return v===null||v===undefined?'':String(v); }
+  function flag2(t){ return window.flagFor ? flagFor(t) : '🏳️'; }
+  function todayIso(){ if(window.todayIsoV18) return todayIsoV18(); const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+  function mini(title,msg='Cargando sólo este tab para mejorar velocidad.'){ return `<div class="card fs-v51-loader"><div class="spinner"></div><h2>${esc2(title)}</h2><p class="muted strong">${esc2(msg)}</p></div>`; }
+  function subtabs(active){ return `<div class="subtabs">
+      <button class="subtab ${active==='fase1'?'active':''}" data-v51-world-tab="fase1">Fase 1</button>
+      <button class="subtab ${active==='eliminatorias'?'active':''}" data-v51-world-tab="eliminatorias">Eliminatorias</button>
+      <button class="subtab ${active==='campeon'?'active':''}" data-v51-world-tab="campeon">Campeón</button>
+      <button class="subtab ${active==='tombola'?'active':''}" data-v51-world-tab="tombola">Sobre FIFA</button>
+      <button class="subtab ${active==='rapidas'?'active':''}" data-v51-world-tab="rapidas">Rápidas</button>
+      <button class="subtab ${active==='vip'?'active':''}" data-v51-world-tab="vip">VIP</button>
+    </div>`; }
+  function predUser(p){ return String(val2(p,['Usuario','Participante','Nombre Completo','Nombre_Completo','user'],'')).trim(); }
+  function predAdvance(p){ return String(val2(p,['Equipo_Avanza','Equipo Avanza','Avanza','Ganador','Seleccion_Avanza'],'')).trim(); }
+  function hasReal(m){ return score2(m,'local')!=='' && score2(m,'visit')!==''; }
+  function realScoreTxt(m){ return hasReal(m) ? `${score2(m,'local')} - ${score2(m,'visit')}` : '– - –'; }
+  function predScoreTxt(p){ return p ? `${score2(p,'local') || '–'} - ${score2(p,'visit') || '–'}` : '– - –'; }
+  function calcRowStatus(m,p){
+    if(!p) return {label:'Sin pronóstico', cls:'pending', icon:'⏳'};
+    if(!hasReal(m)) return {label:'Pendiente', cls:'pending', icon:'⏳'};
+    const pl=score2(p,'local'), pv=score2(p,'visit'), rl=score2(m,'local'), rv=score2(m,'visit');
+    if(pl!=='' && pv!=='' && String(pl)===String(rl) && String(pv)===String(rv)) return {label:'Exacto', cls:'exact', icon:'✅'};
+    const adv=norm2(predAdvance(p));
+    const realAdv=norm2(val2(m,['Equipo_Avanza','Equipo Avanza','Avanza','Ganador'],''));
+    if(adv && realAdv && adv===realAdv) return {label:'Avanza', cls:'advance', icon:'🟡'};
+    return {label:'Sin acierto', cls:'miss', icon:'❌'};
+  }
+  function normalizeData(d){
+    const matches=(d.matches||[]).map(x=>Object.assign({},x));
+    const predictions=(d.predictions||d.pronosticos||[]).map(x=>Object.assign({},x));
+    const users=(d.users||d.participants||[]).map(String).filter(Boolean);
+    const allUsers=[...new Set([...users, ...predictions.map(predUser).filter(Boolean)])].sort((a,b)=>a.localeCompare(b,'es'));
+    return {matches,predictions,users:allUsers,generatedAt:d.generatedAt||''};
+  }
+  function groupPreds(preds){
+    const map={};
+    preds.forEach(p=>{ const u=predUser(p); const id=String(val2(p,['Partido_ID','Partido ID','partido_id','ID'],'')); if(u && id) map[norm2(u)+'|'+id]=p; });
+    return map;
+  }
+  function buildRows(data, userFilter){
+    const pmap=groupPreds(data.predictions);
+    const users = userFilter ? [userFilter] : data.users;
+    const rows=[];
+    users.forEach(u=>{
+      data.matches.forEach(m=>{
+        const id=matchId2(m); const p=pmap[norm2(u)+'|'+id];
+        if(userFilter && !p && data.predictions.length) rows.push({user:u,m,p:null});
+        else rows.push({user:u,m,p:p||null});
+      });
+    });
+    return rows;
+  }
+  function statsForRows(rows){
+    let exact=0, advance=0, miss=0, pending=0, withPred=0, played=0;
+    rows.forEach(r=>{ if(r.p) withPred++; if(hasReal(r.m)) played++; const st=calcRowStatus(r.m,r.p); if(st.cls==='exact') exact++; else if(st.cls==='advance') advance++; else if(st.cls==='miss') miss++; else pending++; });
+    return {exact,advance,miss,pending,withPred,played,total:rows.length};
+  }
+  function paintWorldKo(dataRaw){
+    const data=normalizeData(dataRaw&&dataRaw.data?dataRaw.data:dataRaw||{});
+    const dates=[...new Set(data.matches.map(date2).filter(Boolean))].sort();
+    const teams=[...new Set(data.matches.flatMap(m=>[team2(m,'local'),team2(m,'visit')]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const users=data.users;
+    const body=$('worldBody'); if(!body) return;
+    body.innerHTML=`<div class="fs-v51-hero card">
+        <div><div class="fs-v51-eyebrow">⚔️ Mi Mundial · Eliminatorias</div><h2>Consulta todos los pronósticos</h2><p class="muted strong">Compara usuarios, revisa marcadores y ve qué partidos ya tienen resultado real.</p></div>
+        <button class="btn light" id="v51KoResultsBtn">🏁 Resultados</button>
+      </div>
+      <div class="grid cols-4 fs-v51-kpis">
+        <div class="card kpi"><div class="label">Partidos</div><div class="value">${data.matches.length}</div></div>
+        <div class="card kpi"><div class="label">Participantes</div><div class="value">${users.length}</div></div>
+        <div class="card kpi"><div class="label">Pronósticos</div><div class="value">${data.predictions.length}</div></div>
+        <div class="card kpi"><div class="label">Con resultado</div><div class="value">${data.matches.filter(hasReal).length}</div></div>
+      </div>
+      <div class="card fs-v51-filter-card"><h2>🎛️ Filtros</h2><div class="filters">
+        <select id="v51User" class="select"><option value="">Todos los participantes</option>${users.map(u=>`<option>${esc2(u)}</option>`).join('')}</select>
+        <select id="v51Date" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc2(d)}</option>`).join('')}</select>
+        <select id="v51Team" class="select"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc2(t)}</option>`).join('')}</select>
+        <select id="v51Status" class="select"><option value="">Todos los estatus</option><option value="jugado">Jugados</option><option value="pendiente">Pendientes</option><option value="exact">Exactos</option><option value="advance">Avanza correcto</option><option value="miss">Sin acierto</option></select>
+        <input id="v51Search" class="input" placeholder="Buscar usuario, equipo o partido">
+      </div><div class="world-tools"><button id="v51Today" class="today-chip">📅 Hoy</button><button id="v51Clear" class="btn light">🧹 Limpiar</button></div></div>
+      <div class="card fs-v51-chart"><h2>📊 Gráfico de aciertos</h2><p class="muted strong">Se actualiza con los filtros seleccionados.</p><div id="v51ChartBars" class="fs-v51-bars"></div></div>
+      <div class="card fs-v51-table-card"><div class="fs-v51-table-head"><h2>📋 Tabla comparativa</h2><span id="v51Count" class="admin-chip">0 registros</span></div><div class="table-wrap fs-v51-table-wrap"><table class="fs-v51-table"><thead><tr><th>Usuario</th><th>Fecha</th><th>Partido</th><th>Pronóstico</th><th>Avanza</th><th>Resultado real</th><th>Estatus</th></tr></thead><tbody id="v51Rows"></tbody></table></div></div>`;
+    let todayOnly=false;
+    const today=todayIso();
+    function filtered(){
+      const uf=$('v51User').value, df=$('v51Date').value, tf=$('v51Team').value, sf=$('v51Status').value, q=norm2($('v51Search').value);
+      let rows=buildRows(data,uf);
+      return rows.filter(r=>{
+        const m=r.m,p=r.p, d=date2(m), l=team2(m,'local'), v=team2(m,'visit'), id=matchId2(m), st=calcRowStatus(m,p);
+        const played=hasReal(m);
+        const hay=`${r.user} ${id} ${l} ${v} ${predAdvance(p)} ${date2(m)} ${hour2(m)}`;
+        return (!todayOnly || d===today) && (!df || d===df) && (!tf || l===tf || v===tf) && (!q || norm2(hay).includes(q)) && (!sf || (sf==='jugado'?played:sf==='pendiente'?!played:st.cls===sf));
+      });
+    }
+    function renderChart(rows){
+      const s=statsForRows(rows); const max=Math.max(s.exact,s.advance,s.miss,s.pending,1);
+      const bars=[['Exactos',s.exact,'exact','✅'],['Avanza',s.advance,'advance','🟡'],['Sin acierto',s.miss,'miss','❌'],['Pendientes',s.pending,'pending','⏳']];
+      $('v51ChartBars').innerHTML=bars.map(([label,n,cls,ico])=>`<div class="fs-v51-bar ${cls}"><div class="fs-v51-bar-label"><span>${ico} ${label}</span><b>${n}</b></div><div class="fs-v51-bar-track"><div style="width:${Math.max(3,Math.round(n/max*100))}%"></div></div></div>`).join('');
+    }
+    function render(){
+      const rows=filtered();
+      $('v51Count').textContent=`${rows.length} registros`;
+      renderChart(rows);
+      const limit=500;
+      $('v51Rows').innerHTML=rows.slice(0,limit).map(r=>{
+        const m=r.m,p=r.p, st=calcRowStatus(m,p), l=team2(m,'local'), v=team2(m,'visit'), done=hasReal(m);
+        return `<tr class="${done?'fs-v51-played':'fs-v51-pending'} ${st.cls}">
+          <td><b>${esc2(r.user)}</b></td>
+          <td>${esc2(date2(m))}<br><small>${esc2(hour2(m))}</small></td>
+          <td><b>${esc2(matchId2(m))}</b><br>${flag2(l)} ${esc2(l)} vs ${flag2(v)} ${esc2(v)}</td>
+          <td><b>${esc2(predScoreTxt(p))}</b></td>
+          <td>${esc2(predAdvance(p)||'–')}</td>
+          <td><b>${esc2(realScoreTxt(m))}</b></td>
+          <td><span class="fs-v51-status ${st.cls}">${st.icon} ${esc2(st.label)}</span></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7">Sin información con esos filtros.</td></tr>';
+      if(rows.length>limit){ $('v51Rows').innerHTML += `<tr><td colspan="7">Mostrando ${limit} de ${rows.length}. Usa filtros para reducir la consulta.</td></tr>`; }
+    }
+    ['v51User','v51Date','v51Team','v51Status'].forEach(id=>$(id).onchange=render);
+    $('v51Search').oninput=render;
+    $('v51Today').onclick=()=>{ todayOnly=!todayOnly; $('v51Today').classList.toggle('active',todayOnly); render(); };
+    $('v51Clear').onclick=()=>{ todayOnly=false; $('v51Today').classList.remove('active'); ['v51User','v51Date','v51Team','v51Status','v51Search'].forEach(id=>$(id).value=''); render(); };
+    $('v51KoResultsBtn').onclick=openKoResults;
+    render();
+  }
+  async function openKoResults(){
+    if(window.v50OpenKOResults) return v50OpenKOResults();
+    const html=`<button class="modal-x" id="v51ResX">×</button><h2>🏁 Resultados Eliminatorias</h2><p class="muted strong">Resultados reales alimentados desde FS_Eliminatorias_Partidos.</p><div id="v51ResBody"><div class="notice"><span class="mini-spinner"></span> Cargando resultados...</div></div><div class="modal-actions"><button id="v51ResClose" class="btn ghost">Cerrar</button></div>`;
+    if(window.modal) modal(html); else alert('Resultados Eliminatorias');
+    const close=()=>{ const m=document.querySelector('.modal-backdrop,.modalWrap,.modal'); if(m && m.remove) m.remove(); if(window.closeModal) closeModal(); };
+    const x=$('v51ResX'), c=$('v51ResClose'); if(x) x.onclick=close; if(c) c.onclick=close;
+    try{
+      const r=await api2('fsKnockoutMatches'); const matches=(r.data||r.matches||[]); const dates=[...new Set(matches.map(date2).filter(Boolean))].sort(); const today=todayIso();
+      $('v51ResBody').innerHTML=`<div class="results-modal-tools"><select id="v51ResDate" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc2(d)}</option>`).join('')}</select><button id="v51ResToday" class="btn light">📅 Hoy</button><button id="v51ResAll" class="btn light">Todos</button></div><div class="results-modal-table"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Ronda</th><th>Partido</th><th>Resultado</th><th>Estatus</th></tr></thead><tbody id="v51ResRows"></tbody></table></div>`;
+      function rr(f=''){$('v51ResRows').innerHTML=matches.filter(m=>!f||date2(m)===f).map(m=>{ const l=team2(m,'local'),v=team2(m,'visit'),done=hasReal(m); return `<tr class="${done?'fs-v51-played':'fs-v51-pending'}"><td>${esc2(date2(m))}</td><td>${esc2(hour2(m))}</td><td>${esc2(val2(m,['Ronda','Fase'],''))}</td><td>${flag2(l)} ${esc2(l)} vs ${flag2(v)} ${esc2(v)}</td><td><b>${esc2(realScoreTxt(m))}</b></td><td>${done?'Finalizado':'Pendiente'}</td></tr>`; }).join('')||'<tr><td colspan="6">Sin resultados.</td></tr>';}
+      $('v51ResDate').onchange=()=>rr($('v51ResDate').value); $('v51ResToday').onclick=()=>{ $('v51ResDate').value=today; rr(today); }; $('v51ResAll').onclick=()=>{ $('v51ResDate').value=''; rr(''); }; rr('');
+    }catch(e){ if($('v51ResBody')) $('v51ResBody').innerHTML=`<div class="notice error">${esc2(e.message)}</div>`; }
+  }
+  async function loadWorldTab(tab,force=false){
+    if(!$('worldBody')) return;
+    if(tab==='fase1'){
+      $('worldBody').innerHTML=mini('Cargando Fase 1 histórica...');
+      try{ const r=state.isDemo?{status:'ok',data:[]} : await api2('worldFase1FrozenSeguro'); const rows=r.data||r; if(Modules.world&&typeof Modules.world.paint==='function') Modules.world.paint(rows); else $('worldBody').innerHTML='<div class="notice ok">Fase 1 cargada.</div>'; }catch(e){ $('worldBody').innerHTML=`<div class="notice error">${esc2(e.message)}</div>`; }
+      return;
+    }
+    if(tab==='eliminatorias'){
+      const k=key2('world_ko_all'); const cached=!force&&!state.isDemo?getCache(k,TTL.koWorld):null; if(cached) return paintWorldKo(cached);
+      $('worldBody').innerHTML=mini('Cargando Eliminatorias...','Consultando pronósticos de todos los participantes activos.');
+      try{ const r=state.isDemo?{status:'ok',data:{matches:(window.demoKoMatches?demoKoMatches():[]),predictions:[{Usuario:'Demo MX',Partido_ID:'M73',Marcador_Local:1,Marcador_Visitante:2,Equipo_Avanza:'Canadá'},{Usuario:'Demo Pro',Partido_ID:'M73',Marcador_Local:0,Marcador_Visitante:1,Equipo_Avanza:'Canadá'}],users:['Demo MX','Demo Pro']}}:await api2('worldEliminatoriasSeguro',{scope:'all'}); if(r.status&&r.status!=='ok') throw new Error(r.message||'No autorizado'); const d=r.data||r; if(!state.isDemo) setCache(k,d); paintWorldKo(d); }catch(e){ $('worldBody').innerHTML=`<div class="notice error">${esc2(e.message)}</div>`; }
+      return;
+    }
+    $('worldBody').innerHTML=`<div class="notice">Este tab se cargará cuando tenga actividad registrada.</div>`;
+  }
+  function injectStyles(){
+    if($('fs-v51-styles')) return;
+    const css=`.fs-v51-loader{text-align:center;padding:30px}.fs-v51-hero{display:flex;justify-content:space-between;gap:16px;align-items:center}.fs-v51-eyebrow{color:#008f72;font-weight:700;margin-bottom:6px}.fs-v51-kpis{margin-top:14px}.fs-v51-filter-card{margin-top:18px}.fs-v51-chart,.fs-v51-table-card{margin-top:18px}.fs-v51-bars{display:grid;gap:12px}.fs-v51-bar-label{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}.fs-v51-bar-track{height:14px;background:#e8f3ff;border-radius:999px;overflow:hidden}.fs-v51-bar-track>div{height:100%;background:linear-gradient(90deg,#1898e5,#08b27d);border-radius:999px}.fs-v51-bar.exact .fs-v51-bar-track>div{background:linear-gradient(90deg,#00a36c,#20d489)}.fs-v51-bar.advance .fs-v51-bar-track>div{background:linear-gradient(90deg,#f2c94c,#ff9f1c)}.fs-v51-bar.miss .fs-v51-bar-track>div{background:linear-gradient(90deg,#ff6b6b,#c9184a)}.fs-v51-bar.pending .fs-v51-bar-track>div{background:linear-gradient(90deg,#b7c6d9,#789)}.fs-v51-table-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.fs-v51-table-wrap{max-height:68vh;overflow:auto}.fs-v51-table tr.fs-v51-played{background:rgba(12,183,126,.08)}.fs-v51-table tr.fs-v51-pending{background:rgba(147,170,190,.08)}.fs-v51-status{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:700;background:#eaf4ff}.fs-v51-status.exact{background:#dff8ea;color:#057a4d}.fs-v51-status.advance{background:#fff4cf;color:#916600}.fs-v51-status.miss{background:#ffe4e8;color:#b00032}.fs-v51-status.pending{background:#edf2f7;color:#607080}@media(max-width:700px){.fs-v51-hero{display:block}.fs-v51-hero .btn{width:100%;margin-top:12px}.fs-v51-table{font-size:13px}}`;
+    const s=document.createElement('style'); s.id='fs-v51-styles'; s.textContent=css; document.head.appendChild(s);
+  }
+  if(window.Modules && Modules.world){
+    injectStyles();
+    Modules.world.render=async function(){
+      view.innerHTML=`<div class="hero"><h1>🌎 Mi Mundial</h1><p>Consulta pronósticos, resultados y comparativos por competencia.</p><button id="refreshWorld" class="btn light" style="margin-top:12px">🔄 Actualizar tab</button></div>${subtabs('fase1')}<div id="worldBody">${mini('Preparando Mi Mundial...')}</div>`;
+      let current='fase1';
+      $('refreshWorld').onclick=()=>loadWorldTab(current,true);
+      view.querySelectorAll('[data-v51-world-tab]').forEach(b=>b.onclick=()=>{ view.querySelectorAll('[data-v51-world-tab]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); current=b.dataset.v51WorldTab; loadWorldTab(current,false); });
+      setTimeout(()=>loadWorldTab('fase1',false),30);
+    };
+    Modules.world.load=async function(force=false){ return loadWorldTab('fase1',force); };
+  }
+})();
+</script>
+
 </body>
 </html>
