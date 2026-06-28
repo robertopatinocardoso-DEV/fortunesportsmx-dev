@@ -2302,6 +2302,461 @@
 
   async function init(){ setupAuth(); setupExperience(); if(localStorage.getItem('fs_dark')==='1') document.body.classList.add('dark'); await loadModulesIntoSelect('Eliminatorias Directas'); if(loadSession()){ showApp(); await route(state.isDemo?'arena':(hasPhase1Access()?'matches':'arena')); } else showLogin(); }
   window.fsApp={state,route,jsonp,API_URL};
+
+/* === V43 Producción: Campeón Mundial seguro + KO feedback guardado === */
+(function(){
+  const FS_V43_TEAMS = [
+    'México','Sudáfrica','Canadá','Argentina','Francia','Colombia','España','Uruguay',
+    'Portugal','Croacia','Brasil','Noruega','Inglaterra','Ecuador','Alemania','Japón',
+    'Estados Unidos','Suiza','Senegal','Marruecos','Ghana','Panamá','Bélgica','Corea del Sur',
+    'Austria','Catar','Uzbekistán','República Checa','Bosnia y Herzegovina','RD Congo','Australia','Paraguay'
+  ];
+  const FS_V43_FLAG = Object.assign({}, (typeof FLAG_V21!=='undefined'?FLAG_V21:{}), {
+    'Catar':'🇶🇦','Qatar':'🇶🇦','República Checa':'🇨🇿','Republica Checa':'🇨🇿',
+    'Bosnia y Herzegovina':'🇧🇦','Paraguay':'🇵🇾','Marruecos':'🇲🇦','Austria':'🇦🇹'
+  });
+  function flagV43(team){
+    const raw=safe(team); if(!raw) return '🏳️';
+    return FS_V43_FLAG[raw] || FS_V43_FLAG[raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'')] || (typeof flagTeamV21==='function'?flagTeamV21(raw):flagFor(raw));
+  }
+  function hasPlaceholderTeamV43(t){ return /grupo|mejor|tbd|pendiente|\/|3[abcd]|selecciona/i.test(safe(t)); }
+  function uniqueTeamsV43(rows){
+    const out=[];
+    function add(t){ t=safe(t); if(!t || hasPlaceholderTeamV43(t)) return; if(!out.some(x=>norm(x)===norm(t))) out.push(t); }
+    (rows||[]).forEach(m=>{
+      add(val(m,['Equipo_Local_Nombre','Equipo Local Nombre','Local_Nombre','Equipo_Local','Equipo Local','Local','Equipo local'],''));
+      add(val(m,['Equipo_Visitante_Nombre','Equipo Visitante Nombre','Visitante_Nombre','Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],''));
+    });
+    FS_V43_TEAMS.forEach(add);
+    return out.slice(0,32);
+  }
+  function championCanPickV43(access, summary){
+    if(state.isDemo || isAdmin()) return true;
+    if(!access || !access.can) return false;
+    const remaining = Number(summary && (summary.remaining_picks ?? summary.remaining ?? summary.available_picks));
+    if(Number.isFinite(remaining)) return remaining > 0;
+    return !summary.mine;
+  }
+
+  if(Modules && Modules.campeon){
+    Modules.campeon.teamsFromKo = function(rows){ return uniqueTeamsV43(rows); };
+    Modules.campeon.paint = function(teams, summary={}, access={}){
+      const active = state.isDemo || isAdmin() || !!access.can;
+      const remaining = Number(summary.remaining_picks ?? summary.remaining ?? summary.available_picks ?? (summary.mine?0:1));
+      const canPick = active && (state.isDemo || isAdmin() || remaining > 0);
+      const mine = safe(summary.mine||'');
+      const activeEntries = Number(summary.active_entries||summary.activeEntries||0);
+      const usedEntries = Number(summary.used_entries||summary.usedEntries||(mine?1:0));
+      const help = active
+        ? (mine && !canPick
+          ? `✅ Ya defendiste a <b>${esc(mine)}</b> hasta la final. Para elegir otro campeón necesitas otro registro activo.`
+          : `Selecciona una bandera para defenderla hasta la final. Registros activos: <b>${state.isDemo?'demo':activeEntries}</b> · Selecciones usadas: <b>${state.isDemo?'demo':usedEntries}</b>.`)
+        : `${access.registered||access.access==='pending'?'⏳ Tu registro está en validación de pago. En breve podrás seleccionar campeón.':'🔒 Regístrate y espera validación de pago para poder elegir campeón.'}<br><button class="btn" id="championGateRegister">Registrarme</button>`;
+      $('championGate').innerHTML = `<div class="champion-note">${help}<br><span class="muted strong">La bolsa acumulada se divide entre quienes eligieron al mismo campeón. Si eres el único y tu selección gana, te llevas toda la bolsa acumulada.</span></div>`;
+      if($('championGateRegister')) $('championGateRegister').onclick=()=>arenaRegisterFlow('Campeón Mundial');
+      $('championBody').innerHTML=`<div class="champion-grid champion-grid-v43">${teams.map(team=>{
+        const selected = mine && norm(mine)===norm(team);
+        const disabled = !active || (!selected && !canPick);
+        const count = Number((summary.counts||{})[team]||0);
+        return `<button class="champion-card champion-card-v43 ${selected?'selected':''} ${disabled?'disabled':''}" data-champion-team="${esc(team)}" ${disabled?'disabled':''}>
+          <div class="champion-count">${count}</div>
+          <div class="champion-flag">${flagV43(team)}</div>
+          <div class="champion-name">${esc(team)}</div>
+          ${selected?'<div class="champion-picked-badge">Tu campeón</div>':''}
+        </button>`;
+      }).join('')}</div>`;
+      $('championBody').querySelectorAll('[data-champion-team]').forEach(b=>b.onclick=()=>this.pick(b.dataset.championTeam));
+    };
+    Modules.campeon.pick = async function(team){
+      if(state.isDemo){
+        modal(`<button class="modal-x" onclick="closeModal()">×</button><h2>${flagV43(team)} Defender ${esc(team)}</h2><p class="strong">Demo: elegiste a ${esc(team)} como campeón.</p><p>Si esta fuera tu selección real y gana, la bolsa acumulada se dividiría entre usuarios con el mismo campeón.</p><div class="modal-actions"><button class="btn" id="championOk">Entendido</button></div>`);
+        $('championOk').onclick=closeModal; return;
+      }
+      const access=await ensureArenaAccessV18('Campeón Mundial');
+      if(!isAdmin() && !access.can){ toast('Tu registro aún no está activo para Campeón Mundial.'); return; }
+      const summary=await this.summary().catch(()=>({}));
+      if(!isAdmin() && !championCanPickV43(access, summary)){
+        modal(`<button class="modal-x" onclick="closeModal()">×</button><h2>🔒 Selección ya utilizada</h2><p>Ya usaste tu registro activo de Campeón Mundial. Para elegir otro equipo necesitas solicitar y pagar otro registro.</p><div class="modal-actions"><button class="btn" onclick="closeModal()">Entendido</button></div>`);
+        return;
+      }
+      modal(`<button class="modal-x" onclick="closeModal()">×</button><h2>${flagV43(team)} ¿Defender ${esc(team)} hasta la final?</h2><p class="strong">Esta selección ocupará uno de tus registros activos de Campeón Mundial.</p><p>Si ${esc(team)} sale campeón, la bolsa acumulada se divide entre todos los participantes que eligieron a ${esc(team)}. Si eres el único, te llevas toda la bolsa acumulada.</p><div class="modal-actions"><button class="btn" id="confirmChampionV43">Sí, guardar campeón</button><button class="btn ghost" id="reviewChampionV43">Revisar antes</button></div>`);
+      $('reviewChampionV43').onclick=closeModal;
+      $('confirmChampionV43').onclick=async()=>{
+        closeModal();
+        try{
+          loading(true,'Guardando campeón...');
+          const r=await jsonp('saveChampionPick',{token:state.token,equipo:team,Equipo_Elegido:team,Nombre_Modulo:'Campeón Mundial'});
+          loading(false);
+          if(r.status!=='ok') throw new Error(r.message||'No se pudo guardar');
+          modal(`<button class="modal-x" onclick="closeModal()">×</button><h2>${flagV43(team)} ¡Campeón registrado!</h2><p class="strong">Defenderás a ${esc(team)} hasta la final.</p><p>La bolsa acumulada se dividirá entre quienes eligieron este mismo campeón. Si eres el único y ${esc(team)} gana, te llevas toda la bolsa.</p><div class="modal-actions"><button class="btn" id="championOk">Cerrar</button></div>`);
+          $('championOk').onclick=()=>{ closeModal(); this.load(); };
+        }catch(e){ loading(false); modal(`<button class="modal-x" onclick="closeModal()">×</button><h2>⚠️ No se pudo guardar</h2><p>${esc(e.message||'Intenta nuevamente.')}</p><div class="modal-actions"><button class="btn" onclick="closeModal()">Cerrar</button></div>`); }
+      };
+    };
+  }
+
+  if(Modules && Modules.eliminatorias){
+    const oldKoCardV43 = Modules.eliminatorias.card;
+    Modules.eliminatorias.card = function(m,p,locked){
+      let html = oldKoCardV43.call(this,m,p,locked);
+      const hasSaved = !!(p && (safe(val(p,['Marcador_Local','Local'],''))!=='' || safe(val(p,['Marcador_Visitante','Visitante'],''))!=='' || safe(val(p,['Equipo_Avanza'],''))!==''));
+      if(hasSaved){
+        html = html.replace('<article class="ko-card ', '<article class="ko-card ko-saved ');
+        html = html.replace('</article>', '<div class="saved-lock-note">✅ Pronóstico guardado. Puedes editarlo hasta antes de que inicie el partido.</div></article>');
+      }
+      return html;
+    };
+    const oldKoSaveV43 = Modules.eliminatorias.save;
+    Modules.eliminatorias.save = async function(id){
+      await oldKoSaveV43.call(this,id);
+      const msg=$(`ko_msg_${id}`);
+      if(msg && /guardado|actualizado/i.test(msg.textContent||'')) msg.textContent='✅ Pronóstico guardado. Puedes editarlo hasta antes de que inicie el partido.';
+    };
+  }
+
+  const style=document.createElement('style');
+  style.textContent=`
+    .champion-note{background:linear-gradient(135deg,#eaf8ff,#fff8de);border:1px solid #bfe0ff;border-radius:22px;padding:16px 18px;margin:12px 0;color:#073b74;line-height:1.45}
+    .champion-grid-v43{gap:16px!important}.champion-card-v43{position:relative;min-height:152px}.champion-card-v43.selected{box-shadow:0 0 0 3px #20c997,0 12px 28px rgba(0,120,90,.18)}
+    .champion-picked-badge{position:absolute;left:10px;right:10px;bottom:10px;background:#00a76f;color:white;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:700}
+    .ko-card.ko-saved{box-shadow:0 0 0 2px rgba(0,167,111,.18),0 18px 36px rgba(0,70,130,.08)}
+    .saved-lock-note{margin-top:12px;background:#e9fff6;border:1px solid #adf0d4;color:#006b4f;border-radius:18px;padding:10px 12px;font-weight:700;text-align:center}
+    .modal-x{position:absolute;right:18px;top:16px;width:44px;height:44px;border-radius:50%;border:1px solid #cfe4ff;background:#fff;color:#004080;font-size:28px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  `;
+  document.head.appendChild(style);
+})();
+
+
+/* === V44 Producción: KO upsert robusto + bloqueo editable + contadores Campeón en cero === */
+(function(){
+  if(!window.Modules) return;
+  window.state = window.state || {};
+  state.koEditing = state.koEditing || {};
+
+  // Campeón Mundial: limpiar contadores visuales para arranque de competencia.
+  if(Modules.campeon && typeof Modules.campeon.paint === 'function'){
+    const prevChampionPaintV44 = Modules.campeon.paint;
+    Modules.campeon.paint = function(teams, summary={}, access={}){
+      const cleanSummary = Object.assign({}, summary || {}, { counts:{} });
+      return prevChampionPaintV44.call(this, teams, cleanSummary, access);
+    };
+  }
+
+  function koPredSavedV44(p){
+    if(!p) return false;
+    return safe(val(p,['Marcador_Local','Marcador Local','Local','marcador_local'],''))!=='' ||
+           safe(val(p,['Marcador_Visitante','Marcador Visitante','Visitante','marcador_visitante'],''))!=='' ||
+           safe(val(p,['Equipo_Avanza','Equipo Avanza','equipo_avanza'],''))!=='';
+  }
+
+  function koPredMapV44(){
+    const preds={};
+    (state.koPredictions||[]).forEach(p=>{
+      const id=safe(val(p,['Partido_ID','Partido ID','partido_id','ID'],''));
+      if(id) preds[id]=p;
+    });
+    return preds;
+  }
+
+  if(Modules.eliminatorias){
+    Modules.eliminatorias.paint = function(){
+      const body=$('koBody');
+      const access=this.accessState();
+      $('koAccess').innerHTML=`<div class="notice ${access.can?'ok':'warn'}">${access.msg}</div>`;
+      const q=lower($('koSearch')?.value||'');
+      const rf=$('koRoundFilter')?.value||'';
+      const preds=koPredMapV44();
+      const rows=(state.koMatches||[]).filter(m=>{
+        const text=lower(Object.values(m).join(' '));
+        return (!q||text.includes(q)) && (!rf||safe(val(m,['Ronda','Fase'],''))===rf);
+      });
+      if(!rows.length){ body.innerHTML='<div class="notice warn">No hay cruces para mostrar.</div>'; return; }
+      body.innerHTML=`<div class="notice"><b>${rows.length}</b> cruces disponibles.</div><div class="ko-grid">${rows.map(m=>this.card(m,preds[matchId(m)],!access.can)).join('')}</div>`;
+      body.querySelectorAll('[data-pen-check]').forEach(ch=>ch.onchange=()=>{$('pen_box_'+ch.dataset.id)?.classList.toggle('hidden',!ch.checked);});
+      body.querySelectorAll('[data-save-ko]').forEach(btn=>btn.onclick=()=>this.save(btn.dataset.id));
+      body.querySelectorAll('[data-edit-ko]').forEach(btn=>btn.onclick=()=>{ state.koEditing[btn.dataset.id]=true; this.paint(); setTimeout(()=>document.getElementById('ko_'+btn.dataset.id+'_l')?.focus(),80); });
+      body.querySelectorAll('[data-cancel-edit-ko]').forEach(btn=>btn.onclick=()=>{ delete state.koEditing[btn.dataset.id]; this.paint(); });
+    };
+
+    Modules.eliminatorias.card = function(m,p,baseLocked){
+      const id=matchId(m);
+      const l=safe(val(m,['Equipo_Local','Local','Equipo local','Cruce_Local','Origen_Local'],'Equipo local'));
+      const v=safe(val(m,['Equipo_Visitante','Visitante','Equipo visitante','Cruce_Visitante','Origen_Visitante'],'Equipo visitante'));
+      const pen=safe(val(p,['Penales','Se_Penales','penales'],''))==='SI' || safe(val(p,['Penales','Se_Penales','penales'],''))===true;
+      const start=parseMatchDate(m);
+      const started=start && new Date()>=start;
+      const saved=koPredSavedV44(p);
+      const editing=!!state.koEditing[id] && !started && !baseLocked;
+      const locked=!!baseLocked || !!started || (saved && !editing);
+      const sede=safe(val(m,['Sede','Estadio','Ciudad'],''));
+      const ml=safe(val(p,['Marcador_Local','Marcador Local','Local','marcador_local'],''));
+      const mv=safe(val(p,['Marcador_Visitante','Marcador Visitante','Visitante','marcador_visitante'],''));
+      const adv=safe(val(p,['Equipo_Avanza','Equipo Avanza','equipo_avanza'],''));
+      const pl=safe(val(p,['Penales_Local','Penales Local','penales_local'],''));
+      const pv=safe(val(p,['Penales_Visitante','Penales Visitante','penales_visitante'],''));
+      let msg='';
+      if(started) msg='⛔ Partido iniciado. Edición bloqueada.';
+      else if(baseLocked) msg='🔒 Regístrate o espera validación para guardar.';
+      else if(saved && !editing) msg='✅ Pronóstico guardado. Para modificarlo presiona “Editar pronóstico”. Sólo podrás editar antes del inicio.';
+      else if(saved && editing) msg='✏️ Modo edición activo. Revisa y vuelve a guardar antes del inicio.';
+      return `<article class="ko-card ${locked?'locked':''} ${saved?'ko-saved':''}" data-ko-card="${esc(id)}">
+        <div class="match-head"><span>${esc(val(m,['Partido_ID','Partido ID'],id))} · ${esc(val(m,['Ronda','Fase'],''))}</span><span>${esc(dateStr(m))} · ${esc(hourStr(m))}</span></div>
+        <div class="scoreboard">
+          <div class="team"><div class="flag">${flagFor(l)}</div><div class="team-name">${esc(l)}</div><span class="seed">${esc(val(m,['Seed_Local','Cruce_Local','Origen_Local'],''))}</span></div>
+          <div class="read-score"><div class="score-box"><input ${locked?'disabled':''} inputmode="numeric" id="ko_${esc(id)}_l" value="${esc(ml)}" style="width:100%;height:100%;border:0;background:transparent;text-align:center;font-weight:700;font-size:24px;color:inherit"></div><span class="vs">VS</span><div class="score-box"><input ${locked?'disabled':''} inputmode="numeric" id="ko_${esc(id)}_v" value="${esc(mv)}" style="width:100%;height:100%;border:0;background:transparent;text-align:center;font-weight:700;font-size:24px;color:inherit"></div></div>
+          <div class="team"><div class="flag">${flagFor(v)}</div><div class="team-name">${esc(v)}</div><span class="seed">${esc(val(m,['Seed_Visitante','Cruce_Visitante','Origen_Visitante'],''))}</span></div>
+        </div>
+        ${sede?`<div class="stadium-line">🏟️ ${esc(sede)}</div>`:''}
+        <div class="ko-extra">
+          <select ${locked?'disabled':''} id="ko_${esc(id)}_adv" class="select"><option value="">Selecciona quién avanza</option><option ${adv===l?'selected':''}>${esc(l)}</option><option ${adv===v?'selected':''}>${esc(v)}</option></select>
+          <label class="strong"><input ${locked?'disabled':''} type="checkbox" data-pen-check="1" data-id="${esc(id)}" ${pen?'checked':''}> Se van a penales (+3 puntos)</label>
+          <div id="pen_box_${esc(id)}" class="penalty-box ${pen?'':'hidden'}"><input ${locked?'disabled':''} id="ko_${esc(id)}_pl" inputmode="numeric" value="${esc(pl)}"><b>PEN</b><input ${locked?'disabled':''} id="ko_${esc(id)}_pv" inputmode="numeric" value="${esc(pv)}"></div>
+          ${(!started && !baseLocked && saved && !editing)?`<button class="btn light" data-edit-ko="1" data-id="${esc(id)}">✏️ Editar pronóstico</button>`:''}
+          ${(!started && !baseLocked && (!saved || editing))?`<button class="btn" data-save-ko="1" data-id="${esc(id)}">${saved?'Guardar cambios':'Guardar pronóstico'}</button>${editing?`<button class="btn ghost" data-cancel-edit-ko="1" data-id="${esc(id)}">Cancelar edición</button>`:''}`:''}
+          <div id="ko_msg_${esc(id)}" class="save-msg">${msg}</div>
+        </div>
+      </article>`;
+    };
+
+    Modules.eliminatorias.save = async function(id){
+      const msg=$(`ko_msg_${id}`);
+      const ml=$(`ko_${id}_l`)?.value;
+      const mv=$(`ko_${id}_v`)?.value;
+      const adv=$(`ko_${id}_adv`)?.value;
+      const pen=$(`[data-pen-check][data-id="${CSS.escape(id)}"]`)?.checked;
+      if(!ml || !mv || !adv){ if(msg) msg.textContent='Completa marcador y equipo que avanza.'; return; }
+      if(msg) msg.textContent='Guardando pronóstico...';
+      try{
+        const payload={
+          token:state.token,
+          partido_id:id,
+          Partido_ID:id,
+          'Partido ID':id,
+          marcador_local:ml,
+          Marcador_Local:ml,
+          Local:ml,
+          marcador_visitante:mv,
+          Marcador_Visitante:mv,
+          Visitante:mv,
+          equipo_avanza:adv,
+          Equipo_Avanza:adv,
+          'Equipo Avanza':adv,
+          penales:pen?'SI':'NO',
+          Penales:pen?'SI':'NO',
+          Se_Penales:pen?'SI':'NO',
+          penales_local:pen?($(`ko_${id}_pl`)?.value||''):'',
+          Penales_Local:pen?($(`ko_${id}_pl`)?.value||''):'',
+          penales_visitante:pen?($(`ko_${id}_pv`)?.value||''):'',
+          Penales_Visitante:pen?($(`ko_${id}_pv`)?.value||''):'',
+          Estatus:'Guardado'
+        };
+        const r=await jsonp('saveKnockoutPrediction',payload);
+        if(r.status!=='ok') throw new Error(r.message||'No se pudo guardar en FS_Eliminatorias_Pronosticos');
+        delete state.koEditing[id];
+        if(msg) msg.textContent='✅ Pronóstico guardado en FS_Eliminatorias_Pronosticos.';
+        await this.load(true);
+      }catch(e){ if(msg) msg.textContent=e.message||'No se pudo guardar.'; }
+    };
+  }
+
+  const style=document.createElement('style');
+  style.textContent=`
+    .ko-card.ko-saved{box-shadow:0 0 0 2px rgba(0,167,111,.18),0 18px 36px rgba(0,70,130,.08)!important}
+    .ko-card.ko-saved .save-msg{background:#e9fff6;border:1px solid #adf0d4;color:#006b4f;border-radius:18px;padding:10px 12px;text-align:center;margin-top:10px}
+    .ko-card.locked:not(.ko-saved){opacity:.92}
+    .champion-count{background:#eef7ff!important;color:#004080!important}
+  `;
+  document.head.appendChild(style);
+})();
+
+
+/* =========================================================
+   V45 · Eliminatorias Directas Fine Tuning
+   - Penales/check se guardan correctamente usando querySelector real
+   - Tarjetas guardadas quedan bloqueadas y se habilitan con Editar
+   - Filtros dinámicos: fecha, equipo, estatus resultado, hoy
+   - Popup Resultados Eliminatorias alimentado de FS_Eliminatorias_Partidos
+   ========================================================= */
+(function(){
+  function koSafeText(x){ return safe(x==null?'':String(x)); }
+  function koV(obj, keys, def=''){ return val(obj||{}, keys, def); }
+  function koNormText(x){ return lower(koSafeText(x)); }
+  function koDeviceTodayIso(){
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function koDateValue(m){
+    const raw=koSafeText(koV(m,['Fecha','fecha','Date','FECHA'],''));
+    const ds=koSafeText(dateStr(m));
+    if(/^\d{4}-\d{2}-\d{2}$/.test(ds)) return ds;
+    if(/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0,10);
+    const d=parseMatchDate(m);
+    if(d && !isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds || raw;
+  }
+  function koHasResult(m){
+    const a=koV(m,['Marcador_Local_Real','Marcador Local Real','Resultado_Local','Resultado Local','Goles_Local','Goles Local','Real_Local','Local_Real','ML_Real','Marcador_Local'], '');
+    const b=koV(m,['Marcador_Visitante_Real','Marcador Visitante Real','Resultado_Visitante','Resultado Visitante','Goles_Visitante','Goles Visitante','Real_Visitante','Visitante_Real','MV_Real','Marcador_Visitante'], '');
+    const status=koNormText(koV(m,['Estatus','Estado','Status'],''));
+    return (koSafeText(a)!=='' && koSafeText(b)!=='') || status.includes('final') || status.includes('jugado') || status.includes('cerrado');
+  }
+  function koPredSaved(p){
+    if(!p) return false;
+    return koSafeText(koV(p,['Marcador_Local','Marcador Local','Local','marcador_local'],''))!=='' ||
+           koSafeText(koV(p,['Marcador_Visitante','Marcador Visitante','Visitante','marcador_visitante'],''))!=='' ||
+           koSafeText(koV(p,['Equipo_Avanza','Equipo Avanza','equipo_avanza'],''))!=='';
+  }
+  function koPredMap(){
+    const preds={};
+    (state.koPredictions||[]).forEach(p=>{
+      const id=koSafeText(koV(p,['Partido_ID','Partido ID','partido_id','ID'],''));
+      if(id) preds[id]=p;
+    });
+    return preds;
+  }
+  function koPenaltyChecked(p){
+    const raw=koV(p,['Penales','Se_Penales','Se Penales','penales','va_penales','Va_Penales'], '');
+    const t=koNormText(raw);
+    return raw===true || t==='si' || t==='sí' || t==='true' || t==='1' || t==='yes';
+  }
+  function koResultScore(m){
+    const ml=koV(m,['Marcador_Local_Real','Marcador Local Real','Resultado_Local','Resultado Local','Goles_Local','Goles Local','Real_Local','Local_Real','ML_Real','Marcador_Local'], '');
+    const mv=koV(m,['Marcador_Visitante_Real','Marcador Visitante Real','Resultado_Visitante','Resultado Visitante','Goles_Visitante','Goles Visitante','Real_Visitante','Visitante_Real','MV_Real','Marcador_Visitante'], '');
+    return {ml:koSafeText(ml), mv:koSafeText(mv)};
+  }
+  function koAttachFilters(mod){
+    ['koDateFilterV45','koTeamFilterV45','koResultFilterV45','koRoundFilter','koSearch'].forEach(id=>{
+      const el=$(id); if(el) el.onchange=()=>mod.paint();
+    });
+    const search=$('koSearch'); if(search) search.oninput=()=>mod.paint();
+    const today=$('koTodayV45'); if(today) today.onclick=()=>{ const d=$('koDateFilterV45'); if(d){ d.value=koDeviceTodayIso(); mod.paint(); } };
+    const clear=$('koClearV45'); if(clear) clear.onclick=()=>{ ['koDateFilterV45','koTeamFilterV45','koResultFilterV45','koRoundFilter'].forEach(id=>{const el=$(id); if(el) el.value='';}); const s=$('koSearch'); if(s) s.value=''; mod.paint(); };
+    const res=$('koResultsBtnV45'); if(res) res.onclick=()=>openKoResultsModalV45();
+  }
+  window.openKoResultsModalV45 = function(){
+    const matches=state.koMatches||[];
+    const dates=[...new Set(matches.map(koDateValue).filter(Boolean))].sort();
+    const rowsHtml=(data)=>data.map(m=>{
+      const id=matchId(m), l=koSafeText(koV(m,['Equipo_Local','Local','Equipo local','Cruce_Local','Origen_Local'],'Equipo local')), v=koSafeText(koV(m,['Equipo_Visitante','Visitante','Equipo visitante','Cruce_Visitante','Origen_Visitante'],'Equipo visitante'));
+      const r=koResultScore(m); const has=koHasResult(m);
+      const pen=koSafeText(koV(m,['Penales','Se_Penales','Penales_Real','Penales Real'],''));
+      const av=koSafeText(koV(m,['Equipo_Avanza','Ganador','Avanza','Clasificado'],''));
+      return `<tr><td>${esc(koDateValue(m))}<br><small>${esc(hourStr(m))}</small></td><td>${esc(koV(m,['Ronda','Fase'],''))}</td><td><b>${esc(id)}</b></td><td>${flagFor(l)} ${esc(l)}</td><td><b>${has?`${esc(r.ml)} - ${esc(r.mv)}`:'Pendiente'}</b>${pen?`<br><small>Penales: ${esc(pen)}</small>`:''}</td><td>${flagFor(v)} ${esc(v)}</td><td>${av?esc(av):(has?'Finalizado':'Pendiente')}</td></tr>`;
+    }).join('') || '<tr><td colspan="7">Sin partidos para mostrar.</td></tr>';
+    modal(`<button class="modal-x" id="koResTopCloseV45" type="button">×</button><h2>🏁 Resultados Eliminatorias</h2><p class="muted strong">Resultados alimentados desde FS_Eliminatorias_Partidos.</p><div class="filters" style="margin-bottom:12px"><select id="koResDateV45" class="select"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><button class="btn light" id="koResTodayV45">📅 Hoy</button><button class="btn light" id="koResAllV45">Todos</button></div><div class="table-wrap" style="max-height:60vh;overflow:auto"><table><thead><tr><th>Fecha</th><th>Ronda</th><th>Partido</th><th>Local</th><th>Resultado</th><th>Visitante</th><th>Estatus</th></tr></thead><tbody id="koResRowsV45"></tbody></table></div><div class="modal-actions"><button class="btn ghost" id="koResBottomCloseV45">Cerrar</button></div>`);
+    const render=()=>{ const df=$('koResDateV45')?.value||''; const data=matches.filter(m=>!df||koDateValue(m)===df); const tb=$('koResRowsV45'); if(tb) tb.innerHTML=rowsHtml(data); };
+    const close=()=>closeModal();
+    $('koResTopCloseV45').onclick=close; $('koResBottomCloseV45').onclick=close;
+    $('koResDateV45').onchange=render;
+    $('koResAllV45').onclick=()=>{ $('koResDateV45').value=''; render(); };
+    $('koResTodayV45').onclick=()=>{ $('koResDateV45').value=koDeviceTodayIso(); render(); };
+    render();
+  };
+
+  if(Modules.eliminatorias){
+    Modules.eliminatorias.render = async function(){
+      view.innerHTML=`<div class="hero"><div class="notice ok" style="display:inline-block">⚔️ Entrada $100</div><h1>⚔️ Eliminatorias Directas</h1><p>Formato tipo partidos: marcador del juego, selección que avanza y penales opcionales (+3 pts extra).</p><div class="grid cols-3" style="margin-top:18px"><div class="card kpi"><div class="label">Marcador exacto</div><div class="value">6 pts</div></div><div class="card kpi"><div class="label">Equipo que avanza</div><div class="value">3 pts</div></div><div class="card kpi"><div class="label">Penales exactos</div><div class="value">+3 pts</div></div></div><button id="registerKoBtn" class="btn" style="margin-top:14px">📝 Registrarme a esta competencia</button></div><div id="koAccess"></div><div id="koAdmin"></div><div class="card ko-filter-card-v45"><div class="ko-toolbar"><select id="koDateFilterV45" class="select"><option value="">Todas las fechas</option></select><select id="koTeamFilterV45" class="select"><option value="">Todos los equipos</option></select><select id="koResultFilterV45" class="select"><option value="">Todos los estatus</option><option value="con">Con resultado</option><option value="sin">Sin resultado</option></select><select id="koRoundFilter" class="select"><option value="">Todas las rondas</option></select><input id="koSearch" class="input" placeholder="Buscar equipo, grupo o partido"><button id="koTodayV45" class="btn light">📅 Hoy</button><button id="koClearV45" class="btn ghost">Limpiar</button><button id="koResultsBtnV45" class="btn light">🏁 Resultados</button><button id="koRefresh" class="btn">Actualizar</button></div></div><div id="koBody"></div>`;
+      $('registerKoBtn').onclick=()=>this.registerFlow('Eliminatorias Directas');
+      $('koRefresh').onclick=()=>this.load(true);
+      if(isAdmin() && this.renderAdminBox) this.renderAdminBox();
+      await this.load(true);
+    };
+
+    Modules.eliminatorias.fillFilters = function(){
+      const matches=state.koMatches||[];
+      const rounds=[...new Set(matches.map(m=>koSafeText(koV(m,['Ronda','Fase'],''))).filter(Boolean))].sort();
+      const dates=[...new Set(matches.map(koDateValue).filter(Boolean))].sort();
+      const teams=[]; matches.forEach(m=>{ const l=koSafeText(koV(m,['Equipo_Local','Local','Equipo local','Cruce_Local','Origen_Local'],'')); const v=koSafeText(koV(m,['Equipo_Visitante','Visitante','Equipo visitante','Cruce_Visitante','Origen_Visitante'],'')); if(l&&!teams.includes(l)) teams.push(l); if(v&&!teams.includes(v)) teams.push(v); }); teams.sort();
+      const rf=$('koRoundFilter'); if(rf){ const old=rf.value; rf.innerHTML='<option value="">Todas las rondas</option>'+rounds.map(r=>`<option>${esc(r)}</option>`).join(''); rf.value=rounds.includes(old)?old:''; }
+      const df=$('koDateFilterV45'); if(df){ const old=df.value; df.innerHTML='<option value="">Todas las fechas</option>'+dates.map(d=>`<option>${esc(d)}</option>`).join(''); df.value=dates.includes(old)?old:''; }
+      const tf=$('koTeamFilterV45'); if(tf){ const old=tf.value; tf.innerHTML='<option value="">Todos los equipos</option>'+teams.map(t=>`<option>${esc(t)}</option>`).join(''); tf.value=teams.includes(old)?old:''; }
+      koAttachFilters(this);
+    };
+
+    Modules.eliminatorias.paint = function(){
+      const body=$('koBody'); if(!body) return;
+      const access=this.accessState();
+      $('koAccess').innerHTML=`<div class="notice ${access.can?'ok':'warn'}">${access.msg}</div>`;
+      const q=koNormText($('koSearch')?.value||'');
+      const rf=$('koRoundFilter')?.value||'';
+      const df=$('koDateFilterV45')?.value||'';
+      const tf=$('koTeamFilterV45')?.value||'';
+      const sf=$('koResultFilterV45')?.value||'';
+      const preds=koPredMap();
+      const rows=(state.koMatches||[]).filter(m=>{
+        const l=koSafeText(koV(m,['Equipo_Local','Local','Equipo local','Cruce_Local','Origen_Local'],''));
+        const v=koSafeText(koV(m,['Equipo_Visitante','Visitante','Equipo visitante','Cruce_Visitante','Origen_Visitante'],''));
+        const text=koNormText(Object.values(m).join(' '));
+        const has=koHasResult(m);
+        return (!q||text.includes(q)) && (!rf||koSafeText(koV(m,['Ronda','Fase'],''))===rf) && (!df||koDateValue(m)===df) && (!tf||l===tf||v===tf) && (!sf||(sf==='con'?has:!has));
+      });
+      if(!rows.length){ body.innerHTML='<div class="notice warn">No hay cruces para mostrar con los filtros seleccionados.</div>'; return; }
+      body.innerHTML=`<div class="notice"><b>${rows.length}</b> cruces disponibles.</div><div class="ko-grid">${rows.map(m=>this.card(m,preds[matchId(m)],!access.can)).join('')}</div>`;
+      body.querySelectorAll('[data-pen-check]').forEach(ch=>ch.onchange=()=>{ const box=document.getElementById('pen_box_'+ch.dataset.id); if(box) box.classList.toggle('hidden',!ch.checked); });
+      body.querySelectorAll('[data-save-ko]').forEach(btn=>btn.onclick=()=>this.save(btn.dataset.id));
+      body.querySelectorAll('[data-edit-ko]').forEach(btn=>btn.onclick=()=>{ state.koEditing=state.koEditing||{}; state.koEditing[btn.dataset.id]=true; this.paint(); setTimeout(()=>document.getElementById('ko_'+btn.dataset.id+'_l')?.focus(),80); });
+      body.querySelectorAll('[data-cancel-edit-ko]').forEach(btn=>btn.onclick=()=>{ if(state.koEditing) delete state.koEditing[btn.dataset.id]; this.paint(); });
+    };
+
+    Modules.eliminatorias.card = function(m,p,baseLocked){
+      state.koEditing=state.koEditing||{};
+      const id=matchId(m);
+      const l=koSafeText(koV(m,['Equipo_Local','Local','Equipo local','Cruce_Local','Origen_Local'],'Equipo local'));
+      const v=koSafeText(koV(m,['Equipo_Visitante','Visitante','Equipo visitante','Cruce_Visitante','Origen_Visitante'],'Equipo visitante'));
+      const pen=koPenaltyChecked(p);
+      const start=parseMatchDate(m);
+      const started=start && new Date()>=start;
+      const saved=koPredSaved(p);
+      const editing=!!state.koEditing[id] && !started && !baseLocked;
+      const locked=!!baseLocked || !!started || (saved && !editing);
+      const hasResult=koHasResult(m);
+      const sede=koSafeText(koV(m,['Sede','Estadio','Ciudad'],''));
+      const ml=koSafeText(koV(p,['Marcador_Local','Marcador Local','Local','marcador_local'],''));
+      const mv=koSafeText(koV(p,['Marcador_Visitante','Marcador Visitante','Visitante','marcador_visitante'],''));
+      const adv=koSafeText(koV(p,['Equipo_Avanza','Equipo Avanza','equipo_avanza'],''));
+      const pl=koSafeText(koV(p,['Penales_Local','Penales Local','penales_local','Penal_Local','Penal Local'],''));
+      const pv=koSafeText(koV(p,['Penales_Visitante','Penales Visitante','penales_visitante','Penal_Visitante','Penal Visitante'],''));
+      let msg='';
+      if(started) msg='⛔ Partido iniciado. Edición bloqueada.';
+      else if(baseLocked) msg='🔒 Regístrate o espera validación para guardar.';
+      else if(saved && !editing) msg='✅ Pronóstico guardado. Para modificarlo presiona “Editar pronóstico”. Sólo podrás editar antes del inicio.';
+      else if(saved && editing) msg='✏️ Modo edición activo. Revisa y vuelve a guardar antes del inicio.';
+      return `<article class="ko-card ${locked?'locked':''} ${saved?'ko-saved':''}" data-ko-card="${esc(id)}">
+        <div class="match-head"><span>${esc(koV(m,['Partido_ID','Partido ID'],id))} · ${esc(koV(m,['Ronda','Fase'],''))}</span><span>${esc(koDateValue(m))} · ${esc(hourStr(m))}</span></div>
+        <div class="scoreboard"><div class="team"><div class="flag">${flagFor(l)}</div><div class="team-name">${esc(l)}</div><span class="seed">${esc(koV(m,['Seed_Local','Cruce_Local','Origen_Local'],''))}</span></div><div class="read-score"><div class="score-box"><input ${locked?'disabled':''} inputmode="numeric" id="ko_${esc(id)}_l" value="${esc(ml)}" style="width:100%;height:100%;border:0;background:transparent;text-align:center;font-weight:700;font-size:24px;color:inherit"></div><span class="vs">VS</span><div class="score-box"><input ${locked?'disabled':''} inputmode="numeric" id="ko_${esc(id)}_v" value="${esc(mv)}" style="width:100%;height:100%;border:0;background:transparent;text-align:center;font-weight:700;font-size:24px;color:inherit"></div></div><div class="team"><div class="flag">${flagFor(v)}</div><div class="team-name">${esc(v)}</div><span class="seed">${esc(koV(m,['Seed_Visitante','Cruce_Visitante','Origen_Visitante'],''))}</span></div></div>
+        ${sede?`<div class="stadium-line">🏟️ ${esc(sede)}</div>`:''}
+        <div class="ko-extra"><div class="ko-status-line-v45"><span class="${hasResult?'ko-status-final-v45':'ko-status-pending-v45'}">${hasResult?'Resultado cargado':'Sin resultado'}</span></div><select ${locked?'disabled':''} id="ko_${esc(id)}_adv" class="select"><option value="">Selecciona quién avanza</option><option ${adv===l?'selected':''}>${esc(l)}</option><option ${adv===v?'selected':''}>${esc(v)}</option></select><label class="strong"><input ${locked?'disabled':''} type="checkbox" data-pen-check="1" data-id="${esc(id)}" ${pen?'checked':''}> Se van a penales (+3 puntos)</label><div id="pen_box_${esc(id)}" class="penalty-box ${pen?'':'hidden'}"><input ${locked?'disabled':''} id="ko_${esc(id)}_pl" inputmode="numeric" value="${esc(pl)}"><b>PEN</b><input ${locked?'disabled':''} id="ko_${esc(id)}_pv" inputmode="numeric" value="${esc(pv)}"></div>${(!started && !baseLocked && saved && !editing)?`<button class="btn light" data-edit-ko="1" data-id="${esc(id)}">✏️ Editar pronóstico</button>`:''}${(!started && !baseLocked && (!saved || editing))?`<button class="btn" data-save-ko="1" data-id="${esc(id)}">${saved?'Guardar cambios':'Guardar pronóstico'}</button>${editing?`<button class="btn ghost" data-cancel-edit-ko="1" data-id="${esc(id)}">Cancelar edición</button>`:''}`:''}<div id="ko_msg_${esc(id)}" class="save-msg">${msg}</div></div>
+      </article>`;
+    };
+
+    Modules.eliminatorias.save = async function(id){
+      const msg=document.getElementById(`ko_msg_${id}`);
+      const ml=document.getElementById(`ko_${id}_l`)?.value;
+      const mv=document.getElementById(`ko_${id}_v`)?.value;
+      const adv=document.getElementById(`ko_${id}_adv`)?.value;
+      const penEl=document.querySelector(`[data-pen-check][data-id="${CSS.escape(id)}"]`);
+      const pen=!!penEl?.checked;
+      const pl=document.getElementById(`ko_${id}_pl`)?.value||'';
+      const pv=document.getElementById(`ko_${id}_pv`)?.value||'';
+      if(!ml || !mv || !adv){ if(msg) msg.textContent='Completa marcador y equipo que avanza.'; return; }
+      if(pen && (pl==='' || pv==='')){ if(msg) msg.textContent='Marcaste penales. Completa marcador de penales.'; return; }
+      if(msg) msg.textContent='Guardando pronóstico...';
+      try{
+        const payload={ token:state.token, partido_id:id, Partido_ID:id, 'Partido ID':id, marcador_local:ml, Marcador_Local:ml, Local:ml, marcador_visitante:mv, Marcador_Visitante:mv, Visitante:mv, equipo_avanza:adv, Equipo_Avanza:adv, 'Equipo Avanza':adv, penales:pen?'SI':'NO', Penales:pen?'SI':'NO', Se_Penales:pen?'SI':'NO', 'Se Penales':pen?'SI':'NO', penales_local:pen?pl:'', Penales_Local:pen?pl:'', 'Penales Local':pen?pl:'', penales_visitante:pen?pv:'', Penales_Visitante:pen?pv:'', 'Penales Visitante':pen?pv:'', Estatus:'Guardado' };
+        const r=await jsonp('saveKnockoutPrediction',payload);
+        if(r.status!=='ok') throw new Error(r.message||'No se pudo guardar en FS_Eliminatorias_Pronosticos');
+        if(state.koEditing) delete state.koEditing[id];
+        if(msg) msg.textContent='✅ Pronóstico guardado en FS_Eliminatorias_Pronosticos.';
+        await this.load(true);
+      }catch(e){ if(msg) msg.textContent=e.message||'No se pudo guardar.'; }
+    };
+  }
+
+  const st=document.createElement('style');
+  st.textContent=`.ko-filter-card-v45 .ko-toolbar{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.ko-filter-card-v45 .ko-toolbar .input{grid-column:span 2}.ko-filter-card-v45 .ko-toolbar .btn{min-height:46px}.ko-status-line-v45{display:flex;justify-content:center}.ko-status-final-v45,.ko-status-pending-v45{display:inline-flex;border-radius:999px;padding:6px 11px;font-weight:700;font-size:12px}.ko-status-final-v45{background:#e9fff6;color:#006b4f;border:1px solid #adf0d4}.ko-status-pending-v45{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}.modal-x{position:absolute;right:16px;top:12px;border:0;background:#0b1736;color:#fff;border-radius:999px;width:36px;height:36px;font-size:22px;line-height:1;cursor:pointer}@media(max-width:900px){.ko-filter-card-v45 .ko-toolbar{grid-template-columns:1fr}.ko-filter-card-v45 .ko-toolbar .input{grid-column:auto}}`;
+  document.head.appendChild(st);
+})();
+
   init();
 })();
 </script>
