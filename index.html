@@ -5648,6 +5648,478 @@
 })();
 </script>
 
-<script src="./ko_v6_fix.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  const API_URL_V6 = 'https://script.google.com/macros/s/AKfycbwAPeq8Xz7wQHhNuXb6EMXWIo1XwwYt7dDIKtYfpNnQ0qe-wUQlJhqXzvwW8A0--wPu_g/exec';
+  const $ = (id)=>document.getElementById(id);
+  const viewEl = ()=> $('view') || document.querySelector('.view') || document.querySelector('main') || document.body;
+  const txt = (v)=>String(v ?? '');
+  const esc = (v)=>txt(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm = (v)=>txt(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const num = (v)=>{ const n=Number(txt(v).replace(/[^0-9.-]/g,'')); return Number.isFinite(n)?n:0; };
+  const get = (o, keys, def='')=>{ for(const k of keys){ if(o && Object.prototype.hasOwnProperty.call(o,k) && o[k]!=='' && o[k]!=null) return o[k]; } return def; };
+  const arr = (x)=>Array.isArray(x)?x:(x && Array.isArray(x.data)?x.data:(x && Array.isArray(x.rows)?x.rows:[]));
+
+  const session = ()=>{
+    try{ return JSON.parse(localStorage.getItem('fs_session') || '{}') || {}; }
+    catch(_e){ return {}; }
+  };
+
+  const token = ()=> session().token || (window.state && state.token) || '';
+  const userName = ()=>{
+    const s=session();
+    const su=s.user || {};
+    const st=(window.state && state.user) || {};
+    return txt(
+      su['Nombre Completo'] || su.Nombre || su.Usuario || su.user ||
+      st['Nombre Completo'] || st.Nombre || st.Usuario || st.user || ''
+    );
+  };
+
+  const flagMap = {
+    'sudafrica':'🇿🇦','canada':'🇨🇦','alemania':'🇩🇪','paraguay':'🇵🇾','paises bajos':'🇳🇱','marruecos':'🇲🇦',
+    'brasil':'🇧🇷','japon':'🇯🇵','francia':'🇫🇷','suecia':'🇸🇪','costa de marfil':'🇨🇮','noruega':'🇳🇴',
+    'mexico':'🇲🇽','ecuador':'🇪🇨','inglaterra':'🏴','rd congo':'🇨🇩','belgica':'🇧🇪','senegal':'🇸🇳',
+    'estados unidos':'🇺🇸','bosnia y herzegovina':'🇧🇦','espana':'🇪🇸','austria':'🇦🇹','portugal':'🇵🇹',
+    'croacia':'🇭🇷','suiza':'🇨🇭','argelia':'🇩🇿','argentina':'🇦🇷','cabo verde':'🇨🇻','colombia':'🇨🇴',
+    'ghana':'🇬🇭','australia':'🇦🇺','egipto':'🇪🇬'
+  };
+  const flag = (n)=>flagMap[norm(n)] || '🏳️';
+
+  function localJsonp(action, params={}, timeout=22000){
+    return new Promise((resolve,reject)=>{
+      const cb='fs_v6_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script');
+      const timer=setTimeout(()=>{
+        cleanup();
+        reject(new Error('Tiempo agotado al consultar ' + action));
+      }, timeout);
+      function cleanup(){
+        clearTimeout(timer);
+        try{ delete window[cb]; }catch(_e){ window[cb]=undefined; }
+        if(s.parentNode) s.parentNode.removeChild(s);
+      }
+      window[cb]=(data)=>{ cleanup(); resolve(data || {}); };
+      const u=new URL(API_URL_V6);
+      u.searchParams.set('action', action);
+      u.searchParams.set('callback', cb);
+      Object.entries(params || {}).forEach(([k,v])=>{
+        if(v !== undefined && v !== null && v !== '') u.searchParams.set(k, v);
+      });
+      s.onerror=()=>{ cleanup(); reject(new Error('No se pudo conectar con AppScript')); };
+      s.src=u.toString();
+      document.head.appendChild(s);
+    });
+  }
+
+  async function callApi(action, params={}, timeout=22000){
+    const payload=Object.assign({ token: token(), force: '1', fresh: Date.now() }, params || {});
+    let firstErr = null;
+    if(typeof window.jsonp === 'function'){
+      try{
+        const r = await window.jsonp(action, payload, timeout);
+        if(r && r.status && r.status !== 'ok') throw new Error(r.message || ('Error en ' + action));
+        return r && (r.data || r.payload || r.result || r);
+      }catch(e){
+        firstErr = e;
+      }
+    }
+    try{
+      const r = await localJsonp(action, payload, timeout);
+      if(r && r.status && r.status !== 'ok') throw new Error(r.message || ('Error en ' + action));
+      return r && (r.data || r.payload || r.result || r);
+    }catch(e){
+      throw new Error((e && e.message) || (firstErr && firstErr.message) || ('No se pudo cargar ' + action));
+    }
+  }
+
+  async function listSheet(sheet){
+    const r = await localJsonp('list', {sheet, token: token(), fresh: Date.now()}, 22000);
+    if(r && r.status && r.status !== 'ok') throw new Error(r.message || ('No se pudo leer ' + sheet));
+    return arr(r.data || r);
+  }
+
+  function currentPhase(){
+    return (window.state && state.fsPhaseRefactor && state.fsPhaseRefactor.activePhase) || 'fase 3';
+  }
+
+  function matchId(row){
+    return txt(get(row,['Partido_ID','Partido ID','ID','Match_ID','partido_id'],''));
+  }
+
+  function dateParts(row){
+    let f=txt(get(row,['Fecha','Date','fecha'],''));
+    let h=txt(get(row,['Hora','Time','hora'],''));
+    if(f.includes('T')){
+      const d=new Date(f);
+      if(!isNaN(d)){
+        f=d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
+        if(!h) h=d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      }
+    }
+    f=f.replace(/^([0-9]{4})-([0-9]{2})-([0-9]{2}).*$/,'$3/$2/$1').replace(/ 00:00:00$/,'');
+    h=h.replace(/^1899-12-30\s*/,'').replace(/^([0-9]{1,2}:[0-9]{2}).*$/,'$1');
+    return {date:f,time:h};
+  }
+
+  function normalizeKo(data){
+    data=data || {};
+    return {
+      matches: arr(data.matches || data.partidos || data.koMatches || data.eliminatoriasPartidos || data.FS_Eliminatorias_Partidos || []),
+      predictions: arr(data.comparePredictions || data.predictions || data.pronosticos || data.koPredictions || data.FS_Eliminatorias_Pronosticos || data.rows || []),
+      users: arr(data.users || data.participants || data.usuarios || []),
+      raw: data
+    };
+  }
+
+  async function loadKoBundle(force){
+    const phase=currentPhase();
+    let data={};
+    try{
+      data = await callApi('worldEliminatoriasSeguro', {arenaFase: phase, scope: 'all'}, 22000);
+    }catch(_e1){
+      try{
+        data = await callApi('dashboardEliminatoriasSeguro', {arenaFase: phase, scope: 'all'}, 22000);
+      }catch(_e2){
+        data = {};
+      }
+    }
+    const out = normalizeKo(data);
+    if(!out.matches.length){
+      try{ out.matches = await listSheet('FS_Eliminatorias_Partidos'); }catch(_e3){}
+    }
+    if(!out.predictions.length){
+      try{ out.predictions = await listSheet('FS_Eliminatorias_Pronosticos'); }catch(_e4){}
+    }
+    if(!out.users.length){
+      try{ out.users = await listSheet('Users'); }catch(_e5){}
+    }
+    out.raw = data || {};
+    return out;
+  }
+
+  function activeKoUsers(users){
+    return (users || []).filter(u=>{
+      const modulo = norm(get(u,['Nombre_Modulo','Nombre Modulo','Modulo','Módulo'],''));
+      const fase = norm(get(u,['Fase','fase'],''));
+      const est = norm(get(u,['Estatus','Estado'],''));
+      const pago = norm(get(u,['Estatus Pago','Estatus_Pago','Pago_Estatus'],''));
+      const esKo = modulo.includes('eliminatorias') || ['fase 2','fase 3','fase 4','fase 5','fase 6'].includes(fase);
+      return esKo && (!est || est === 'activo') && (!pago || ['completo','confirmado','pagado'].includes(pago));
+    }).map(u=>txt(get(u,['Nombre Completo','Nombre','Usuario','user'],''))).filter(Boolean);
+  }
+
+  function buildCompareRows(data){
+    const by={};
+    (data.matches || []).forEach(m=>{ by[matchId(m)] = m; });
+    return (data.predictions || []).map(p=>{
+      const id = matchId(p);
+      const m = by[id] || {};
+      const dp = dateParts(m);
+      const local = txt(get(m,['Equipo_Local','Equipo Local','Local','Equipo local'],''));
+      const visit = txt(get(m,['Equipo_Visitante','Equipo Visitante','Visitante','Equipo visitante'],''));
+      const predLocal = txt(get(p,['Marcador_Local','Marcador Local','Local','marcador_local'],''));
+      const predVisit = txt(get(p,['Marcador_Visitante','Marcador Visitante','Visitante','marcador_visitante'],''));
+      const realLocal = txt(get(m,['Marcador_Local_Real','Marcador Real Local','Resultado_Local','Resultado Local','Marcador_Local'],''));
+      const realVisit = txt(get(m,['Marcador_Visitante_Real','Marcador Real Visitante','Resultado_Visitante','Resultado Visitante','Marcador_Visitante'],''));
+      const predAdvance = txt(get(p,['Equipo_Avanza','Equipo Avanza','Avanza','equipo_avanza'],''));
+      const realAdvance = txt(get(m,['Equipo_Avanza_Real','Equipo Avanza Real','Avanza_Real','Equipo_Avanza'],''));
+      const penPred = ['si','sí','true','1','x'].includes(norm(get(p,['Penales','Se_Penales','Va_Penales','penales'],'')));
+      const penReal = ['si','sí','true','1','x'].includes(norm(get(m,['Penales','Se_Penales','Va_Penales'],'')));
+      const predPenLocal = txt(get(p,['Penales_Local','Penales Local','penales_local'],''));
+      const predPenVisit = txt(get(p,['Penales_Visitante','Penales Visitante','penales_visitante'],''));
+      const realPenLocal = txt(get(m,['Penales_Local','Penales Local'],''));
+      const realPenVisit = txt(get(m,['Penales_Visitante','Penales Visitante'],''));
+      const hasReal = realLocal !== '' && realVisit !== '';
+      const exact = hasReal && predLocal !== '' && predVisit !== '' && num(predLocal) === num(realLocal) && num(predVisit) === num(realVisit);
+      const advance = hasReal && predAdvance && realAdvance && norm(predAdvance) === norm(realAdvance);
+      const penalties = hasReal && penPred && penReal && predPenLocal !== '' && predPenVisit !== '' && num(predPenLocal) === num(realPenLocal) && num(predPenVisit) === num(realPenVisit);
+      const points = (exact ? 6 : 0) + (advance ? 3 : 0) + (penalties ? 3 : 0);
+      const cls = !hasReal ? 'pending' : exact ? 'exact' : penalties ? 'penalty' : advance ? 'advance' : 'miss';
+      const status = !hasReal ? 'Pendiente' : exact ? 'Exacto' : penalties ? 'Penales' : advance ? 'Avanza' : 'Sin acierto';
+      return {
+        user: txt(get(p,['Usuario','Participante','Nombre','user'],'')),
+        id,
+        date: dp.date,
+        time: dp.time,
+        round: txt(get(m,['Ronda','Fase','Etapa'],'')),
+        local,
+        visit,
+        pred: (predLocal || '–') + ' - ' + (predVisit || '–'),
+        advance: predAdvance || '–',
+        penalties: penPred ? ((predPenLocal || '–') + ' - ' + (predPenVisit || '–')) : 'No',
+        real: hasReal ? (realLocal + ' - ' + realVisit) : '– - –',
+        realAdvance: realAdvance || '–',
+        status,
+        cls,
+        points
+      };
+    });
+  }
+
+  function denseRank(items){
+    const sorted=[...items].sort((a,b)=>b.points-a.points || a.user.localeCompare(b.user,'es'));
+    let last=null;
+    let rank=0;
+    return sorted.map(item=>{
+      if(item.points !== last){
+        rank++;
+        last = item.points;
+      }
+      return Object.assign({}, item, {rank});
+    });
+  }
+
+  function kpis(items){
+    return '<div class="v6-kpis">' + items.map(([l,v])=>`<div class="v6-card kpi"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('') + '</div>';
+  }
+
+  function tabs(){
+    return '<div class="v6-tabs"><button class="active" type="button">Eliminatorias</button><button type="button">Campeón</button><button type="button">Sobre FIFA</button><button type="button">Rápidas</button><button type="button">VIP</button></div>';
+  }
+
+  function loader(msg){
+    return `<div class="v6-card v6-loader"><div class="spinner"></div><strong>${esc(msg)}</strong></div>`;
+  }
+
+  function shell(title, text, refreshId, bodyId){
+    return `<div class="hero"><h1>${title}</h1><p>${text}</p><button class="btn light" id="${refreshId}">🔄 Actualizar Eliminatorias</button></div>${tabs()}<div id="${bodyId}">${loader('Cargando...')}</div>`;
+  }
+
+  function cleanNav(active){
+    const nav=$('mainNav');
+    if(!nav) return;
+    nav.querySelectorAll('[data-route="matches"]').forEach(x=>x.remove());
+    nav.querySelectorAll('.nav-btn').forEach(btn=>btn.classList.toggle('active', (btn.dataset.route || '') === active));
+  }
+
+  function cleanup(){
+    document.querySelectorAll('[data-route="matches"],button[data-route="matches"],.nav-btn[data-route="matches"],.phase1-frozen-pill').forEach(el=>el.remove());
+    document.querySelectorAll('button,.fs-v56-tab,.fs-v4-tabs button,.v5-tabs button,.v6-tabs button').forEach(el=>{
+      if(norm(el.textContent) === 'fase 1') el.remove();
+    });
+  }
+
+  async function renderDashboard(){
+    if(window.state) state.route='dashboard';
+    cleanNav('dashboard');
+    cleanup();
+    viewEl().innerHTML = shell('📊 Dashboard','Ranking, bolsa y desempeño de Arena Mundialista.', 'v6DashRefresh', 'v6DashBody');
+    $('v6DashRefresh').onclick = ()=>loadDashboard(true);
+    await loadDashboard(false);
+    cleanup();
+  }
+
+  async function loadDashboard(force){
+    const body=$('v6DashBody');
+    if(body) body.innerHTML = loader('Actualizando Dashboard...');
+    try{
+      const data = await loadKoBundle(!!force);
+      const rows = buildCompareRows(data);
+      const users = [...new Set([...activeKoUsers(data.users), ...rows.map(r=>r.user)].filter(Boolean))];
+      const by={};
+      users.forEach(u=>{ by[u]={user:u, points:0, picks:0}; });
+      rows.forEach(r=>{
+        if(!r.user) return;
+        by[r.user]=by[r.user] || {user:r.user, points:0, picks:0};
+        by[r.user].points += r.points;
+        by[r.user].picks += 1;
+      });
+      const ranking = denseRank(Object.values(by));
+      const max = Math.max(1, ...ranking.map(r=>r.points));
+      const played = (data.matches || []).filter(m=>txt(get(m,['Marcador_Local_Real','Resultado_Local','Marcador_Local'],'')) !== '' && txt(get(m,['Marcador_Visitante_Real','Resultado_Visitante','Marcador_Visitante'],'')) !== '').length;
+      const raw = data.raw || {};
+      let bolsa = num(raw.bolsa || raw.bolsaAcumulada || raw.pool || raw.premio || 0);
+      if(!bolsa && users.length) bolsa = Math.round(users.length * 100 * 0.9);
+      body.innerHTML =
+        kpis([['Bolsa acumulada','$' + bolsa.toLocaleString('es-MX')],['Participantes',users.length],['Partidos con resultado',played + '/' + (data.matches.length || 16)],['Pronósticos',rows.length]]) +
+        `<div class="v6-card"><div class="v6-title"><h2>🏆 Ranking Eliminatorias</h2><span>${ranking.length} participantes</span></div><div class="v6-bars">${ranking.map(r=>`<div class="v6-bar"><b>#${r.rank} ${esc(r.user)}</b><div class="v6-track"><div style="width:${Math.round(r.points / max * 100)}%"></div></div><b>${r.points} pts</b></div>`).join('') || '<div class="notice warn">Aún no hay ranking.</div>'}</div></div>` +
+        `<div class="v6-card"><div class="v6-title"><h2>📈 Progreso de la fase</h2><span>${played}/${data.matches.length || 16}</span></div><div class="v6-track big"><div style="width:${Math.round(played / Math.max(1, data.matches.length || 16) * 100)}%"></div></div></div>`;
+    }catch(e){
+      if(body) body.innerHTML = `<div class="notice error">${esc((e && e.message) || 'No se pudo cargar Dashboard.')}</div>`;
+    }
+  }
+
+  function worldShell(data, rows){
+    const participants=[...new Set(rows.map(r=>r.user).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const dates=[...new Set(rows.map(r=>r.date).filter(Boolean))].sort();
+    const teams=[...new Set(rows.flatMap(r=>[r.local,r.visit]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const me=norm(userName());
+    const mine=rows.filter(r=>norm(r.user) === me);
+    return kpis([['Partidos',data.matches.length || 16],['Participantes',participants.length],['Registros comparativos',rows.length],['Mis pronósticos',mine.length]]) +
+      `<div class="v6-card"><div class="v6-title"><h2>🎛️ Filtros comparativos</h2><span id="v6Count">0 registros</span></div><div class="v6-filters"><select id="v6Users" multiple size="4">${participants.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('')}</select><select id="v6Date"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="v6Team"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="v6Status"><option value="">Todos los estatus</option><option value="exact">Exacto</option><option value="advance">Avanza</option><option value="penalty">Penales</option><option value="miss">Sin acierto</option><option value="pending">Pendiente</option></select><input id="v6Search" placeholder="Buscar usuario, equipo, partido o marcador"></div><div style="margin-top:10px"><button class="btn light" id="v6Clear">🧹 Limpiar</button><button class="btn light" id="v6Mine">👤 Mis picks</button></div></div>` +
+      `<div class="v6-card"><div class="v6-title"><h2>📋 Tabla comparativa de pronósticos</h2><span>Exacto · Avanza · Penales</span></div><div class="v6-table-wrap"><table class="v6-table"><thead><tr><th>Participante</th><th>Partido</th><th>Equipos</th><th>Pronóstico</th><th>Avanza</th><th>Penales</th><th>Real</th><th>Estatus</th><th>Pts</th></tr></thead><tbody id="v6Rows"></tbody></table></div></div>` +
+      `<div class="v6-card"><div class="v6-title"><h2>📊 Gráfico interactivo</h2><span>Top puntos visibles</span></div><div id="v6Chart" class="v6-bars"></div></div>`;
+  }
+
+  function bindWorld(rows){
+    let mineOnly=false;
+    const render=()=>{
+      const users=[...($('v6Users')?.selectedOptions || [])].map(o=>o.value);
+      const date=$('v6Date')?.value || '';
+      const team=$('v6Team')?.value || '';
+      const status=$('v6Status')?.value || '';
+      const q=norm($('v6Search')?.value || '');
+      const me=norm(userName());
+      const visible=rows.filter(r=>
+        (!mineOnly || norm(r.user) === me) &&
+        (!users.length || users.includes(r.user)) &&
+        (!date || r.date === date) &&
+        (!team || r.local === team || r.visit === team) &&
+        (!status || r.cls === status) &&
+        (!q || norm(Object.values(r).join(' ')).includes(q))
+      );
+      if($('v6Count')) $('v6Count').textContent = visible.length + ' registros';
+      if($('v6Rows')) $('v6Rows').innerHTML = visible.map(r=>`<tr class="${r.cls}"><td><b>${esc(r.user)}</b></td><td><b>${esc(r.id)}</b><br><small>${esc(r.date)} ${esc(r.time)}</small></td><td>${flag(r.local)} ${esc(r.local)}<br>vs<br>${flag(r.visit)} ${esc(r.visit)}</td><td><b>${esc(r.pred)}</b></td><td>${esc(r.advance)}</td><td>${esc(r.penalties)}</td><td><b>${esc(r.real)}</b><br><small>Avanza: ${esc(r.realAdvance)}</small></td><td><span class="v6-status ${r.cls}">${esc(r.status)}</span></td><td><b>${r.points}</b></td></tr>`).join('') || '<tr><td colspan="9">Sin registros con esos filtros.</td></tr>';
+      const by={};
+      visible.forEach(r=>{ if(r.user) by[r.user]=(by[r.user] || 0) + r.points; });
+      const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      const max=Math.max(1, ...top.map(x=>x[1]));
+      if($('v6Chart')) $('v6Chart').innerHTML = top.map(x=>`<div class="v6-bar"><b>${esc(x[0])}</b><div class="v6-track"><div style="width:${Math.round(x[1] / max * 100)}%"></div></div><b>${x[1]} pts</b></div>`).join('') || '<div class="notice warn">Aún no hay puntos graficables.</div>';
+    };
+    ['v6Users','v6Date','v6Team','v6Status'].forEach(id=>{ if($(id)) $(id).onchange = render; });
+    if($('v6Search')) $('v6Search').oninput = render;
+    if($('v6Clear')) $('v6Clear').onclick = ()=>{
+      mineOnly=false;
+      ['v6Date','v6Team','v6Status','v6Search'].forEach(id=>{ if($(id)) $(id).value=''; });
+      if($('v6Users')) [...$('v6Users').options].forEach(o=>o.selected=false);
+      if($('v6Mine')) $('v6Mine').classList.remove('active');
+      render();
+    };
+    if($('v6Mine')) $('v6Mine').onclick = function(){
+      mineOnly=!mineOnly;
+      this.classList.toggle('active', mineOnly);
+      render();
+    };
+    render();
+  }
+
+  async function renderWorld(){
+    if(window.state) state.route='world';
+    cleanNav('world');
+    cleanup();
+    viewEl().innerHTML = shell('🌎 Mi Mundial','Compara los pronósticos de todos los participantes en Eliminatorias.', 'v6WorldRefresh', 'v6WorldBody');
+    $('v6WorldRefresh').onclick = ()=>loadWorld(true);
+    await loadWorld(false);
+    cleanup();
+  }
+
+  async function loadWorld(force){
+    const body=$('v6WorldBody');
+    if(body) body.innerHTML = loader('Consultando pronósticos de todos los participantes...');
+    try{
+      const data = await loadKoBundle(!!force);
+      const rows = buildCompareRows(data);
+      if(body) body.innerHTML = worldShell(data, rows);
+      bindWorld(rows);
+    }catch(e){
+      if(body) body.innerHTML = `<div class="notice error">${esc((e && e.message) || 'No se pudo cargar Mi Mundial.')}</div>`;
+    }
+  }
+
+  function takeOverTabs(){
+    document.querySelectorAll('.v6-tabs button').forEach((btn, idx)=>{
+      if(idx === 0) return;
+      btn.onclick = function(){
+        const arenaBtn=[...document.querySelectorAll('button,[data-route="arena"]')].find(x=>norm(x.textContent).includes('arena'));
+        if(arenaBtn && typeof arenaBtn.click === 'function') arenaBtn.click();
+      };
+    });
+  }
+
+  function installOverrides(){
+    cleanup();
+    if(window.Modules){
+      window.Modules.dashboard = window.Modules.dashboard || {};
+      window.Modules.world = window.Modules.world || {};
+      Modules.dashboard.render = async function(){ await renderDashboard(); takeOverTabs(); };
+      Modules.dashboard.load = async function(force){ await loadDashboard(force); return true; };
+      Modules.world.render = async function(){ await renderWorld(); takeOverTabs(); };
+      Modules.world.load = async function(force){ await loadWorld(force); return true; };
+    }
+    if(typeof window.route === 'function' && !window.__fsV6RouteWrapped){
+      const baseRoute = window.route;
+      window.route = async function(name, opts={}){
+        if(name === 'matches') name = 'arena';
+        if(name === 'dashboard'){
+          await renderDashboard();
+          takeOverTabs();
+          return true;
+        }
+        if(name === 'world'){
+          await renderWorld();
+          takeOverTabs();
+          return true;
+        }
+        return baseRoute.call(this, name, opts);
+      };
+      window.__fsV6RouteWrapped = true;
+    }
+  }
+
+  function handleNavInterception(ev){
+    const b=ev.target.closest('button,a');
+    if(!b) return;
+    const text=norm(b.textContent);
+    const r=norm(b.getAttribute('data-route') || b.dataset.route || '');
+    if(text === 'partidos' || r === 'matches' || text.includes('fase 1')){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const arenaBtn=[...document.querySelectorAll('button,[data-route="arena"]')].find(x=>norm(x.textContent).includes('arena'));
+      if(arenaBtn && typeof arenaBtn.click === 'function') arenaBtn.click();
+      return;
+    }
+    if(text.includes('dashboard') || r === 'dashboard'){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      renderDashboard().then(takeOverTabs);
+      return;
+    }
+    if(text.includes('mi mundial') || r === 'world'){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      renderWorld().then(takeOverTabs);
+    }
+  }
+
+  window.addEventListener('click', handleNavInterception, true);
+  document.addEventListener('click', handleNavInterception, true);
+
+  function watchdog(){
+    cleanup();
+    const root = viewEl();
+    const text = norm(root && root.textContent || '');
+    const hasApiError = text.includes('api no disponible') || text.includes('no hay conexion api disponible') || text.includes('no hay conexión api disponible');
+    const hasDash = text.includes('dashboard') && text.includes('arena mundialista');
+    const hasWorld = text.includes('mi mundial') && text.includes('pronosticos');
+    if(hasApiError && hasDash){
+      renderDashboard().then(takeOverTabs);
+      return;
+    }
+    if(hasApiError && hasWorld){
+      renderWorld().then(takeOverTabs);
+      return;
+    }
+  }
+
+  document.head.insertAdjacentHTML('beforeend', '<style id="v6KoFixCss">[data-route="matches"],button[data-route="matches"],.nav-btn[data-route="matches"],.phase1-frozen-pill{display:none!important}.v6-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.v6-tabs button{border:1px solid #b9dbff;background:#fff;border-radius:18px;padding:12px 18px;font-weight:800;color:#07417d}.v6-tabs button:first-child,.v6-tabs button.active{background:linear-gradient(135deg,#1299ff,#00a66a);color:#fff}.v6-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:14px 0}.v6-card{background:#fff;border:1px solid #c8e3ff;border-radius:22px;padding:20px;margin:14px 0;box-shadow:0 14px 36px rgba(0,67,128,.08)}.v6-card.kpi .label{text-transform:uppercase;color:#667085;font-size:.85rem}.v6-card.kpi .value{font-size:2.3rem;color:#00499b;font-weight:900}.v6-title{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.v6-title span,.v6-status{border-radius:99px;padding:8px 12px;background:#eef7ff;color:#06477f;font-weight:800}.v6-loader{display:flex;align-items:center;justify-content:center;gap:12px;min-height:90px;color:#004990}.v6-bars{display:grid;gap:12px;margin-top:10px}.v6-bar{display:grid;grid-template-columns:minmax(160px,1.3fr) 2fr 80px;gap:12px;align-items:center}.v6-track{height:14px;border-radius:99px;background:#e9f4ff;overflow:hidden}.v6-track.big{height:28px}.v6-track>div{height:100%;border-radius:99px;background:linear-gradient(90deg,#1598ff,#05b36b)}.v6-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.v6-filters select,.v6-filters input{border:2px solid #c8ddff;border-radius:16px;padding:12px;background:#fff;color:#001a3d}.v6-table-wrap{overflow:auto;max-height:65vh}.v6-table{width:100%;border-collapse:separate;border-spacing:0 8px;min-width:980px}.v6-table th{text-align:left;background:#eef7ff;padding:10px}.v6-table td{background:#fff;padding:10px;border-top:1px solid #e2f1ff;border-bottom:1px solid #e2f1ff}.v6-table tr.exact td{background:#eafff1}.v6-table tr.advance td{background:#fffbe2}.v6-table tr.penalty td{background:#eaf3ff}.v6-table tr.miss td{background:#fff0f0}.v6-table tr.pending td{background:#f8fbff}.v6-status.exact{background:#c9ffd9}.v6-status.advance{background:#fff2a8}.v6-status.penalty{background:#d7ecff}.v6-status.miss{background:#ffd7d7}.v6-status.pending{background:#eef3fb}@media(max-width:720px){.v6-card{padding:16px}.v6-bar{grid-template-columns:1fr}.v6-table{font-size:.9rem}}</style>');
+
+  installOverrides();
+  setTimeout(installOverrides, 250);
+  setTimeout(installOverrides, 1200);
+  setInterval(cleanup, 1200);
+  setInterval(watchdog, 900);
+  setTimeout(watchdog, 400);
+  setTimeout(watchdog, 1400);
+
+  if(window.state && state.route === 'dashboard') renderDashboard().then(takeOverTabs);
+  if(window.state && state.route === 'world') renderWorld().then(takeOverTabs);
+
+  window.FS_V6_KO_FIX = {renderDashboard, renderWorld, loadDashboard, loadWorld, installOverrides, watchdog};
+})();
+
+</script>
 </body>
 </html>
