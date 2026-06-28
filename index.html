@@ -2757,6 +2757,130 @@
   document.head.appendChild(st);
 })();
 
+
+  /* === V46 PERFORMANCE: Fase 1 congelada / cache histórico persistente ===
+     Objetivo: evitar recalcular Fase 1 al ingresar a la app.
+     No modifica flujos de Arena, Eliminatorias, Campeón, Sobre FIFA, Rápidas ni VIP.
+     Sólo cachea lecturas históricas de Fase 1: matches, results, misPredicciones y dashboardSeguro. */
+  (function(){
+    const PHASE1_FREEZE_VERSION = '2026-06-28-final-v1';
+    const PHASE1_FREEZE_TTL = 1000 * 60 * 60 * 24 * 30;
+    const PHASE1_FREEZE_PREFIX = 'fs_phase1_frozen_snapshot_';
+    const originalJsonpV46 = jsonp;
+
+    function phase1FreezeUserKey(){
+      try{
+        const u = currentUser && currentUser() ? currentUser() : 'anon';
+        return norm ? norm(u) : String(u).toLowerCase();
+      }catch(_e){ return 'anon'; }
+    }
+    function phase1FreezeKey(action, params){
+      const p = params || {};
+      const sheet = p.sheet ? String(p.sheet) : '';
+      const userPart = (action === 'misPredicciones' || action === 'dashboardSeguro') ? phase1FreezeUserKey() : 'global';
+      return PHASE1_FREEZE_PREFIX + PHASE1_FREEZE_VERSION + '_' + action + '_' + sheet + '_' + userPart;
+    }
+    function isPhase1FrozenRead(action, params){
+      const p = params || {};
+      if(action === 'dashboardSeguro') return true;
+      if(action === 'misPredicciones') return true;
+      if(action === 'list' && (p.sheet === 'matches' || p.sheet === 'results')) return true;
+      return false;
+    }
+    function getFrozenPayload(key){
+      try{
+        const raw = localStorage.getItem(key);
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(!obj || !obj.t || Date.now() - obj.t > PHASE1_FREEZE_TTL) return null;
+        return obj.v || null;
+      }catch(_e){ return null; }
+    }
+    function setFrozenPayload(key, value){
+      try{
+        if(value && value.status !== 'error') localStorage.setItem(key, JSON.stringify({t:Date.now(), v:value}));
+      }catch(_e){}
+    }
+
+    jsonp = function(action, params={}, timeout=18000){
+      if(isPhase1FrozenRead(action, params) && !params.__forceRefresh){
+        const key = phase1FreezeKey(action, params);
+        const cached = getFrozenPayload(key);
+        if(cached) return Promise.resolve(cached);
+        return originalJsonpV46(action, params, timeout).then((res)=>{ setFrozenPayload(key, res); return res; });
+      }
+      return originalJsonpV46(action, params, timeout);
+    };
+
+    const oldMatchesLoadV46 = Modules.matches && Modules.matches.load;
+    if(oldMatchesLoadV46){
+      Modules.matches.load = async function(force=false){
+        if(force){
+          try{
+            loading(true,'Actualizando histórico Fase 1...');
+            state.matches = await list('matches');
+            const r = await originalJsonpV46('misPredicciones',{token:state.token,__forceRefresh:1});
+            state.predictions = r.data || [];
+            setFrozenPayload(phase1FreezeKey('list',{sheet:'matches'}), {status:'ok', data:state.matches});
+            setFrozenPayload(phase1FreezeKey('misPredicciones',{token:state.token}), {status:'ok', data:state.predictions});
+            loading(false); this.fillFilters(); this.paint(); toast('Histórico Fase 1 actualizado.'); return;
+          }catch(e){ loading(false); throw e; }
+        }
+        const m = getFrozenPayload(phase1FreezeKey('list',{sheet:'matches'}));
+        const p = getFrozenPayload(phase1FreezeKey('misPredicciones',{token:state.token}));
+        if(m && m.data && p && p.data){
+          state.matches = m.data || [];
+          state.predictions = p.data || [];
+          this.fillFilters(); this.paint();
+          const n = document.getElementById('phaseNotice');
+          if(n) n.innerHTML = '<div class="notice ok">⚡ Fase 1 congelada: se muestra histórico guardado sin recalcular al ingresar.</div>';
+          return;
+        }
+        await oldMatchesLoadV46.call(this,false);
+        if(state.matches) setFrozenPayload(phase1FreezeKey('list',{sheet:'matches'}), {status:'ok', data:state.matches});
+        if(state.predictions) setFrozenPayload(phase1FreezeKey('misPredicciones',{token:state.token}), {status:'ok', data:state.predictions});
+      };
+    }
+
+    const oldDashLoadV46 = Modules.dashboard && Modules.dashboard.load;
+    if(oldDashLoadV46){
+      Modules.dashboard.load = async function(force=false){
+        if(!force){
+          const d = getFrozenPayload(phase1FreezeKey('dashboardSeguro',{token:state.token}));
+          if(d && (d.data || d.ranking)){
+            state.dashboard = d.data || d;
+            if(typeof this.paintTab === 'function') this.paintTab('fase1');
+            else if(typeof this.paint === 'function') this.paint(state.dashboard, state.dashboard.ranking || []);
+            return;
+          }
+        }
+        await oldDashLoadV46.call(this, force);
+        if(state.dashboard) setFrozenPayload(phase1FreezeKey('dashboardSeguro',{token:state.token}), {status:'ok', data:state.dashboard});
+      };
+    }
+
+    const oldWorldLoadV46 = Modules.world && Modules.world.load;
+    if(oldWorldLoadV46){
+      Modules.world.load = async function(force=false){
+        if(!force){
+          const m = getFrozenPayload(phase1FreezeKey('list',{sheet:'matches'}));
+          const p = getFrozenPayload(phase1FreezeKey('misPredicciones',{token:state.token}));
+          if(m && m.data && p && p.data){
+            state.matches = state.matches || m.data || [];
+            state.predictions = p.data || [];
+          }
+        }
+        await oldWorldLoadV46.call(this, force);
+        if(state.matches) setFrozenPayload(phase1FreezeKey('list',{sheet:'matches'}), {status:'ok', data:state.matches});
+        if(state.predictions) setFrozenPayload(phase1FreezeKey('misPredicciones',{token:state.token}), {status:'ok', data:state.predictions});
+      };
+    }
+
+    const perfStyle=document.createElement('style');
+    perfStyle.textContent='.phase1-frozen-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 11px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700;font-size:12px}';
+    document.head.appendChild(perfStyle);
+  })();
+
   init();
 })();
 </script>
