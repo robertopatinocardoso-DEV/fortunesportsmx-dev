@@ -94,7 +94,30 @@
     .quick-register-btn{margin-top:12px;background:linear-gradient(120deg,#00a86b,#0b84f3)!important;color:#fff!important;font-size:20px!important;min-height:64px!important;box-shadow:0 18px 34px rgba(0,118,190,.22)!important}
     .register-cost-card{margin:12px 0;padding:14px 16px;border:1px solid #bde4ff;border-radius:18px;background:linear-gradient(135deg,#effbff,#fffaf2);font-weight:1000;color:#003b8f;display:grid;gap:8px}.register-cost-card .cost{font-size:26px;color:#047857}.register-cost-card .small{font-size:12px;color:#64748b}.mini-info-btn,.tutorial-btn{border:1px solid #bde4ff;background:#f0f8ff;color:#003b8f;border-radius:999px;padding:9px 12px;font-weight:1000;cursor:pointer}.arena-card .card-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}.arena-card .btn.dev{background:#e5e7eb!important;color:#64748b!important}.arena-status{display:inline-block;margin-top:8px;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:1000;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}.subtabs{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}.subtab{border:1px solid #bde4ff;background:#fff;color:#003b8f;border-radius:999px;padding:11px 14px;font-weight:1000;cursor:pointer}.subtab.active{background:linear-gradient(120deg,#0b84f3,#00a86b);color:#fff;box-shadow:0 12px 22px rgba(0,120,190,.2)}.results-modal-table{max-height:68vh;overflow:auto;border-radius:18px;border:1px solid #d8eaff}.results-modal-tools{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.results-modal-table table{min-width:780px}.dashboard-ranking-list{display:grid;gap:10px}.dashboard-rank-row{display:grid;grid-template-columns:58px 1fr 90px 90px;gap:10px;align-items:center;background:linear-gradient(90deg,#f8fbff,#fff);border:1px solid #d8eaff;border-radius:16px;padding:12px;font-weight:1000}.dashboard-rank-row .place{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:#0b84f3;color:#fff}.dashboard-rank-row:nth-child(1) .place{background:#ffd21f;color:#0b1f44}.dashboard-rank-row:nth-child(2) .place{background:#e5e7eb;color:#0b1f44}.dashboard-rank-row:nth-child(3) .place{background:#fb923c;color:#0b1f44}.played-pill{font-size:20px;color:#003b8f;font-weight:1000}.phase1-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.phase1-actions .btn.warn{background:linear-gradient(120deg,#fff7ed,#ffedd5)!important;color:#9a3412!important;border:2px solid #fed7aa!important}.match-card.phase1-card{overflow:hidden}.match-card.phase1-card .stadium-line{font-size:18px!important;line-height:1.25!important;word-break:normal!important;white-space:normal!important}.match-card.phase1-card .team{overflow:hidden}.match-card.phase1-card .team-name{line-height:1.1}.world-table-wrap{overflow:auto;max-width:100%}.world-table-wrap table{min-width:980px}.users-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}.users-stats .kpi{min-height:90px}.users-toolbar{display:grid;grid-template-columns:1fr 180px 220px;gap:10px;margin-bottom:14px}.experience-note{animation:fsPulseSoft 2.8s ease-in-out infinite}@keyframes fsPulseSoft{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.02);opacity:1}}.nav-ico,.icon,.login-ball,.app-ball{will-change:transform}@media(max-width:720px){.users-toolbar{grid-template-columns:1fr}.users-stats{grid-template-columns:1fr 1fr}.dashboard-rank-row{grid-template-columns:46px 1fr 70px;}.dashboard-rank-row .exact-col{display:none}.register-cost-card .cost{font-size:22px}.subtabs{display:grid;grid-template-columns:1fr 1fr}.results-modal-table table,.world-table-wrap table{min-width:760px}.phase1-actions{grid-template-columns:1fr 1fr}.phase1-actions .btn{font-size:18px!important}.arena-card .card-actions{grid-template-columns:1fr}}
 
-  </style>
+  
+/* === V41 VIP UI polish - Producción Arena Fase 2 === */
+.fs41-vip-hero{margin-bottom:24px!important;}
+.fs41-vip-kpis{gap:20px!important;margin:18px 0 26px!important;}
+.fs41-vip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:22px;margin-bottom:22px;align-items:stretch;}
+.fs41-vip-slot{position:relative;overflow:hidden;background:linear-gradient(145deg,#ffffff 0%,#f1f9ff 78%,#fff8df 100%);border:1.5px solid #cfe6ff;border-radius:28px;padding:22px;box-shadow:0 18px 38px rgba(0,60,120,.10);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
+.fs41-vip-slot:hover{transform:translateY(-2px);box-shadow:0 24px 46px rgba(0,60,120,.14);border-color:#9ed1ff;}
+.fs41-vip-slot:before{content:'';position:absolute;inset:0 0 auto 0;height:6px;background:linear-gradient(90deg,#168df2,#00b881,#ffd026,#ff7a33);opacity:.85;}
+.fs41-vip-slot.gold:before{background:linear-gradient(90deg,#ffb000,#ffd86b,#fff1b0);}.fs41-vip-slot.silver:before{background:linear-gradient(90deg,#91a4bd,#eef4ff,#bfcce0);}.fs41-vip-slot.semi:before{background:linear-gradient(90deg,#ff6a00,#ffce26,#00b881);}.fs41-vip-slot.scorer:before{background:linear-gradient(90deg,#003b8f,#168df2,#00b881);}
+.fs41-vip-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.fs41-vip-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(145deg,#eaf6ff,#ffffff);border:1px solid #cfe6ff;font-size:28px;box-shadow:0 10px 22px rgba(0,70,140,.10);flex:0 0 auto;}
+.fs41-vip-slot h3{margin:0;color:#003b8f;font-size:22px;line-height:1.16;font-weight:600;}
+.fs41-vip-slot p{margin:4px 0 0;color:#6a7a92;font-weight:500;}
+.fs41-vip-select,.fs41-vip-input{margin-top:8px!important;background:#fff!important;border-radius:20px!important;min-height:58px!important;font-size:18px!important;font-weight:400!important;}
+.fs41-vip-save-wrap{margin-top:26px;padding:20px;border-radius:28px;background:linear-gradient(145deg,#eef8ff,#ffffff);border:1px solid #cfe6ff;text-align:center;box-shadow:0 16px 34px rgba(0,60,120,.08);}
+.fs41-vip-save{width:100%;max-width:520px;min-height:62px;font-size:20px;font-weight:600!important;border-radius:22px!important;}
+@media(max-width:680px){.fs41-vip-grid{grid-template-columns:1fr;gap:22px}.fs41-vip-slot{padding:22px 20px}.fs41-vip-head{gap:12px}.fs41-vip-slot h3{font-size:21px}}
+
+
+/* V42 Performance Patch */
+*{text-rendering:optimizeLegibility}
+.card,.module-card,.match-card,.fs38-card,.vip-card{content-visibility:auto;contain-intrinsic-size:420px}
+.table-wrap,.results-table-wrap{content-visibility:auto;contain-intrinsic-size:600px}
+</style>
 <style id="fs-v38-styles">
 .fs38-corner-balance{position:sticky;top:8px;z-index:5;display:flex;justify-content:space-between;gap:12px;align-items:center;background:linear-gradient(120deg,#052e62,#00a86b);color:white;border-radius:24px;padding:16px 18px;margin:12px 0 18px;box-shadow:0 16px 34px rgba(0,90,160,.22);font-weight:1000}.fs38-balance-val{font-size:32px}.fs38-mini{font-size:13px;opacity:.86}.fs38-card{border:1px solid #d8eaff;border-radius:26px;background:linear-gradient(180deg,#fff,#f6fbff);box-shadow:0 14px 30px rgba(0,80,150,.10);padding:18px;margin:14px 0}.fs38-quick-card{overflow:hidden}.fs38-match-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.fs38-match-title{font-size:22px;font-weight:1000;color:#003b8f}.fs38-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #bde4ff;background:#edf7ff;border-radius:999px;padding:8px 11px;font-weight:1000;color:#003b8f}.fs38-flag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:12px}.fs38-flag-tile{border:2px solid #d8eaff;background:#fff;border-radius:22px;padding:14px 10px;text-align:center;font-weight:1000;box-shadow:0 8px 18px rgba(0,60,120,.08);cursor:pointer;transition:.18s}.fs38-flag-tile:hover,.fs38-flag-tile.selected{transform:translateY(-2px);border-color:#0b84f3;background:linear-gradient(180deg,#f0f8ff,#fff)}.fs38-flag-tile .big{font-size:42px;display:block;margin-bottom:6px}.fs38-vip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.fs38-vip-slot{background:linear-gradient(135deg,#fff,#eff8ff);border:1px solid #d8eaff;border-radius:24px;padding:16px}.fs38-vip-slot h3{margin:0 0 8px;color:#003b8f}.fs38-panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.fs38-disabled{opacity:.55;filter:grayscale(.25)}.fs38-loader{padding:26px;border-radius:22px;background:#eff8ff;border:1px solid #bde4ff;text-align:center;font-weight:1000;color:#003b8f}.fs38-spinner{width:34px;height:34px;border:5px solid #cfe7ff;border-top-color:#0b84f3;border-radius:50%;animation:fs38spin .85s linear infinite;margin:0 auto 12px}@keyframes fs38spin{to{transform:rotate(360deg)}}
 </style>
@@ -201,20 +224,50 @@
   function modal(html){ $('modalRoot').innerHTML = `<div class="modal-backdrop"><div class="modal">${html}</div></div>`; }
   function closeModal(){ $('modalRoot').innerHTML=''; }
 
+  /* V42 Performance Patch: JSONP con cache corto y deduplicación de llamadas de solo lectura.
+     No intercepta acciones de escritura ni modifica flujos funcionales. */
+  const FS_CACHE_TTL = {
+    fsModules: 300000,
+    fsKnockoutMatches: 120000,
+    fsChampionSummary: 45000,
+    fsTombolaSummary: 45000,
+    fsArenaModuleSummary: 45000,
+    fsArenaRegistrationStatus: 20000
+  };
+  const FS_LIST_CACHE_TTL = {matches:120000, results:60000, FS_Modulos:300000, FS_Eliminatorias_Partidos:120000};
+  const fsInflight = new Map();
+  const fsMemCache = new Map();
+  function fsCacheKey(action, params){
+    const clean={}; Object.keys(params||{}).sort().forEach(k=>{ if(k!=='callback' && k!=='cb' && k!=='jsonp' && params[k]!==undefined && params[k]!==null) clean[k]=params[k]; });
+    return action+'::'+JSON.stringify(clean);
+  }
+  function fsCacheTtl(action, params){
+    if(action==='list') return FS_LIST_CACHE_TTL[String((params||{}).sheet||'')] || 0;
+    return FS_CACHE_TTL[action] || 0;
+  }
+  function fsClearReadCache(){ fsMemCache.clear(); try{ sessionStorage.removeItem('fs_v42_cache'); }catch(e){} }
   function jsonp(action, params={}, timeout=18000){
+    const ttl=fsCacheTtl(action, params);
+    const key=ttl?fsCacheKey(action, params):'';
+    const now=Date.now();
+    if(ttl && fsMemCache.has(key)){ const hit=fsMemCache.get(key); if(hit && now-hit.t < ttl) return Promise.resolve(hit.v); }
+    if(ttl && fsInflight.has(key)) return fsInflight.get(key);
     const cb='fs_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
     const url = new URL(API_URL); url.searchParams.set('action',action); url.searchParams.set('callback',cb);
     Object.entries(params).forEach(([k,v])=>{ if(v!==undefined && v!==null) url.searchParams.set(k,String(v)); });
-    return new Promise((resolve,reject)=>{
+    const p = new Promise((resolve,reject)=>{
       const s=document.createElement('script'); let done=false;
       const timer=setTimeout(()=>{ if(done) return; done=true; cleanup(); reject(new Error('Tiempo agotado consultando API.')); }, timeout);
-      window[cb]=(data)=>{ if(done) return; done=true; cleanup(); resolve(data); };
+      window[cb]=(data)=>{ if(done) return; done=true; cleanup(); if(ttl && data && data.status!=='error') fsMemCache.set(key,{t:Date.now(),v:data}); resolve(data); };
       s.onerror=()=>{ if(done) return; done=true; cleanup(); reject(new Error('No se pudo consultar la API.')); };
-      function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+      function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); if(ttl) fsInflight.delete(key); }
       s.src=url.toString(); document.head.appendChild(s);
     });
+    if(ttl) fsInflight.set(key,p);
+    return p;
   }
   function postAction(action, payload){
+    fsClearReadCache();
     return fetch(API_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({action, ...(payload||{})})});
   }
   async function list(sheet){ const r=await jsonp('list',{sheet}); if(r.status!=='ok') throw new Error(r.message||'Error listando '+sheet); return r.data||[]; }
@@ -2074,7 +2127,67 @@
   const oldDashPaint=Modules.dashboard.paintTab; Modules.dashboard.paintTab=function(tab){ if(FS38_MODS[tab]) return fs38RenderDashTab(tab); return oldDashPaint.call(this,tab); };
   const oldWorldDemo=Modules.world.paintArenaDemo; Modules.world.paintArenaDemo=function(tab){ if(FS38_MODS[tab]) return fs38RenderWorldTab(tab); return oldWorldDemo.call(this,tab); };
   async function renderRapidas(){ view.innerHTML=fs38Loading('Cargando Quinielas Rápidas...'); const mod='Quinielas Rápidas'; const ac=await fs38Access(mod); if(!ac.can && !fs38IsDemo()) return fs38Gate(mod,view); const s=await fs38Summary(mod).catch(e=>({status:'error',message:e.message,partidos:[],saldo:0,counts:{}})); const saldo=Number(s.saldo||0); const partidos=s.partidos||[]; const bets=s.apuestas||[]; const activeIds=new Set(bets.filter(b=>String(fs38Val(b,['Estatus','Estado'],'activo')).toLowerCase()!=='inactivo').map(b=>String(fs38Val(b,['Partido_ID','partido_id'])))); view.innerHTML=`<div class="hero"><div class="notice ok" style="display:inline-block">⚡ Entrada $20 · Se activa el 28 de Junio 08:00 am</div><h1>Quinielas Rápidas</h1><p>Activa partidos con tu saldo. Cada partido cuesta $20 y el ganador se lleva la bolsa acumulada de esta competencia.</p></div><div class="fs38-corner-balance"><div><div class="fs38-mini">Mi saldo disponible</div><div class="fs38-balance-val">$${saldo.toLocaleString('es-MX')}</div></div><div><div class="fs38-mini">Partidos activos</div><div class="fs38-balance-val">${activeIds.size}</div></div></div><div id="fs38RapidList">${partidos.map(m=>{const id=fs38Val(m,['Partido_ID','ID']); const active=activeIds.has(String(id)); const disabled=!active&&saldo<20&&!fs38IsDemo(); return `<div class="fs38-card fs38-quick-card ${disabled?'fs38-disabled':''}"><div class="fs38-match-top"><div class="fs38-match-title">${fs38Esc(id)} · ${fs38Esc(fs38Val(m,['Ronda','Grupo'],'Partido'))}</div><span class="fs38-pill">👥 ${(s.counts||{})[id]||0} registrados</span></div><div class="scoreboard"><div class="team"><div class="flag">${fs38Flag(fs38Val(m,['Equipo_Local']))}</div><div class="team-name">${fs38Esc(fs38Val(m,['Equipo_Local']))}</div></div><div class="score"><span class="vs">VS</span></div><div class="team"><div class="flag">${fs38Flag(fs38Val(m,['Equipo_Visitante']))}</div><div class="team-name">${fs38Esc(fs38Val(m,['Equipo_Visitante']))}</div></div></div><p class="muted strong">${fs38Esc(fs38Val(m,['Fecha']))} · ${fs38Esc(fs38Val(m,['Hora']))} · 🏟️ ${fs38Esc(fs38Val(m,['Sede','Estadio']))}</p><button class="btn" data-rapid-toggle="${fs38Esc(id)}" ${disabled?'disabled':''}>${active?'Desactivar partido':'Activar partido · $20'}</button></div>`}).join('')||'<div class="notice">Aún no hay partidos configurados.</div>'}</div>`; view.querySelectorAll('[data-rapid-toggle]').forEach(b=>b.onclick=async()=>{b.disabled=true;b.innerHTML='<span class="btn-spinner"></span>Procesando...'; const r=await jsonp('fsRapidToggle',{token:state.token,Partido_ID:b.dataset.rapidToggle}).catch(e=>({status:'error',message:e.message})); if(r.status!=='ok') toast(r.message||'No se pudo actualizar'); await renderRapidas();}); }
-  async function renderVip(){ view.innerHTML=fs38Loading('Cargando Camino al Campeón VIP...'); const mod='Camino al Campeón VIP'; const ac=await fs38Access(mod); if(!ac.can && !fs38IsDemo()) return fs38Gate(mod,view); const s=await fs38Summary(mod).catch(e=>({teams:FS38_TEAMS,pick:{},participantes:0,bolsa:0})); const teams=s.teams||FS38_TEAMS; const pick=s.pick||{}; const slot=(id,label,points,val)=>`<div class="fs38-vip-slot"><h3>${label}</h3><p class="muted strong">${points} puntos</p><select class="select" id="${id}"><option value="">Seleccionar</option>${teams.map(t=>`<option value="${fs38Esc(t)}" ${String(val||'')===String(t)?'selected':''}>${fs38Flag(t)} ${fs38Esc(t)}</option>`).join('')}</select></div>`; view.innerHTML=`<div class="hero"><div class="notice warn" style="display:inline-block">💎 Mínimo 5 participantes. Si no se cumple, se regresa el dinero.</div><h1>Camino al Campeón VIP</h1><p>Predice campeón, subcampeón, semifinalistas y goleador. Gana quien acumule más puntos.</p></div><div class="grid cols-3"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">$${Number(s.bolsa||0).toLocaleString('es-MX')}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${Number(s.participantes||0)}</div></div><div class="card kpi"><div class="label">Estatus mínimo</div><div class="value" style="font-size:24px">${Number(s.participantes||0)>=5?'Activo':'Pendiente'}</div></div></div><div class="fs38-vip-grid">${slot('vipCampeon','🏆 Campeón Mundial',60,fs38Val(pick,['Campeon','Campeón']))}${slot('vipSubcampeon','🥈 Subcampeón',40,fs38Val(pick,['Subcampeon','Subcampeón']))}${slot('vipSemi1','🔥 Semifinalista 1',20,fs38Val(pick,['Semifinalista_1']))}${slot('vipSemi2','🔥 Semifinalista 2',20,fs38Val(pick,['Semifinalista_2']))}${slot('vipSemi3','🔥 Semifinalista 3',20,fs38Val(pick,['Semifinalista_3']))}${slot('vipSemi4','🔥 Semifinalista 4',20,fs38Val(pick,['Semifinalista_4']))}<div class="fs38-vip-slot"><h3>⚽ Goleador del torneo</h3><p class="muted strong">15 puntos</p><input class="input" id="vipGoleador" placeholder="Nombre del jugador" value="${fs38Esc(fs38Val(pick,['Goleador']))}"></div></div><button class="btn" id="saveVipPick" style="margin-top:16px">Guardar Camino VIP</button>`; document.getElementById('saveVipPick').onclick=async()=>{const btn=document.getElementById('saveVipPick'); btn.disabled=true; btn.innerHTML='<span class="btn-spinner"></span>Guardando...'; const payload={token:state.token,Campeon:vipCampeon.value,Subcampeon:vipSubcampeon.value,Semifinalista_1:vipSemi1.value,Semifinalista_2:vipSemi2.value,Semifinalista_3:vipSemi3.value,Semifinalista_4:vipSemi4.value,Goleador:vipGoleador.value}; const r=await jsonp('saveVipPick',payload).catch(e=>({status:'error',message:e.message})); btn.disabled=false; btn.innerHTML='Guardar Camino VIP'; if(r.status!=='ok') return toast(r.message||'No se pudo guardar'); toast('Camino VIP guardado.'); await renderVip();}; }
+  async function renderVip(){
+    view.innerHTML=fs38Loading('Cargando Camino al Campeón VIP...');
+    const mod='Camino al Campeón VIP';
+    const ac=await fs38Access(mod);
+    if(!ac.can && !fs38IsDemo()) return fs38Gate(mod,view);
+    const s=await fs38Summary(mod).catch(e=>({teams:FS38_TEAMS,pick:{},participantes:0,bolsa:0}));
+    const teams=s.teams||FS38_TEAMS;
+    const pick=s.pick||{};
+    const slot=(id,label,points,val,iconClass='')=>`<div class="fs41-vip-slot ${iconClass}">
+      <div class="fs41-vip-head"><div class="fs41-vip-icon">${label.split(' ')[0]}</div><div><h3>${label.replace(label.split(' ')[0],'').trim()}</h3><p>${points} puntos</p></div></div>
+      <select class="select fs41-vip-select" id="${id}"><option value="">Seleccionar</option>${teams.map(t=>`<option value="${fs38Esc(t)}" ${String(val||'')===String(t)?'selected':''}>${fs38Flag(t)} ${fs38Esc(t)}</option>`).join('')}</select>
+    </div>`;
+    view.innerHTML=`<div class="hero fs41-vip-hero"><div class="notice warn" style="display:inline-block">💎 Mínimo 5 participantes. Si no se cumple, se regresa el dinero.</div><h1>Camino al Campeón VIP</h1><p>Predice campeón, subcampeón, semifinalistas y goleador. Gana quien acumule más puntos.</p></div>
+    <div class="grid cols-3 fs41-vip-kpis"><div class="card kpi"><div class="label">Bolsa acumulada</div><div class="value">$${Number(s.bolsa||0).toLocaleString('es-MX')}</div></div><div class="card kpi"><div class="label">Participantes</div><div class="value">${Number(s.participantes||0)}</div></div><div class="card kpi"><div class="label">Estatus mínimo</div><div class="value" style="font-size:24px">${Number(s.participantes||0)>=5?'Activo':'Pendiente'}</div></div></div>
+    <div class="fs41-vip-grid">
+      ${slot('vipCampeon','🏆 Campeón Mundial',60,fs38Val(pick,['Campeon','Campeón']),'gold')}
+      ${slot('vipSubcampeon','🥈 Subcampeón',40,fs38Val(pick,['Subcampeon','Subcampeón']),'silver')}
+      ${slot('vipSemi1','🔥 Semifinalista 1',20,fs38Val(pick,['Semifinalista_1']),'semi')}
+      ${slot('vipSemi2','🔥 Semifinalista 2',20,fs38Val(pick,['Semifinalista_2']),'semi')}
+      ${slot('vipSemi3','🔥 Semifinalista 3',20,fs38Val(pick,['Semifinalista_3']),'semi')}
+      ${slot('vipSemi4','🔥 Semifinalista 4',20,fs38Val(pick,['Semifinalista_4']),'semi')}
+      <div class="fs41-vip-slot scorer"><div class="fs41-vip-head"><div class="fs41-vip-icon">⚽</div><div><h3>Goleador del torneo</h3><p>15 puntos</p></div></div><input class="input fs41-vip-input" id="vipGoleador" placeholder="Nombre del jugador" value="${fs38Esc(fs38Val(pick,['Goleador']))}"></div>
+    </div>
+    <div class="fs41-vip-save-wrap"><button class="btn fs41-vip-save" id="saveVipPick">💾 Guardar todo Camino VIP</button><p class="muted">Antes de guardar validaremos que todos los campos estén completos.</p></div>`;
+    const getPayload=()=>({token:state.token,Campeon:document.getElementById('vipCampeon').value,Subcampeon:document.getElementById('vipSubcampeon').value,Semifinalista_1:document.getElementById('vipSemi1').value,Semifinalista_2:document.getElementById('vipSemi2').value,Semifinalista_3:document.getElementById('vipSemi3').value,Semifinalista_4:document.getElementById('vipSemi4').value,Goleador:document.getElementById('vipGoleador').value.trim()});
+    const validateVip=(payload)=>{
+      const labels={Campeon:'Campeón Mundial',Subcampeon:'Subcampeón',Semifinalista_1:'Semifinalista 1',Semifinalista_2:'Semifinalista 2',Semifinalista_3:'Semifinalista 3',Semifinalista_4:'Semifinalista 4',Goleador:'Goleador del torneo'};
+      const missing=Object.keys(labels).filter(k=>!payload[k]).map(k=>labels[k]);
+      const teamKeys=['Campeon','Subcampeon','Semifinalista_1','Semifinalista_2','Semifinalista_3','Semifinalista_4'];
+      const chosen=teamKeys.map(k=>payload[k]).filter(Boolean);
+      const dup=[...new Set(chosen.filter((v,i,a)=>a.indexOf(v)!==i))];
+      return {missing,dup};
+    };
+    async function saveVipConfirmed(){
+      const btn=document.getElementById('saveVipPick');
+      const payload=getPayload();
+      if(btn){btn.disabled=true;btn.innerHTML='<span class="btn-spinner"></span>Guardando...';}
+      try{
+        const r=await jsonp('saveVipPick',payload).catch(e=>({status:'error',message:e.message}));
+        if(r.status!=='ok') return toast(r.message||'No se pudo guardar');
+        toast('Camino VIP guardado.');
+        await renderVip();
+      } finally {
+        const b=document.getElementById('saveVipPick');
+        if(b){b.disabled=false;b.innerHTML='💾 Guardar todo Camino VIP';}
+      }
+    }
+    document.getElementById('saveVipPick').onclick=async()=>{
+      const payload=getPayload();
+      const v=validateVip(payload);
+      if(v.missing.length){
+        return modal(`<h2>⚠️ Faltan campos por llenar</h2><p>Antes de guardar Camino VIP completa:</p><ul style="text-align:left;line-height:1.7">${v.missing.map(x=>`<li>${fs38Esc(x)}</li>`).join('')}</ul><div class="modal-actions"><button class="btn ghost" data-close-modal>Revisar antes</button></div>`);
+      }
+      if(v.dup.length){
+        return modal(`<h2>⚠️ Revisa tus selecciones</h2><p>No puedes repetir selección entre campeón, subcampeón y semifinalistas.</p><p class="strong">Duplicada: ${v.dup.map(fs38Esc).join(', ')}</p><div class="modal-actions"><button class="btn ghost" data-close-modal>Revisar antes</button></div>`);
+      }
+      modal(`<h2>💎 Guardar Camino VIP</h2><p>Vas a guardar todos tus picks VIP:</p><div style="text-align:left;background:#f4fbff;border:1px solid #d8eaff;border-radius:18px;padding:14px;line-height:1.65"><b>Campeón:</b> ${fs38Flag(payload.Campeon)} ${fs38Esc(payload.Campeon)}<br><b>Subcampeón:</b> ${fs38Flag(payload.Subcampeon)} ${fs38Esc(payload.Subcampeon)}<br><b>Semifinalistas:</b> ${[payload.Semifinalista_1,payload.Semifinalista_2,payload.Semifinalista_3,payload.Semifinalista_4].map(t=>fs38Flag(t)+' '+fs38Esc(t)).join(' · ')}<br><b>Goleador:</b> ${fs38Esc(payload.Goleador)}</div><p class="muted">Puedes revisar antes o confirmar el guardado.</p><div class="modal-actions"><button class="btn" id="confirmVipSave">Sí, guardar todo</button><button class="btn ghost" data-close-modal>Revisar antes</button></div>`);
+      const c=document.getElementById('confirmVipSave');
+      if(c) c.onclick=async()=>{ closeModal(); await saveVipConfirmed(); };
+    };
+  }
   Modules.rapidas={render:renderRapidas}; Modules.vip={render:renderVip};
   const oldRoute38=route; route=async function(name,opts={}){ if(name==='rapidas'){state.route=name;state.abortKey++;renderNav();showApp();window.scrollTo({top:0,behavior:'smooth'});return renderRapidas();} if(name==='vip'){state.route=name;state.abortKey++;renderNav();showApp();window.scrollTo({top:0,behavior:'smooth'});return renderVip();} return oldRoute38(name,opts); };
 
