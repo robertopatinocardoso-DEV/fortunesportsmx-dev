@@ -3705,7 +3705,7 @@
 <!-- removed old Dashboard/Mi Mundial/hotfix block: script id="FS_V63_RANKING_TABLE_FIX" -->
 
 
-<script id="FS_V64_FORCE_FINAL">
+<script id="FS_V64_FORCE_FINAL_RANKING_PUNTOS_FILTRO_USERS">
 (function(){
   'use strict';
   if(window.__FS_V64_DONE) return;
@@ -3745,6 +3745,17 @@
     }catch(error){
       return {ok:false, data:null, error};
     }
+  }
+
+  async function fs72DirectKoData(){
+    const [matchesRes, predsRes] = await Promise.all([
+      apiSoft('list',{sheet:'FS_Eliminatorias_Partidos'},32000),
+      apiSoft('list',{sheet:'FS_Eliminatorias_Pronosticos'},32000)
+    ]);
+    const unwrap = d => arr(d && (d.data || d.rows || d.values || d));
+    const matches = unwrap(matchesRes.data);
+    const predictions = unwrap(predsRes.data);
+    return {matches, predictions, totalMatches:matches.length, totalPredictions:predictions.length, source:'direct-list-fallback'};
   }
 
   function yes(v){ return ['si','sí','true','1','x','yes','y'].includes(norm(v)); }
@@ -3815,11 +3826,13 @@
   }
 
   function dense(list){
-    list = [...(list||[])].sort((a,b) => n(b.points)-n(a.points) || n(b.exact)-n(a.exact) || n(b.advance)-n(a.advance) || n(b.penales)-n(a.penales) || String(a.user||'').localeCompare(String(b.user||''),'es'));
-    let rank = 0, last = null;
+    // Ranking oficial: SOLO cuentan los puntos.
+    // Exactos, avanza y penales se muestran como estadística, pero NO desempatan posición.
+    list = [...(list||[])].sort((a,b) => n(b.points)-n(a.points) || String(a.user||'').localeCompare(String(b.user||''),'es'));
+    let rank = 0, lastPoints = null;
     return list.map((x, idx) => {
-      const key = `${n(x.points)}|${n(x.exact)}|${n(x.advance)}|${n(x.penales)}`;
-      if(key !== last){ rank = idx + 1; last = key; }
+      const pts = n(x.points);
+      if(pts !== lastPoints){ rank += 1; lastPoints = pts; }
       return Object.assign({}, x, {rank});
     });
   }
@@ -3950,21 +3963,42 @@
       ['Mis picks', mine.length],
       ['Partidos con resultado', [...new Set(c.matches.filter(hasReal).map(mid))].length]
     ]) +
-    `<section class="fs64-card"><h2>🎛️ Filtros de comparativa</h2><div class="fs64-filters"><select id="fs64Users" multiple size="5">${users.map(u=>`<option selected>${esc(u)}</option>`).join('')}</select><select id="fs64Date"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="fs64Team"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="fs64Status"><option value="">Todos los estatus</option><option value="exact">Exacto</option><option value="advance">Avanza</option><option value="penalty">Penales</option><option value="miss">Sin acierto</option><option value="pending">Pendiente</option></select></div></section>` +
+    `<section class="fs64-card"><h2>🎛️ Filtros de comparativa</h2><div class="fs64-filters">
+      <details id="fs64UserPicker" class="fs64-user-picker">
+        <summary id="fs64UserSummary">Todos los participantes</summary>
+        <div class="fs64-user-picker-box">
+          <label class="fs64-user-option all"><input type="checkbox" id="fs64AllUsers" checked> Seleccionar todos</label>
+          ${users.map(u=>`<label class="fs64-user-option"><input type="checkbox" class="fs64UserChk" value="${esc(u)}" checked> ${esc(u)}</label>`).join('')}
+        </div>
+      </details>
+      <select id="fs64Date"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="fs64Team"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="fs64Status"><option value="">Todos los estatus</option><option value="exact">Exacto</option><option value="advance">Avanza</option><option value="penalty">Penales</option><option value="miss">Sin acierto</option><option value="pending">Pendiente</option></select></div></section>` +
     `<section class="fs64-card fs64-compare-card"><div class="fs64-compare-head"><h2>📋 Tabla comparativa de marcadores</h2><span class="fs64-pill">Exacto · Avanza · Penales</span></div><div id="fs64Table"></div></section>` +
     `<section class="fs64-card"><h2>🎯 Mis picks cargados</h2><div class="fs64-picks">${mine.map(r=>`<article>${flag(r.local)} ${esc(r.local)} <b>${esc(r.pred)}</b> ${flag(r.visit)} ${esc(r.visit)}<small>Avanza: ${esc(r.advance)} · Penales: ${esc(r.penPred)} · ${esc(r.status)}</small></article>`).join('') || '<div class="notice warn">No tienes picks cargados.</div>'}</div></section>`;
   }
 
   function bindWorldTable(rows){
+    const userChecks = () => [...document.querySelectorAll('.fs64UserChk')];
+    const selectedUsers = () => userChecks().filter(x=>x.checked).map(x=>x.value);
+    const updateUserSummary = () => {
+      const total = userChecks().length;
+      const sel = selectedUsers().length;
+      if($('fs64UserSummary')) $('fs64UserSummary').textContent = sel === total ? 'Todos los participantes' : `${sel} participante${sel===1?'':'s'} seleccionado${sel===1?'':'s'}`;
+      if($('fs64AllUsers')) $('fs64AllUsers').checked = total > 0 && sel === total;
+    };
     const render = () => {
-      const us = $('fs64Users') ? [...$('fs64Users').selectedOptions].map(o=>o.value) : [];
+      updateUserSummary();
+      const checks = userChecks();
+      const us = selectedUsers();
+      const allSelected = !checks.length || us.length === checks.length;
       const d = $('fs64Date') ? $('fs64Date').value : '';
       const t = $('fs64Team') ? $('fs64Team').value : '';
       const s = $('fs64Status') ? $('fs64Status').value : '';
-      const f = (rows||[]).filter(r => (!us.length || us.includes(r.user)) && (!d || r.date === d) && (!t || r.local === t || r.visit === t) && (!s || r.cls === s));
+      const f = (rows||[]).filter(r => (allSelected || us.includes(r.user)) && (!d || r.date === d) && (!t || r.local === t || r.visit === t) && (!s || r.cls === s));
       if($('fs64Table')) $('fs64Table').innerHTML = `<div class="fs64-table-wrap"><table><thead><tr><th>Usuario</th><th>Partido</th><th>Pronóstico</th><th>Avanza</th><th>Penales pronóstico</th><th>Real</th><th>Penales real</th><th>Puntos</th><th>Estatus</th></tr></thead><tbody>${f.map(r=>`<tr class="${r.cls}"><td>${esc(r.user)}</td><td>${esc(r.id)} · ${flag(r.local)} ${esc(r.local)} vs ${flag(r.visit)} ${esc(r.visit)}</td><td><b>${esc(r.pred)}</b></td><td>${esc(r.advance)}</td><td><b>${esc(r.penPred)}</b></td><td>${esc(r.real)} · ${esc(r.realAdvance)}</td><td>${esc(r.penReal)}</td><td><b>${n(r.points)}</b></td><td><span class="fs64-status ${r.cls}">${esc(r.status)}</span></td></tr>`).join('') || '<tr><td colspan="9">Sin información con esos filtros.</td></tr>'}</tbody></table></div>`;
     };
-    ['fs64Users','fs64Date','fs64Team','fs64Status'].forEach(id => { if($(id)) $(id).onchange = render; });
+    if($('fs64AllUsers')) $('fs64AllUsers').onchange = e => { userChecks().forEach(x => x.checked = e.target.checked); render(); };
+    userChecks().forEach(x => x.onchange = render);
+    ['fs64Date','fs64Team','fs64Status'].forEach(id => { if($(id)) $(id).onchange = render; });
     render();
   }
 
@@ -4042,7 +4076,13 @@ async function loadDashboard(tab='eliminatorias'){
           apiSoft('worldEliminatoriasSeguro',{scope:'all'})
         ]);
         const dash = dashRes.data || {};
-        const world = worldRes.data || dash || {};
+        let world = worldRes.data || dash || {};
+        try{
+          if(!arr(comparePayload(world).predictions).length){
+            const direct = await fs72DirectKoData();
+            if(arr(comparePayload(direct).predictions).length) world = direct;
+          }
+        }catch(_e){}
         writeFast('dashboard','eliminatorias',{dash,world});
         renderDashElim(body, dash, world, !!worldRes.ok);
       } else {
@@ -4066,7 +4106,13 @@ async function loadDashboard(tab='eliminatorias'){
           apiSoft('worldEliminatoriasSeguro',{scope:'all'}),
           apiSoft('dashboardEliminatoriasSeguro',{scope:'all'})
         ]);
-        const source = (worldRes.ok && arr(comparePayload(worldRes.data).predictions).length) ? worldRes.data : (dashRes.data || worldRes.data || {});
+        let source = (worldRes.ok && arr(comparePayload(worldRes.data).predictions).length) ? worldRes.data : (dashRes.data || worldRes.data || {});
+        try{
+          if(!arr(comparePayload(source).predictions).length){
+            const direct = await fs72DirectKoData();
+            if(arr(comparePayload(direct).predictions).length) source = direct;
+          }
+        }catch(_e){}
         writeFast('world','eliminatorias',{source});
         renderWorldElim(body, source, !!worldRes.ok);
       } else {
@@ -4762,6 +4808,18 @@ async function loadDashboard(tab='eliminatorias'){
     }
     lastAction = {route:r, at:now};
   }, true);
+})();
+</script>
+
+
+<script id="FS_V72_RANKING_DENSE_WORLD_FALLBACK_NOTE">
+(function(){
+  try{
+    if(!localStorage.getItem('fs72_cache_reset')){
+      Object.keys(localStorage).filter(k=>k.indexOf('fs64fast_')===0 || k.indexOf('fs49cache_')===0).forEach(k=>localStorage.removeItem(k));
+      localStorage.setItem('fs72_cache_reset','1');
+    }
+  }catch(_e){}
 })();
 </script>
 
