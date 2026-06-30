@@ -4823,5 +4823,362 @@ async function loadDashboard(tab='eliminatorias'){
 })();
 </script>
 
+
+
+<script id="FS_V73_ADMIN_WORLD_REFRESH_QF_FINAL">
+(function(){
+  'use strict';
+  if(window.__FS_V73_DONE) return;
+  window.__FS_V73_DONE = true;
+
+  const q = id => document.getElementById(id);
+  const safe = v => (v == null ? '' : String(v));
+  const esc = s => safe(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const norm = v => safe(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.-]/g,'')); return Number.isFinite(n) ? n : 0; };
+  const pick = (o, keys, d='') => { for(const k of keys){ if(o && o[k] !== undefined && o[k] !== null && String(o[k]).trim() !== '') return o[k]; } return d; };
+  const arr = v => Array.isArray(v) ? v : [];
+  const token = () => (window.state && state.token) || '';
+  const flag = t => { try { return typeof flagFor === 'function' ? flagFor(t) : '🏳️'; } catch(_e){ return '🏳️'; } };
+  const viewNode = () => (typeof window.view === 'function' ? window.view() : document.getElementById('view')) || document.body;
+
+  function clearClientCaches(){
+    try{
+      Object.keys(localStorage).forEach(k => {
+        if(/^fs64_fast_|^fs49_|^fs_v48_|^fs72_|^fs69_|^fs73_/.test(k)) localStorage.removeItem(k);
+      });
+      Object.keys(sessionStorage).forEach(k => {
+        if(/^fs64_fast_|^fs49_|^fs_v48_|^fs72_|^fs69_|^fs73_/.test(k)) sessionStorage.removeItem(k);
+      });
+    }catch(_e){}
+  }
+
+  async function api(action, params={}, timeout=45000){
+    if(typeof window.jsonp !== 'function') throw new Error('API no disponible');
+    const payload = Object.assign({ token: token(), fresh: 1, nocache: Date.now() }, params || {});
+    const r = await window.jsonp(action, payload, timeout);
+    if(r && r.status && r.status !== 'ok') throw new Error(r.message || ('Error en ' + action));
+    return (r && (r.data || r.payload || r.result)) || r || {};
+  }
+  async function soft(action, params={}, timeout=45000){
+    try{ return {ok:true, data: await api(action, params, timeout)}; }catch(error){ return {ok:false, data:null, error}; }
+  }
+  async function listSheet(sheet){
+    const r = await soft('list', { sheet, fresh:1, nocache:Date.now() }, 45000);
+    return arr(r.data && (r.data.data || r.data.rows || r.data));
+  }
+  async function koMatchesFresh(){
+    const r = await soft('fsKnockoutMatches', { fresh:1, nocache:Date.now() }, 45000);
+    let rows = arr(r.data && (r.data.data || r.data.rows || r.data));
+    if(!rows.length) rows = await listSheet('FS_Eliminatorias_Partidos');
+    return rows.filter(x => safe(matchIdOf(x)).trim());
+  }
+  async function koPredsFresh(){
+    const r = await soft('worldEliminatoriasSeguro', { scope:'all', fresh:1, nocache:Date.now() }, 45000);
+    let data = r.data || {};
+    let preds = arr(data.predictions || data.pronosticos || data.rows || data.data);
+    let matches = arr(data.matches || data.partidos || data.koMatches || []);
+    if(!preds.length) preds = await listSheet('FS_Eliminatorias_Pronosticos');
+    if(!matches.length) matches = await koMatchesFresh();
+    return {preds, matches};
+  }
+
+  function matchIdOf(o){ return safe(pick(o, ['Partido_ID','Partido ID','ID','Match_ID','partido_id'])); }
+  function rondaOf(o){ return safe(pick(o, ['Ronda','Fase','Round'])); }
+  function localOf(o){ return safe(pick(o, ['Equipo_Local','Equipo Local','Local','Home','Cruce_Local','Origen_Local'])); }
+  function visitOf(o){ return safe(pick(o, ['Equipo_Visitante','Equipo Visitante','Visitante','Away','Cruce_Visitante','Origen_Visitante'])); }
+  function dateOf(o){ return safe(pick(o, ['Fecha','Date'])).replace(/ 00:00:00$/,'').replace(/^([0-9]{4})-([0-9]{2})-([0-9]{2}).*$/,'$3/$2/$1'); }
+  function hourOf(o){ return safe(pick(o, ['Hora','Time'])).replace(/^1899-12-30\s*/,'').replace(/^([0-9]{1,2}:[0-9]{2}).*$/,'$1'); }
+  function realL(o){ const v=pick(o,['Marcador_Local_Real','Marcador Real Local','Resultado_Local','Resultado Local','Goles_Local_Real'],''); return v===''?null:num(v); }
+  function realV(o){ const v=pick(o,['Marcador_Visitante_Real','Marcador Real Visitante','Resultado_Visitante','Resultado Visitante','Goles_Visitante_Real'],''); return v===''?null:num(v); }
+  function predL(o){ const v=pick(o,['Marcador_Local','Marcador Local','Prediccion_Local','Pronostico_Local','Goles_Local'],''); return v===''?null:num(v); }
+  function predV(o){ const v=pick(o,['Marcador_Visitante','Marcador Visitante','Prediccion_Visitante','Pronostico_Visitante','Goles_Visitante'],''); return v===''?null:num(v); }
+  function realAdv(o){ return safe(pick(o,['Equipo_Avanza_Real','Equipo Avanza Real','Avanza_Real','Equipo_Avanza','Equipo Avanza','Avanza','Ganador_Real'])); }
+  function predAdv(o){ return safe(pick(o,['Equipo_Avanza','Equipo Avanza','Equipo_Avanza_Pronostico','Avanza','Ganador'])); }
+  function penReal(o){
+    const a = pick(o,['Penales_Local_Real','Penales_Local','Penal_Local','Penales Local','Resultado_Penales_Local'],'');
+    const b = pick(o,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante','Penales Visitante','Resultado_Penales_Visitante'],'');
+    return (a!=='' || b!=='') ? `${a || '–'}-${b || '–'}` : '–';
+  }
+  function penPred(o){
+    const a = pick(o,['Penales_Local','Penal_Local','Penales Local','Marcador_Penales_Local'],'');
+    const b = pick(o,['Penales_Visitante','Penal_Visitante','Penales Visitante','Marcador_Penales_Visitante'],'');
+    return (a!=='' || b!=='') ? `${a || '–'}-${b || '–'}` : (norm(pick(o,['Penales'],''))==='si' ? 'Sí' : 'No');
+  }
+  function userOf(o){ return safe(pick(o,['Usuario','Participante','Nombre Completo','Nombre_Completo','Nombre','user'])); }
+  function hasReal(o){ return realL(o)!==null && realV(o)!==null; }
+  function phaseKey(v){
+    const r = norm(v);
+    if(r.includes('dieciseis') || r.includes('round of 32') || r.includes('32')) return 'fase 2';
+    if(r.includes('octav') || r.includes('round of 16') || r.includes('16')) return 'fase 3';
+    if(r.includes('cuart') || r.includes('quarter')) return 'fase 4';
+    if(r.includes('semi')) return 'fase 5';
+    if(r.includes('final') || r.includes('tercer')) return 'fase 6';
+    return '';
+  }
+  function currentPhase(){ return (window.state && state.fsPhaseRefactor && state.fsPhaseRefactor.activePhase) || 'fase 3'; }
+  function phaseLabel(p){ return {'fase 2':'Dieciseisavos','fase 3':'Octavos','fase 4':'Cuartos','fase 5':'Semifinales','fase 6':'Final'}[p] || 'Octavos'; }
+
+  async function renderAdminBoxFresh(){
+    const host = q('koAdmin');
+    if(!host) return;
+    host.innerHTML = '<div class="admin-box ko-admin-card"><h3>🛠️ Carga rápida de resultados</h3><p>Cargando partidos reales...</p></div>';
+    let matches = [];
+    try{ matches = await koMatchesFresh(); }catch(_e){ matches = arr(window.state && state.koMatches); }
+    if(window.state) state.koMatches = matches;
+    const opts = matches.map(m => `<option value="${esc(matchIdOf(m))}">${esc(matchIdOf(m))} · ${esc(rondaOf(m))} · ${flag(localOf(m))} ${esc(localOf(m))} vs ${flag(visitOf(m))} ${esc(visitOf(m))}</option>`).join('');
+    host.innerHTML = `<div class="admin-box ko-admin-card v73-admin-results"><h3>🛠️ Carga rápida de resultados de Eliminatorias</h3><p>Actualiza marcador real, equipo que avanzó y penales. Este selector lee la tabla real <b>FS_Eliminatorias_Partidos</b>.</p><div class="admin-form"><select class="select" id="admKoResultId"><option value="">Selecciona partido</option>${opts}</select><div class="score-input-row"><input class="input" id="admKoResultLocal" placeholder="Goles local"><span>VS</span><input class="input" id="admKoResultVisit" placeholder="Goles visitante"></div><select class="select" id="admKoAdvance"><option value="">Equipo que avanzó</option></select><label class="check-row"><input type="checkbox" id="admKoWentPenalties"> Se fue a penales</label><div class="score-input-row"><input class="input" id="admKoPenLocal" placeholder="Penales local"><span>PEN</span><input class="input" id="admKoPenVisit" placeholder="Penales visitante"></div><select class="select" id="admKoStatus"><option value="Jugado">Jugado</option><option value="Cerrado">Cerrado</option><option value="Abierto">Abierto</option></select><button id="admSaveKoResult" class="btn">Guardar resultado</button></div><div id="admKoMsg" class="notice" style="display:none;margin-top:10px"></div></div>`;
+    const select = q('admKoResultId');
+    const adv = q('admKoAdvance');
+    function fill(){
+      const m = matches.find(x => matchIdOf(x) === select.value) || {};
+      const l = localOf(m), v = visitOf(m);
+      adv.innerHTML = '<option value="">Equipo que avanzó</option>' + [l,v].filter(Boolean).map(t => `<option>${esc(t)}</option>`).join('');
+      q('admKoResultLocal').value = realL(m) ?? '';
+      q('admKoResultVisit').value = realV(m) ?? '';
+      const ra = realAdv(m); if(ra) adv.value = ra;
+      const pr = norm(pick(m,['Penales'],'')); q('admKoWentPenalties').checked = ['si','sí','true','1','yes'].includes(pr);
+      q('admKoPenLocal').value = pick(m,['Penales_Local_Real','Penales_Local','Penal_Local'],'');
+      q('admKoPenVisit').value = pick(m,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante'],'');
+      q('admKoStatus').value = pick(m,['Estatus','Estado'],'Jugado') || 'Jugado';
+    }
+    select.onchange = fill;
+    q('admSaveKoResult').onclick = async () => {
+      const partidoId = select.value;
+      const msg = q('admKoMsg');
+      if(!partidoId){ if(msg){msg.style.display='block'; msg.className='notice warn'; msg.textContent='Selecciona un partido.';} return; }
+      if(msg){ msg.style.display='block'; msg.className='notice'; msg.textContent='Guardando resultado...'; }
+      try{
+        const r = await api('updateKnockoutResultAdmin', {
+          Partido_ID: partidoId,
+          Marcador_Local_Real: q('admKoResultLocal').value,
+          Marcador_Visitante_Real: q('admKoResultVisit').value,
+          Resultado_Local: q('admKoResultLocal').value,
+          Resultado_Visitante: q('admKoResultVisit').value,
+          Equipo_Avanza_Real: adv.value,
+          Equipo_Avanza: adv.value,
+          Penales: q('admKoWentPenalties').checked ? 'SI' : 'NO',
+          Penales_Local: q('admKoPenLocal').value,
+          Penales_Visitante: q('admKoPenVisit').value,
+          Penales_Local_Real: q('admKoPenLocal').value,
+          Penales_Visitante_Real: q('admKoPenVisit').value,
+          Estatus: q('admKoStatus').value || 'Jugado',
+          fresh:1
+        });
+        clearClientCaches();
+        if(msg){ msg.className='notice ok'; msg.textContent=(r && r.message) || 'Resultado guardado correctamente.'; }
+        if(window.Modules && Modules.eliminatorias && typeof Modules.eliminatorias.load === 'function') setTimeout(()=>Modules.eliminatorias.load(true), 450);
+      }catch(e){ if(msg){ msg.className='notice error'; msg.textContent=e.message || 'No se pudo guardar resultado.'; } }
+    };
+  }
+
+  function buildWorldRows(matches, preds){
+    const map = {}; matches.forEach(m => { map[matchIdOf(m)] = m; });
+    const me = norm(pick((window.state && state.user)||{}, ['Usuario','Nombre Completo','Nombre_Completo','Nombre']));
+    return preds.map(p => {
+      const m = map[matchIdOf(p)] || {};
+      const rl = realL(m), rv = realV(m), pl = predL(p), pv = predV(p);
+      const real = (rl!==null && rv!==null) ? `${rl}-${rv}` : '–';
+      let cls='pending', status='Pendiente', pts=0;
+      const advOk = realAdv(m) && norm(realAdv(m)) === norm(predAdv(p));
+      const exact = rl!==null && rv!==null && pl===rl && pv===rv;
+      const penOk = penPred(p) !== 'No' && penPred(p) !== '–' && penPred(p) === penReal(m);
+      if(rl!==null && rv!==null){
+        if(exact){ cls='exact'; status='Exacto'; pts += 3; }
+        else if(advOk){ cls='advance'; status='Avanza'; }
+        else { cls='miss'; status='Sin acierto'; }
+        if(advOk) pts += 3;
+        if(penOk){ cls = cls === 'miss' ? 'penalty' : cls; pts += 3; }
+      }
+      const u = userOf(p);
+      return {user:u, id:matchIdOf(p), local:localOf(m)||pick(p,['Equipo_Local'],''), visit:visitOf(m)||pick(p,['Equipo_Visitante'],''), date:dateOf(m)||dateOf(p), pred:`${pl ?? '–'} - ${pv ?? '–'}`, advance:predAdv(p)||'–', penPred:penPred(p), real:`${real} · Avanza ${realAdv(m)||'–'}`, penReal:penReal(m), points:pts, cls, status, mine:norm(u)===me};
+    }).filter(r => r.id);
+  }
+
+  async function loadWorldFresh(){
+    const body = q('fs64Body');
+    if(body) body.innerHTML = '<div class="fs64-card">⏳ Consultando comparativas frescas...</div>';
+    clearClientCaches();
+    try{
+      const {preds, matches} = await koPredsFresh();
+      const rows = buildWorldRows(matches, preds);
+      renderWorldFinal(rows, matches);
+    }catch(e){ if(body) body.innerHTML = `<div class="notice error">${esc(e.message || 'No se pudo cargar Mi Mundial.')}</div>`; }
+  }
+
+  function renderWorldFinal(rows, matches){
+    const body = q('fs64Body'); if(!body) return;
+    const users = [...new Set(rows.map(r=>r.user).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const dates = [...new Set(matches.map(dateOf).filter(Boolean))].sort();
+    const teams = [...new Set(matches.flatMap(m=>[localOf(m),visitOf(m)]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const mine = rows.filter(r=>r.mine);
+    body.innerHTML = `<div class="fs64-kpis"><div class="fs64-card fs64-kpi"><small>Pronósticos comparados</small><b>${rows.length}</b></div><div class="fs64-card fs64-kpi"><small>Participantes visibles</small><b>${users.length}</b></div><div class="fs64-card fs64-kpi"><small>Mis picks</small><b>${mine.length}</b></div><div class="fs64-card fs64-kpi"><small>Partidos con resultado</small><b>${[...new Set(matches.filter(hasReal).map(matchIdOf))].length}</b></div></div><section class="fs64-card"><h2>🎛️ Filtros de comparativa</h2><button id="fs73RefreshWorld" class="btn light" style="margin-bottom:12px">🔄 Actualizar tablas y borrar cache</button><div class="fs64-filters"><details id="fs64UserPicker" class="fs64-user-picker"><summary id="fs64UserSummary">Todos los participantes</summary><div class="fs64-user-picker-box"><label class="fs64-user-option all"><input type="checkbox" id="fs64AllUsers" checked> Seleccionar todos</label>${users.map(u=>`<label class="fs64-user-option"><input type="checkbox" class="fs64UserChk" value="${esc(u)}" checked> ${esc(u)}</label>`).join('')}</div></details><select id="fs64Date"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="fs64Team"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="fs64Status"><option value="">Todos los estatus</option><option value="exact">Exacto</option><option value="advance">Avanza</option><option value="penalty">Penales</option><option value="miss">Sin acierto</option><option value="pending">Pendiente</option></select></div></section><section class="fs64-card fs64-compare-card"><div class="fs64-compare-head"><h2>📋 Tabla comparativa de marcadores</h2><span class="fs64-pill">Exacto · Avanza · Penales</span></div><div id="fs64Table"></div></section><section class="fs64-card"><h2>🎯 Mis picks cargados</h2><div class="fs64-picks">${mine.map(r=>`<article><b>${esc(r.id)}</b> · ${flag(r.local)} ${esc(r.local)} <b>${esc(r.pred)}</b> ${flag(r.visit)} ${esc(r.visit)}<small>Avanza: ${esc(r.advance)} · Penales: ${esc(r.penPred)} · ${esc(r.status)}</small></article>`).join('') || '<div class="notice warn">No tienes picks cargados.</div>'}</div></section>`;
+    const checks = () => [...document.querySelectorAll('.fs64UserChk')];
+    const selected = () => checks().filter(x=>x.checked).map(x=>x.value);
+    function updateSummary(){ const t=checks().length, s=selected().length; if(q('fs64UserSummary')) q('fs64UserSummary').textContent = s===t ? 'Todos los participantes' : `${s} participante${s===1?'':'s'} seleccionado${s===1?'':'s'}`; if(q('fs64AllUsers')) q('fs64AllUsers').checked = t>0 && s===t; }
+    function paint(){
+      updateSummary(); const us=selected(), all=us.length===checks().length; const d=q('fs64Date')?.value||'', team=q('fs64Team')?.value||'', st=q('fs64Status')?.value||'';
+      const f=rows.filter(r=>(all||us.includes(r.user))&&(!d||r.date===d)&&(!team||r.local===team||r.visit===team)&&(!st||r.cls===st));
+      q('fs64Table').innerHTML = `<div class="fs64-table-wrap"><table><thead><tr><th>Usuario</th><th>Partido</th><th>Pronóstico</th><th>Avanza</th><th>Penales pronóstico</th><th>Real</th><th>Penales real</th><th>Puntos</th><th>Estatus</th></tr></thead><tbody>${f.map(r=>`<tr class="${esc(r.cls)}"><td>${esc(r.user)}</td><td>${esc(r.id)} · ${flag(r.local)} ${esc(r.local)} vs ${flag(r.visit)} ${esc(r.visit)}</td><td><b>${esc(r.pred)}</b></td><td>${esc(r.advance)}</td><td><b>${esc(r.penPred)}</b></td><td>${esc(r.real)}</td><td>${esc(r.penReal)}</td><td><b>${num(r.points)}</b></td><td><span class="fs64-status ${esc(r.cls)}">${esc(r.status)}</span></td></tr>`).join('') || '<tr><td colspan="9">Sin información con esos filtros.</td></tr>'}</tbody></table></div>`;
+    }
+    q('fs73RefreshWorld').onclick = loadWorldFresh;
+    if(q('fs64AllUsers')) q('fs64AllUsers').onchange = e => { checks().forEach(x=>x.checked=e.target.checked); paint(); };
+    checks().forEach(x=>x.onchange=paint);
+    ['fs64Date','fs64Team','fs64Status'].forEach(id=>{ if(q(id)) q(id).onchange=paint; });
+    paint();
+  }
+
+  function install(){
+    if(window.Modules && Modules.eliminatorias){
+      Modules.eliminatorias.renderAdminBox = renderAdminBoxFresh;
+    }
+    if(window.FS_V64){
+      const oldRenderWorld = window.FS_V64.renderWorld;
+      window.FS_V64.loadWorld = async function(tab='eliminatorias', force=false){
+        if(tab === 'eliminatorias' || !tab){ return loadWorldFresh(); }
+        if(oldRenderWorld) return oldRenderWorld(tab, force);
+      };
+      window.FS_V64.renderWorld = async function(tab='eliminatorias'){
+        if(window.state) state.route='world';
+        viewNode().innerHTML = `<div class="hero"><h1>🌎 Mi Mundial</h1><p>Comparativa de pronósticos y seguimiento por competencia.</p><button class="btn light" id="fs64Refresh">🔄 Actualizar tablas y borrar cache</button></div><div class="fs64-tabs"><button data-fs64-kind="world" data-fs64-tab="eliminatorias" class="active">Eliminatorias</button><button data-fs64-kind="world" data-fs64-tab="campeon">Campeón</button><button data-fs64-kind="world" data-fs64-tab="tombola">Sobre FIFA</button><button data-fs64-kind="world" data-fs64-tab="rapidas">Rápidas</button><button data-fs64-kind="world" data-fs64-tab="vip">VIP</button></div><div id="fs64Body"><div class="fs64-card">⏳ Cargando...</div></div>`;
+        q('fs64Refresh').onclick = loadWorldFresh;
+        await loadWorldFresh();
+      };
+    }
+    document.addEventListener('click', function(ev){
+      const refresh = ev.target.closest('#fs64Refresh,#fs73RefreshWorld,#refreshDash');
+      if(refresh){ clearClientCaches(); }
+    }, true);
+  }
+
+  document.head.insertAdjacentHTML('beforeend', `<style id="fs73css">
+    .v73-admin-results .admin-form{grid-template-columns:1fr!important}.v73-admin-results .score-input-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.fs64-user-picker{border:2px solid #c8ddff;border-radius:16px;padding:12px;background:#fff}.fs64-user-picker summary{cursor:pointer;font-weight:900;color:#0b4d90}.fs64-user-picker-box{display:grid;gap:8px;max-height:280px;overflow:auto;margin-top:10px}.fs64-user-option{display:flex;gap:9px;align-items:center;font-weight:800;color:#0b2b5f}.fs64-user-option.all{border-bottom:1px solid #e4f0ff;padding-bottom:8px;margin-bottom:4px}.fs64-picks article small{display:block;color:#667085;margin-top:4px}.fs64-table-wrap{overflow:auto;max-height:72vh}.fs64-table-wrap table{min-width:980px}
+  </style>`);
+  install();
+  setTimeout(install, 250);
+})();
+</script>
+
+
+<script id="FS_V10_RONDAS_FAST">
+(function(){
+  'use strict';
+  if(window.__FS_V10_RONDAS_FAST__) return;
+  window.__FS_V10_RONDAS_FAST__ = true;
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const arr = v => Array.isArray(v) ? v : [];
+  const norm = v => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const money = n => '$' + Number(n || 0).toLocaleString('es-MX');
+  const apiUrl = () => window.API_URL || (window.fsApp && window.fsApp.API_URL) || '';
+  const token = () => (window.state && state.token) || '';
+  const view = () => document.getElementById('view') || document.querySelector('.view') || document.body;
+  const flagMap = {mexico:'🇲🇽',sudafrica:'🇿🇦','sudáfrica':'🇿🇦',canada:'🇨🇦',canadá:'🇨🇦',alemania:'🇩🇪',paraguay:'🇵🇾','paises bajos':'🇳🇱','países bajos':'🇳🇱',marruecos:'🇲🇦',brasil:'🇧🇷',japon:'🇯🇵','japón':'🇯🇵','costa de marfil':'🇨🇮',noruega:'🇳🇴',francia:'🇫🇷',suecia:'🇸🇪',ecuador:'🇪🇨',inglaterra:'🏴','rd congo':'🇨🇩','republica democratica del congo':'🇨🇩','estados unidos':'🇺🇸','bosnia y herzegovina':'🇧🇦',belgica:'🇧🇪','bélgica':'🇧🇪',senegal:'🇸🇳',portugal:'🇵🇹',croacia:'🇭🇷',espana:'🇪🇸','españa':'🇪🇸',austria:'🇦🇹',suiza:'🇨🇭',argelia:'🇩🇿',argentina:'🇦🇷','cabo verde':'🇨🇻',colombia:'🇨🇴',ghana:'🇬🇭',australia:'🇦🇺',egipto:'🇪🇬'};
+  const flag = t => flagMap[norm(t)] || '🏳️';
+  function get(o, keys, fb=''){ for(const k of keys){ if(o && o[k] !== undefined && o[k] !== null && String(o[k]).trim() !== '') return o[k]; } return fb; }
+  function matchId(o){ return String(get(o,['Partido_ID','Partido ID','ID','Match_ID','partido_id'],'')).trim(); }
+  function userOf(o){ return String(get(o,['Usuario','Participante','Nombre Completo','Nombre_Completo','Nombre','user'],'')).trim(); }
+  function localOf(o){ return String(get(o,['Equipo_Local','Equipo Local','Local','Home'],'')).trim(); }
+  function visitOf(o){ return String(get(o,['Equipo_Visitante','Equipo Visitante','Visitante','Away'],'')).trim(); }
+  function rondaOf(o){ return String(get(o,['Ronda','Ronda_ID','Ronda ID','Fase'],'')).trim(); }
+  function predL(o){ const v=get(o,['Marcador_Local','Marcador Local','Prediccion_Local','Pronostico_Local','Goles_Local'],''); return v===''?'–':v; }
+  function predV(o){ const v=get(o,['Marcador_Visitante','Marcador Visitante','Prediccion_Visitante','Pronostico_Visitante','Goles_Visitante'],''); return v===''?'–':v; }
+  function realL(o){ const v=get(o,['Marcador_Local_Real','Resultado_Local','Marcador_Local','Goles_Local_Real'],''); return v===''?'–':v; }
+  function realV(o){ const v=get(o,['Marcador_Visitante_Real','Resultado_Visitante','Marcador_Visitante','Goles_Visitante_Real'],''); return v===''?'–':v; }
+  function adv(o){ return String(get(o,['Equipo_Avanza','Equipo Avanza','Equipo_Avanza_Pronostico','Avanza','Ganador'],'–')).trim(); }
+  function realAdv(o){ return String(get(o,['Equipo_Avanza_Real','Equipo_Avanza','Equipo Avanza','Avanza','Ganador_Real','Ganador'],'–')).trim(); }
+  function penPred(o){ const a=get(o,['Penales_Local','Penal_Local','Penales Local'],''); const b=get(o,['Penales_Visitante','Penal_Visitante','Penales Visitante'],''); if(a!=='' || b!=='') return `${a||'–'}-${b||'–'}`; return ['si','sí','true','1'].includes(norm(get(o,['Penales'],'')))?'Sí':'No'; }
+  function penReal(o){ const a=get(o,['Penales_Local_Real','Penales_Local','Penal_Local','Penales Local'],''); const b=get(o,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante','Penales Visitante'],''); if(a!=='' || b!=='') return `${a||'–'}-${b||'–'}`; return '–'; }
+  function dateOf(o){ return String(get(o,['Fecha','Date'],'')).replace(/ 00:00:00$/,'').replace(/^([0-9]{4})-([0-9]{2})-([0-9]{2}).*$/,'$3/$2/$1'); }
+  function hOf(o){ return String(get(o,['Hora','Time'],'')).replace(/^1899-12-30\s*/,'').replace(/^([0-9]{1,2}:[0-9]{2}).*$/,'$1'); }
+
+  function jsonp(action, params={}, timeout=28000){
+    return new Promise((resolve,reject)=>{
+      const cb='fs10_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script');
+      const url=new URL(apiUrl());
+      url.searchParams.set('action', action);
+      url.searchParams.set('callback', cb);
+      if(token() && !params.token) url.searchParams.set('token', token());
+      Object.entries(params||{}).forEach(([k,v])=>{ if(v!==undefined && v!==null) url.searchParams.set(k,v); });
+      const t=setTimeout(()=>{ cleanup(); reject(new Error('Tiempo agotado consultando '+action)); }, timeout);
+      function cleanup(){ clearTimeout(t); try{delete window[cb];}catch(e){} if(s.parentNode) s.parentNode.removeChild(s); }
+      window[cb]=r=>{ cleanup(); if(r && r.status && r.status!=='ok') reject(new Error(r.message||'Error API')); else resolve((r && (r.data||r.result||r.payload)) || r || {}); };
+      s.onerror=()=>{ cleanup(); reject(new Error('No se pudo conectar con AppScript.')); };
+      s.src=url.toString(); document.head.appendChild(s);
+    });
+  }
+  async function api(action, params={}, opts={}){
+    const key='fs10_'+action+'_'+(params.ronda_id||params.Ronda_ID||'active');
+    if(!opts.fresh){
+      try{ const c=JSON.parse(sessionStorage.getItem(key)||'null'); if(c && Date.now()-c.ts < (opts.ttl||75000)) return c.data; }catch(e){}
+    }
+    const data=await jsonp(action, opts.fresh ? {...params, fresh:1, nocache:Date.now()} : params, opts.timeout||30000);
+    try{ sessionStorage.setItem(key, JSON.stringify({ts:Date.now(),data})); }catch(e){}
+    return data;
+  }
+  function clearCaches(){ Object.keys(sessionStorage).filter(k=>k.startsWith('fs10_')||k.startsWith('fs64_')||k.startsWith('fs73_')).forEach(k=>sessionStorage.removeItem(k)); try{ jsonp('clearEliminatoriasCache',{nocache:Date.now()},12000).catch(()=>{}); }catch(e){} }
+
+  async function getRondas(fresh=false){
+    const d=await api('getEliminatoriasRondas',{}, {fresh, ttl:180000});
+    const data=d.data||d;
+    return {active:data.active||data.activeRonda||{}, rondas:arr(data.rondas||data.rounds)};
+  }
+  function tabs(kind, rondas, active){
+    const rs=arr(rondas).length?rondas:[{rondaId:'DIECISEISAVOS',label:'Dieciseisavos'},{rondaId:'OCTAVOS',label:'Octavos'},{rondaId:'CUARTOS',label:'Cuartos'},{rondaId:'SEMIFINALES',label:'Semifinales'},{rondaId:'FINAL',label:'Final'}];
+    return `<div class="fs10-round-tabs">${rs.map(r=>`<button class="${r.rondaId===active?'active':''}" data-fs10-kind="${kind}" data-ronda="${esc(r.rondaId)}">${esc(r.label||r.rondaId)}</button>`).join('')}</div>`;
+  }
+  function shell(kind,title,sub,active,rondas){
+    view().innerHTML=`<section class="hero fs10-hero"><h1>${title}</h1><p>${sub}</p><button id="fs10Refresh" class="btn light">🔄 Actualizar y borrar cache</button></section>${tabs(kind,rondas,active)}<div id="fs10Body"><div class="fs10-card fs10-loading"><span class="loader"></span><b>Cargando ${kind==='dashboard'?'Dashboard':'Mi Mundial'}...</b></div></div>`;
+    document.querySelectorAll('[data-fs10-kind]').forEach(b=>b.onclick=()=> kind==='dashboard'?renderDashboard(b.dataset.ronda,false):renderWorld(b.dataset.ronda,false));
+    $('fs10Refresh').onclick=()=>{ clearCaches(); kind==='dashboard'?renderDashboard(active,true):renderWorld(active,true); };
+  }
+  function kpi(label,val){ return `<div class="fs10-card fs10-kpi"><small>${esc(label)}</small><b>${esc(val)}</b></div>`; }
+  function rankTable(ranking){
+    const rows=arr(ranking).filter(r=>Number(get(r,['points','Puntos'],0))>0).sort((a,b)=>Number(get(b,['points','Puntos'],0))-Number(get(a,['points','Puntos'],0)));
+    let last=null, place=0;
+    const tr=rows.map(r=>{ const pts=Number(get(r,['points','Puntos'],0)); if(pts!==last){ place++; last=pts; } const crown=place===1?'👑<br>':''; return `<tr><td class="place">${crown}${place}</td><td>${esc(get(r,['usuario','name','Usuario'],'-'))}</td><td><b>${pts}</b></td><td>${esc(get(r,['exact','Exactos'],0))}</td><td>${esc(get(r,['advance','Avanza'],0))}</td><td>${esc(get(r,['penales','Penales'],0))}</td></tr>`; }).join('');
+    return `<section class="fs10-card"><h2>🏁 Tabla de posiciones</h2><p class="muted">Ranking por puntos. Los empates comparten lugar.</p><div class="fs10-table"><table><thead><tr><th>#</th><th>Usuario</th><th>Puntos</th><th>Exactos</th><th>Avanza</th><th>Penales</th></tr></thead><tbody>${tr || '<tr><td colspan="6">Aún no hay participantes con puntos en esta ronda.</td></tr>'}</tbody></table></div></section>`;
+  }
+  async function renderDashboard(ronda, fresh=false){
+    try{
+      const meta=await getRondas(fresh); const active=ronda || (meta.active && meta.active.rondaId) || 'DIECISEISAVOS';
+      shell('dashboard','📊 Dashboard','Ranking, bolsa y desempeño por ronda activa.',active,meta.rondas);
+      const d=await api('dashboardEliminatoriasPorRonda',{ronda_id:active},{fresh,ttl:70000,timeout:35000}); const data=d.data||d;
+      const premios=data.premios||{};
+      $('fs10Body').innerHTML=`<div class="fs10-kpis">${kpi('Ronda',data.rondaLabel||active)}${kpi('Bolsa acumulada',money(data.bolsa))}${kpi('Participantes activos',data.participantes||0)}${kpi('Partidos con resultado',`${data.partidosConResultado||0}/${data.partidosTotales||0}`)}${kpi('Pronósticos leídos',data.pronosticos||0)}</div><section class="fs10-card fs10-prizes"><h2>💰 Premios estimados</h2><div>${kpi('1er lugar 50%',money(premios.primero))}${kpi('2do lugar 30%',money(premios.segundo))}${kpi('3er lugar 20%',money(premios.tercero))}</div></section>${rankTable(data.ranking)}`;
+    }catch(e){ const b=$('fs10Body')||view(); b.innerHTML=`<div class="notice error">${esc(e.message||'No se pudo cargar Dashboard.')}</div>`; }
+  }
+  function buildRows(matches,preds){
+    const m={}; arr(matches).forEach(x=>m[matchId(x)]=x);
+    const me=norm(userOf((window.state&&state.user)||{}));
+    return arr(preds).map(p=>{ const mm=m[matchId(p)]||{}; const u=userOf(p); const rl=realL(mm), rv=realV(mm), pl=predL(p), pv=predV(p); const exact=rl!=='–'&&rv!=='–'&&String(pl)===String(rl)&&String(pv)===String(rv); const av=norm(adv(p))&&norm(adv(p))===norm(realAdv(mm)); let pts=0, st='Pendiente', cls='pending'; if(rl!=='–'&&rv!=='–'){ if(exact){pts+=3;cls='exact';st='Exacto';} if(av){pts+=3;if(!exact){cls='advance';st='Avanza';}} if(!exact&&!av){cls='miss';st='Sin acierto';} } const penOk=penPred(p)!=='No'&&penPred(p)!=='–'&&penPred(p)===penReal(mm); if(penOk){pts+=3; st+=(st==='Pendiente'?'Penales':' + Penales'); } return {user:u,id:matchId(p),ronda:rondaOf(mm)||rondaOf(p),date:dateOf(mm)||dateOf(p),local:localOf(mm)||localOf(p),visit:visitOf(mm)||visitOf(p),pred:`${pl} - ${pv}`,advance:adv(p),penPred:penPred(p),real:`${rl} - ${rv}`,realAdvance:realAdv(mm),penReal:penReal(mm),pts,st,cls,mine:norm(u)===me}; }).filter(x=>x.id);
+  }
+  function renderWorldBody(data){
+    const matches=arr(data.matches||data.partidos), preds=arr(data.predictions||data.pronosticos||data.rows), rows=buildRows(matches,preds);
+    const users=[...new Set(rows.map(r=>r.user).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const dates=[...new Set(rows.map(r=>r.date).filter(Boolean))]; const teams=[...new Set(rows.flatMap(r=>[r.local,r.visit]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const mine=rows.filter(r=>r.mine);
+    $('fs10Body').innerHTML=`<div class="fs10-kpis">${kpi('Ronda',data.rondaLabel||data.rondaId||'')}${kpi('Pronósticos visibles',rows.length)}${kpi('Participantes',users.length)}${kpi('Mis picks',mine.length)}</div><section class="fs10-card"><h2>🎛️ Filtros de comparativa</h2><div class="fs10-filters"><details class="fs10-picker"><summary id="fs10UserSummary">Todos los participantes</summary><label><input type="checkbox" id="fs10AllUsers" checked> Seleccionar todos</label>${users.map(u=>`<label><input type="checkbox" class="fs10User" value="${esc(u)}" checked> ${esc(u)}</label>`).join('')}</details><select id="fs10Date"><option value="">Todas las fechas</option>${dates.map(d=>`<option>${esc(d)}</option>`).join('')}</select><select id="fs10Team"><option value="">Todos los equipos</option>${teams.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="fs10Status"><option value="">Todos los estatus</option><option value="exact">Exacto</option><option value="advance">Avanza</option><option value="miss">Sin acierto</option><option value="pending">Pendiente</option></select></div></section><section class="fs10-card"><h2>📋 Tabla comparativa de marcadores</h2><div id="fs10Table"></div></section><section class="fs10-card"><h2>🎯 Mis picks cargados</h2><div class="fs10-picks">${mine.map(r=>`<article><b>${esc(r.id)}</b> · ${flag(r.local)} ${esc(r.local)} <b>${esc(r.pred)}</b> ${flag(r.visit)} ${esc(r.visit)}<small>Avanza: ${esc(r.advance)} · Penales: ${esc(r.penPred)} · Real: ${esc(r.real)} · ${esc(r.st)}</small></article>`).join('') || '<div class="notice warn">No tienes picks cargados en esta ronda.</div>'}</div></section>`;
+    const checks=()=>[...document.querySelectorAll('.fs10User')]; const selected=()=>checks().filter(x=>x.checked).map(x=>x.value);
+    function paint(){ const all=selected().length===checks().length; if($('fs10UserSummary')) $('fs10UserSummary').textContent=all?'Todos los participantes':`${selected().length} seleccionados`; const d=$('fs10Date').value, t=$('fs10Team').value, s=$('fs10Status').value; const us=selected(); const f=rows.filter(r=>(all||us.includes(r.user))&&(!d||r.date===d)&&(!t||r.local===t||r.visit===t)&&(!s||r.cls===s)); $('fs10Table').innerHTML=`<div class="fs10-table"><table><thead><tr><th>Usuario</th><th>Partido</th><th>Pronóstico</th><th>Avanza</th><th>Penales</th><th>Real</th><th>Puntos</th><th>Estatus</th></tr></thead><tbody>${f.map(r=>`<tr class="${esc(r.cls)}"><td>${esc(r.user)}</td><td>${esc(r.id)} · ${flag(r.local)} ${esc(r.local)} vs ${flag(r.visit)} ${esc(r.visit)}</td><td><b>${esc(r.pred)}</b></td><td>${esc(r.advance)}</td><td>${esc(r.penPred)}</td><td>${esc(r.real)} · ${esc(r.realAdvance)}</td><td><b>${r.pts}</b></td><td>${esc(r.st)}</td></tr>`).join('')||'<tr><td colspan="8">Sin información con esos filtros.</td></tr>'}</tbody></table></div>`; }
+    $('fs10AllUsers').onchange=e=>{ checks().forEach(x=>x.checked=e.target.checked); paint(); }; checks().forEach(x=>x.onchange=paint); ['fs10Date','fs10Team','fs10Status'].forEach(id=>$(id).onchange=paint); paint();
+  }
+  async function renderWorld(ronda, fresh=false){
+    try{ const meta=await getRondas(fresh); const active=ronda || (meta.active&&meta.active.rondaId) || 'DIECISEISAVOS'; shell('world','🌎 Mi Mundial','Comparativas, coincidencias y consulta por ronda.',active,meta.rondas); const d=await api('worldEliminatoriasPorRonda',{ronda_id:active},{fresh,ttl:70000,timeout:35000}); renderWorldBody(d.data||d); }
+    catch(e){ const b=$('fs10Body')||view(); b.innerHTML=`<div class="notice error">${esc(e.message||'No se pudo cargar Mi Mundial.')}</div>`; }
+  }
+  async function renderAdminBox(){
+    const host=$('koAdmin'); if(!host) return; host.innerHTML='<div class="admin-box ko-admin-card"><h3>🛠️ Carga rápida de resultados</h3><p>Cargando partidos reales...</p></div>';
+    try{ const d=await api('fsKnockoutMatches',{}, {fresh:true, ttl:1, timeout:35000}); const matches=arr(d.rows||d.data||d.matches); const opts=matches.map(m=>`<option value="${esc(matchId(m))}">${esc(matchId(m))} · ${esc(rondaOf(m))} · ${flag(localOf(m))} ${esc(localOf(m))} vs ${flag(visitOf(m))} ${esc(visitOf(m))}</option>`).join(''); host.innerHTML=`<div class="admin-box ko-admin-card"><h3>🛠️ Carga rápida de resultados de Eliminatorias</h3><p>Selector conectado a FS_Eliminatorias_Partidos.</p><div class="admin-form"><select class="select" id="admKoResultId"><option value="">Selecciona partido</option>${opts}</select><div class="score-input-row"><input class="input" id="admKoResultLocal" placeholder="Goles local"><span>VS</span><input class="input" id="admKoResultVisit" placeholder="Goles visitante"></div><select class="select" id="admKoAdvance"><option value="">Equipo que avanzó</option></select><label class="check-row"><input type="checkbox" id="admKoWentPenalties"> Se fue a penales</label><div class="score-input-row"><input class="input" id="admKoPenLocal" placeholder="Penales local"><span>PEN</span><input class="input" id="admKoPenVisit" placeholder="Penales visitante"></div><select class="select" id="admKoStatus"><option value="Jugado">Jugado</option><option value="Cerrado">Cerrado</option><option value="Abierto">Abierto</option></select><button id="admSaveKoResult" class="btn">Guardar resultado</button></div><div id="admKoMsg" class="notice" style="display:none;margin-top:10px"></div></div>`; const sel=$('admKoResultId'), advSel=$('admKoAdvance'); function fill(){ const m=matches.find(x=>matchId(x)===sel.value)||{}; advSel.innerHTML='<option value="">Equipo que avanzó</option>'+[localOf(m),visitOf(m)].filter(Boolean).map(t=>`<option>${esc(t)}</option>`).join(''); $('admKoResultLocal').value=realL(m)==='–'?'':realL(m); $('admKoResultVisit').value=realV(m)==='–'?'':realV(m); if(realAdv(m)&&realAdv(m)!=='–') advSel.value=realAdv(m); $('admKoPenLocal').value=get(m,['Penales_Local_Real','Penales_Local','Penal_Local'],''); $('admKoPenVisit').value=get(m,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante'],''); $('admKoStatus').value=get(m,['Estatus','Estado'],'Jugado')||'Jugado'; }
+      sel.onchange=fill; $('admSaveKoResult').onclick=async()=>{ const msg=$('admKoMsg'); msg.style.display='block'; if(!sel.value){msg.className='notice warn'; msg.textContent='Selecciona un partido.'; return;} msg.className='notice'; msg.textContent='Guardando resultado...'; try{ await api('updateKnockoutResultAdmin',{Partido_ID:sel.value,Marcador_Local_Real:$('admKoResultLocal').value,Marcador_Visitante_Real:$('admKoResultVisit').value,Equipo_Avanza_Real:advSel.value,Equipo_Avanza:advSel.value,Penales:$('admKoWentPenalties').checked?'SI':'NO',Penales_Local_Real:$('admKoPenLocal').value,Penales_Visitante_Real:$('admKoPenVisit').value,Estatus:$('admKoStatus').value},{fresh:true,timeout:35000}); clearCaches(); msg.className='notice ok'; msg.textContent='Resultado guardado y cache limpiado.'; }catch(e){ msg.className='notice error'; msg.textContent=e.message||'No se pudo guardar.'; } };
+    }catch(e){ host.innerHTML=`<div class="notice error">${esc(e.message)}</div>`; }
+  }
+  function install(){ if(window.Modules){ if(Modules.dashboard){ Modules.dashboard.render=()=>renderDashboard(null,false); Modules.dashboard.load=f=>renderDashboard(null,!!f); } if(Modules.world){ Modules.world.render=()=>renderWorld(null,false); Modules.world.load=f=>renderWorld(null,!!f); } if(Modules.eliminatorias){ Modules.eliminatorias.renderAdminBox=renderAdminBox; } } if(window.FS_V64){ window.FS_V64.renderDashboard=()=>renderDashboard(null,false); window.FS_V64.loadDashboard=(tab,force)=>renderDashboard(tab&&tab!=='eliminatorias'?tab:null,!!force); window.FS_V64.renderWorld=()=>renderWorld(null,false); window.FS_V64.loadWorld=(tab,force)=>renderWorld(tab&&tab!=='eliminatorias'?tab:null,!!force); } }
+  document.head.insertAdjacentHTML('beforeend',`<style id="fs10-style">.fs10-round-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.fs10-round-tabs button{border:2px solid #bfe0ff;background:#fff;border-radius:999px;padding:10px 16px;font-weight:900;color:#08417d}.fs10-round-tabs button.active{background:linear-gradient(135deg,#1599f5,#05b86c);color:#fff}.fs10-card{background:#fff;border:2px solid #d8ecff;border-radius:22px;padding:18px;margin:14px 0;box-shadow:0 14px 30px rgba(0,64,128,.08)}.fs10-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.fs10-kpi small{display:block;color:#667085;font-weight:800;text-transform:uppercase}.fs10-kpi b{font-size:clamp(28px,6vw,48px);color:#074990}.fs10-prizes>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.fs10-table{overflow:auto}.fs10-table table{width:100%;border-collapse:collapse;min-width:700px}.fs10-table th{background:#eaf5ff;color:#07417d;text-align:left}.fs10-table th,.fs10-table td{padding:12px;border-bottom:1px solid #e1eefb}.fs10-table .place{text-align:center;font-weight:900;color:#0a62ad}.fs10-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.fs10-picker{border:2px solid #c8ddff;border-radius:16px;padding:12px}.fs10-picker label{display:block;margin:8px 0;font-weight:800}.fs10-picks article{border:1px solid #dff0ff;border-radius:16px;padding:12px;margin:8px 0}.fs10-picks small{display:block;color:#667085;margin-top:5px}.fs10-table tr.exact{background:#ecfff4}.fs10-table tr.advance{background:#f7fbff}.fs10-table tr.miss{background:#fff1f1}.score-input-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}@media(max-width:640px){.fs10-card{padding:14px}.fs10-table table{min-width:850px}}</style>`);
+  install(); setTimeout(install,350); setInterval(()=>{ if(window.state && state.route==='dashboard') renderDashboard(null,false); if(window.state && state.route==='world') renderWorld(null,false); }, 120000);
+})();
+</script>
+
 </body>
 </html>
