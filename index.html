@@ -8392,5 +8392,218 @@
 })();
 </script>
 
+<script id="FS_V70_ARENA_DIRECT_AND_FAST">
+(function(){
+  'use strict';
+  if(window.__FS_V70_DONE) return;
+  window.__FS_V70_DONE = true;
+
+  const phaseShort = {
+    'fase 3':'Octavos',
+    'fase 4':'Cuartos',
+    'fase 5':'Semifinales',
+    'fase 6':'Final'
+  };
+  let lastDashAt = 0;
+  let lastWorldAt = 0;
+
+  function viewNode(){
+    try{
+      if(typeof window.view === 'function') return window.view();
+      if(window.view && typeof window.view.querySelector === 'function') return window.view;
+      if(typeof $ !== 'undefined') return $('view');
+    }catch(_e){}
+    return document.getElementById('view') || document.body;
+  }
+  function currentPhase(){
+    try{
+      return (window.state && state.fsPhaseRefactor && state.fsPhaseRefactor.activePhase) || 'fase 3';
+    }catch(_e){
+      return 'fase 3';
+    }
+  }
+  function currentPhaseLabel(){
+    return phaseShort[currentPhase()] || 'Octavos';
+  }
+  function markNav(routeId){
+    document.querySelectorAll('#mainNav [data-route]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-route') === routeId);
+    });
+  }
+  function guardRender(kind){
+    const now = Date.now();
+    if(kind === 'dashboard'){
+      if(now - lastDashAt < 900) return true;
+      lastDashAt = now;
+      return false;
+    }
+    if(now - lastWorldAt < 900) return true;
+    lastWorldAt = now;
+    return false;
+  }
+  function cardsHtml(){
+    return `
+      <div class="fs70-card-grid">
+        <article class="fs70-card">
+          <div class="fs70-icon">⚔️</div>
+          <h3>Eliminatorias Directas</h3>
+          <p>Marcador, quién avanza y penales. El ganador se lleva la bolsa acumulada.</p>
+          <div class="fs70-price">Entrada $100</div>
+          <div class="fs70-phase-mini">
+            <button type="button" data-fs70-phase="fase 3" class="${currentPhase()==='fase 3'?'active':''}">Octavos</button>
+            <button type="button" data-fs70-phase="fase 4" class="${currentPhase()==='fase 4'?'active':''}">Cuartos</button>
+            <button type="button" data-fs70-phase="fase 5" class="${currentPhase()==='fase 5'?'active':''}">Semifinales</button>
+            <button type="button" data-fs70-phase="fase 6" class="${currentPhase()==='fase 6'?'active':''}">Final</button>
+          </div>
+          <div class="fs70-actions">
+            <button class="btn" id="fs70GoKo">Entrar a ${currentPhaseLabel()}</button>
+            <button class="btn light" id="fs70WhatKo">¿De qué va?</button>
+            <button class="btn register" id="fs70RegKo">Registrarme</button>
+          </div>
+        </article>
+        <article class="fs70-card">
+          <div class="fs70-icon">🏆</div>
+          <h3>Campeón Mundial</h3>
+          <p>Elige al campeón mundial. El ganador se lleva la bolsa acumulada.</p>
+          <div class="fs70-price">Entrada $200</div>
+          <div class="fs70-actions">
+            <button class="btn" data-fs70-route="campeon">Entrar</button>
+            <button class="btn light" data-fs70-info="campeon">¿De qué va?</button>
+            <button class="btn register" data-fs70-register="Campeón Mundial">Registrarme</button>
+          </div>
+        </article>
+        <article class="fs70-card">
+          <div class="fs70-icon">🃏</div>
+          <h3>Sobre FIFA</h3>
+          <p>Abre un sobre FIFA y recibe una selección única. Si tu selección gana, te llevas la bolsa acumulada.</p>
+          <div class="fs70-price">Entrada $50</div>
+          <div class="fs70-actions">
+            <button class="btn" data-fs70-route="tombola">Entrar</button>
+            <button class="btn light" data-fs70-info="tombola">¿De qué va?</button>
+            <button class="btn register" data-fs70-register="Sobre FIFA">Registrarme</button>
+          </div>
+        </article>
+        <article class="fs70-card">
+          <div class="fs70-icon">⚡</div>
+          <h3>Quinielas Rápidas</h3>
+          <p>Apuestas rápidas por partido con bolsa propia por competencia.</p>
+          <div class="fs70-price">Entrada $20</div>
+          <div class="fs70-actions">
+            <button class="btn" data-fs70-route="rapidas">Entrar</button>
+            <button class="btn light" data-fs70-info="rapidas">¿De qué va?</button>
+            <button class="btn register" data-fs70-register="Quinielas Rápidas">Registrarme</button>
+          </div>
+        </article>
+        <article class="fs70-card">
+          <div class="fs70-icon">🌟</div>
+          <h3>VIP</h3>
+          <p>Compite con picks premium y una experiencia de mayor engagement.</p>
+          <div class="fs70-price">Entrada variable</div>
+          <div class="fs70-actions">
+            <button class="btn" data-fs70-route="vip">Entrar</button>
+            <button class="btn light" data-fs70-info="vip">¿De qué va?</button>
+            <button class="btn register" data-fs70-register="Camino VIP">Registrarme</button>
+          </div>
+        </article>
+      </div>
+    `;
+  }
+
+  async function renderArenaDirect(){
+    if(window.state) state.route = 'arena';
+    markNav('arena');
+    viewNode().innerHTML = `
+      <div class="hero">
+        <div class="notice ok" style="display:inline-block">🏟️ Arena Mundialista · acceso directo</div>
+        <h1><span class="hero-ico">🏟️</span> Arena Mundialista</h1>
+        <p>Entramos directo a los módulos. Sin pantalla intermedia.</p>
+      </div>
+      ${cardsHtml()}
+    `;
+    const root = viewNode();
+    const goKo = document.getElementById('fs70GoKo');
+    const whatKo = document.getElementById('fs70WhatKo');
+    const regKo = document.getElementById('fs70RegKo');
+    if(goKo) goKo.onclick = () => window.Modules && Modules.eliminatorias && Modules.eliminatorias.render({ phase: currentPhase() });
+    if(whatKo) whatKo.onclick = () => typeof window.modal === 'function' && modal('<h2>⚔️ Eliminatorias Directas</h2><p class="strong">Pronostica marcador, quién avanza y penales si aplica. Cada fase vive dentro de la misma competencia.</p><div class="modal-actions"><button class="btn" onclick="closeModal()">Cerrar</button></div>');
+    if(regKo) regKo.onclick = () => window.Modules && Modules.eliminatorias && Modules.eliminatorias.registerFlow('Eliminatorias Directas');
+    root.querySelectorAll('[data-fs70-phase]').forEach(btn => {
+      btn.onclick = function(){
+        if(window.state){
+          state.fsPhaseRefactor = state.fsPhaseRefactor || {};
+          state.fsPhaseRefactor.activePhase = this.dataset.fs70Phase;
+        }
+        renderArenaDirect();
+      };
+    });
+    root.querySelectorAll('[data-fs70-route]').forEach(btn => btn.onclick = () => window.route(btn.dataset.fs70Route));
+    root.querySelectorAll('[data-fs70-register]').forEach(btn => btn.onclick = () => {
+      const mod = btn.dataset.fs70Register;
+      if(window.Modules && Modules.eliminatorias && mod === 'Eliminatorias Directas') Modules.eliminatorias.registerFlow(mod);
+      else if(typeof openRegister === 'function') openRegister(mod);
+    });
+    root.querySelectorAll('[data-fs70-info]').forEach(btn => btn.onclick = () => {
+      const map = {
+        campeon:['🏆 Campeón Mundial','Elige al campeón mundial. Si aciertas, compites por la bolsa acumulada.'],
+        tombola:['🃏 Sobre FIFA','Abres un sobre y recibes una selección única para competir.'],
+        rapidas:['⚡ Quinielas Rápidas','Activas partidos individuales y juegas por bolsa propia.'],
+        vip:['🌟 VIP','Predicciones premium con mayor profundidad y engagement.']
+      };
+      const info = map[btn.dataset.fs70Info] || ['Arena Mundialista','Competencia disponible en Arena.'];
+      if(typeof window.modal === 'function') modal(`<h2>${info[0]}</h2><p class="strong">${info[1]}</p><div class="modal-actions"><button class="btn" onclick="closeModal()">Cerrar</button></div>`);
+    });
+  }
+
+  function install(){
+    document.head.insertAdjacentHTML('beforeend', `<style id="fs70css">
+      .fs70-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+      .fs70-card{background:#fff;border:1px solid #cfe2ff;border-radius:26px;padding:22px;box-shadow:0 14px 34px rgba(0,70,140,.08);display:grid;gap:12px}
+      .fs70-card h3{margin:0;color:#0b2b5f;font-size:1.75rem}
+      .fs70-card p{margin:0;color:#55657d;font-weight:700;line-height:1.45}
+      .fs70-icon{font-size:3rem;line-height:1}
+      .fs70-price{font-weight:900;color:#07835a;font-size:1.2rem}
+      .fs70-actions{display:grid;gap:10px}
+      .fs70-phase-mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .fs70-phase-mini button{border:1px solid #cfe2ff;background:#fff;border-radius:14px;padding:10px 12px;font-weight:900;color:#0b4d90}
+      .fs70-phase-mini button.active{background:linear-gradient(135deg,#1598ff,#00a66a);color:#fff}
+      @media(max-width:720px){.fs70-card-grid{grid-template-columns:1fr}.fs70-card{padding:18px}.fs70-card h3{font-size:1.45rem}}
+    </style>`);
+    if(window.Modules){
+      Modules.arena = Modules.arena || {};
+      Modules.arena.render = renderArenaDirect;
+    }
+    if(typeof window.route === 'function' && !window.__fs70Route){
+      const old = window.route;
+      window.route = function(name, opts){
+        if(name === 'arena') return renderArenaDirect();
+        return old.call(this, name, opts);
+      };
+      window.__fs70Route = true;
+    }
+  }
+
+  document.addEventListener('click', function(ev){
+    const nav = ev.target.closest('#mainNav [data-route="dashboard"], #mainNav [data-route="world"], #mainNav [data-route="arena"]');
+    if(nav){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const r = nav.getAttribute('data-route');
+      if(r === 'arena') return renderArenaDirect();
+      if(r === 'dashboard'){
+        if(guardRender('dashboard')) return;
+        return window.FS_V64 && window.FS_V64.renderDashboard ? window.FS_V64.renderDashboard(window.__fs64Dash || 'eliminatorias') : window.route('dashboard');
+      }
+      if(r === 'world'){
+        if(guardRender('world')) return;
+        return window.FS_V64 && window.FS_V64.renderWorld ? window.FS_V64.renderWorld(window.__fs64World || 'eliminatorias') : window.route('world');
+      }
+    }
+  }, true);
+
+  install();
+  setTimeout(install, 120);
+})();
+</script>
+
 </body>
 </html>
