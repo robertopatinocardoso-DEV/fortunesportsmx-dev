@@ -223,6 +223,20 @@
   function loading(on, text='Actualizando datos...'){ $('loadingText').textContent=text; $('loading').classList.toggle('hidden',!on); }
   function modal(html){ $('modalRoot').innerHTML = `<div class="modal-backdrop"><div class="modal">${html}</div></div>`; }
   function closeModal(){ $('modalRoot').innerHTML=''; }
+  function fsMakeViewCompat(node){
+    const getNode = ()=> node || document.getElementById('view') || document.body;
+    const compat = function(){ return getNode(); };
+    ['querySelector','querySelectorAll','appendChild','insertAdjacentHTML','addEventListener','removeEventListener','setAttribute','getAttribute'].forEach(name=>{
+      compat[name] = (...args)=> getNode()[name](...args);
+    });
+    Object.defineProperties(compat,{
+      innerHTML:{ get(){ return getNode().innerHTML; }, set(v){ getNode().innerHTML = v; } },
+      textContent:{ get(){ return getNode().textContent; }, set(v){ getNode().textContent = v; } },
+      classList:{ get(){ return getNode().classList; } },
+      style:{ get(){ return getNode().style; } }
+    });
+    return compat;
+  }
 
   /* V42 Performance Patch: JSONP con cache corto y deduplicación de llamadas de solo lectura.
      No intercepta acciones de escritura ni modifica flujos funcionales. */
@@ -445,6 +459,14 @@
   function participantKey(row){ return norm(val(row,['Usuario','usuario','User','Nombre_Usuario','Participante'],'')); }
   function matchKey(row){ return safe(val(row,['Partido_ID','Partido ID','ID','Match_ID','Partido','PartidoID'],'')); }
   function currentUserNorm(){ return norm(currentUser()); }
+  window.userPhaseText = userPhaseText;
+  window.userModulesText = userModulesText;
+  window.hasKoAccessHint = hasKoAccessHint;
+  window.hasPhase1Access = hasPhase1Access;
+  window.bestScore = bestScore;
+  window.participantKey = participantKey;
+  window.matchKey = matchKey;
+  window.currentUserNorm = currentUserNorm;
   async function loadMyPhase1Predictions(force=false){
     if(state.predictions && !force) return state.predictions;
     let rows=[];
@@ -2319,14 +2341,27 @@
   window.fsApp={state,route,jsonp,API_URL};
   window.state = state;
   window.Modules = Modules;
+  window.$ = $;
+  window.__fsMakeViewCompat = fsMakeViewCompat;
+  window.view = fsMakeViewCompat(view);
   window.route = route;
   window.jsonp = jsonp;
   window.API_URL = API_URL;
+  window.safe = safe;
+  window.lower = lower;
+  window.norm = norm;
+  window.val = val;
+  window.num = num;
+  window.esc = esc;
   window.toast = toast;
   window.loading = loading;
   window.modal = modal;
   window.closeModal = closeModal;
   window.flagFor = flagFor;
+  window.currentUser = currentUser;
+  window.currentName = currentName;
+  window.isAdmin = isAdmin;
+  window.isPhase1Ended = isPhase1Ended;
 
 /* === V43 Producción: Campeón Mundial seguro + KO feedback guardado === */
 (function(){
@@ -4222,7 +4257,7 @@
   function arenaTimeline(){
     return `<div class="fs-v60-phase-strip">${KO_PHASES.map(p=>{
       const active = p.id === ACTIVE_PHASE;
-      return `<div class="fs-v60-phase-pill ${active?'active':''}"><span class="eyebrow">${esc(p.id.toUpperCase())}</span><strong>${esc(p.shortLabel)}</strong><small>${esc(p.label)}</small></div>`;
+      return `<button class="fs-v60-phase-pill ${active?'active':''}" type="button" data-v60-arena-phase="${p.id}"><span class="eyebrow">${esc(p.id.toUpperCase())}</span><strong>${esc(p.shortLabel)}</strong><small>${esc(p.label)}</small></button>`;
     }).join('')}</div>`;
   }
   function koAccessMessage(access){
@@ -4602,6 +4637,7 @@
 
   Modules.arena.render = async function(){
     addCss();
+    if(window.state) state.route = 'arena';
     view.innerHTML = `
       <div class="hero">
         <div class="notice ok" style="display:inline-block">🏟️ Arena Mundialista · Producción activa</div>
@@ -4638,6 +4674,12 @@
     `;
     $('v60ArenaGoKo').onclick = () => route('eliminatorias', { phase: ACTIVE_PHASE });
     $('v60ArenaRegKo').onclick = () => Modules.eliminatorias.registerFlow('Eliminatorias Directas');
+    view.querySelectorAll('[data-v60-arena-phase]').forEach(btn => {
+      btn.onclick = function(ev){
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        route('eliminatorias', { phase: this.dataset.v60ArenaPhase });
+      };
+    });
   };
 
   Modules.eliminatorias.registerFlow = async function(moduleName){
@@ -4676,15 +4718,23 @@
     addCss();
     const selected = normalizePhaseId((opts && opts.phase) || state.fsPhaseRefactor.activePhase || ACTIVE_PHASE);
     state.fsPhaseRefactor.activePhase = selected;
+    if(window.state) state.route = 'eliminatorias';
     view.innerHTML = `
       <div class="hero">
         <div class="notice ok" style="display:inline-block">⚔️ Eliminatorias Directas · Ruta Fase 3-6</div>
         <h1>⚔️ Eliminatorias Directas</h1>
         <p>La Arena ya queda preparada para vivir cada etapa como una competencia clara: Octavos, Cuartos, Semifinales y Final.</p>
+        <div class="fs-v60-inline" style="margin-top:14px">
+          <button class="btn light" id="v60KoBackArena" type="button">← Regresar a Arena</button>
+        </div>
         ${phaseTabBar(selected, 'data-v60-ko-phase')}
       </div>
       <div id="v60KoBody">${'<div class="card"><div class="loader"><div class="spinner"></div><div>Cargando fase activa...</div></div></div>'}</div>
     `;
+    $('v60KoBackArena').onclick = function(ev){
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      route('arena');
+    };
     view.querySelectorAll('[data-v60-ko-phase]').forEach(btn => {
       btn.onclick = async function(){
         state.fsPhaseRefactor.activePhase = this.dataset.v60KoPhase;
@@ -7956,11 +8006,35 @@
         if(!window.API_URL && window.fsApp.API_URL) window.API_URL = window.fsApp.API_URL;
       }
       if(typeof Modules !== 'undefined' && !window.Modules) window.Modules = Modules;
+      if(typeof $ !== 'undefined' && !window.$) window.$ = $;
+      {
+        const node = (typeof $ !== 'undefined' && $('view')) || document.getElementById('view') || document.body;
+        if(window.__fsMakeViewCompat) window.view = window.__fsMakeViewCompat(node);
+        else if(!window.view) window.view = node;
+      }
       if(typeof toast !== 'undefined' && !window.toast) window.toast = toast;
       if(typeof loading !== 'undefined' && !window.loading) window.loading = loading;
       if(typeof modal !== 'undefined' && !window.modal) window.modal = modal;
       if(typeof closeModal !== 'undefined' && !window.closeModal) window.closeModal = closeModal;
       if(typeof flagFor !== 'undefined' && !window.flagFor) window.flagFor = flagFor;
+      if(typeof currentUser !== 'undefined' && !window.currentUser) window.currentUser = currentUser;
+      if(typeof currentName !== 'undefined' && !window.currentName) window.currentName = currentName;
+      if(typeof isAdmin !== 'undefined' && !window.isAdmin) window.isAdmin = isAdmin;
+      if(typeof isPhase1Ended !== 'undefined' && !window.isPhase1Ended) window.isPhase1Ended = isPhase1Ended;
+      if(typeof safe !== 'undefined' && !window.safe) window.safe = safe;
+      if(typeof lower !== 'undefined' && !window.lower) window.lower = lower;
+      if(typeof norm !== 'undefined' && !window.norm) window.norm = norm;
+      if(typeof val !== 'undefined' && !window.val) window.val = val;
+      if(typeof num !== 'undefined' && !window.num) window.num = num;
+      if(typeof esc !== 'undefined' && !window.esc) window.esc = esc;
+      if(typeof userPhaseText !== 'undefined' && !window.userPhaseText) window.userPhaseText = userPhaseText;
+      if(typeof userModulesText !== 'undefined' && !window.userModulesText) window.userModulesText = userModulesText;
+      if(typeof hasKoAccessHint !== 'undefined' && !window.hasKoAccessHint) window.hasKoAccessHint = hasKoAccessHint;
+      if(typeof hasPhase1Access !== 'undefined' && !window.hasPhase1Access) window.hasPhase1Access = hasPhase1Access;
+      if(typeof bestScore !== 'undefined' && !window.bestScore) window.bestScore = bestScore;
+      if(typeof participantKey !== 'undefined' && !window.participantKey) window.participantKey = participantKey;
+      if(typeof matchKey !== 'undefined' && !window.matchKey) window.matchKey = matchKey;
+      if(typeof currentUserNorm !== 'undefined' && !window.currentUserNorm) window.currentUserNorm = currentUserNorm;
     }catch(_e){}
   }
 
@@ -7983,6 +8057,66 @@
   setTimeout(stabilize, 180);
   setTimeout(stabilize, 700);
   setTimeout(stabilize, 1800);
+})();
+</script>
+
+<script id="FS_V68_ARENA_BACK_BUTTON">
+(function(){
+  'use strict';
+
+  function getViewNode(){
+    try{
+      if(typeof window.view === 'function') return window.view();
+      if(window.view && typeof window.view.querySelector === 'function') return window.view;
+      if(typeof $ !== 'undefined') return $('view');
+    }catch(_e){}
+    return document.getElementById('view') || document.body;
+  }
+
+  function injectBackButton(){
+    const root = getViewNode();
+    if(!root) return;
+    const inKo = !!(window.state && state.route === 'eliminatorias' && root.querySelector('#v60KoBody'));
+    if(!inKo) return;
+    if(root.querySelector('#fs68BackArena') || root.querySelector('#v60KoBackArena')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'fs68-back-wrap';
+    wrap.innerHTML = '<button id="fs68BackArena" class="btn light fs68-back-btn" type="button">← Regresar a Arena</button>';
+    if(root.firstElementChild) root.insertBefore(wrap, root.firstElementChild);
+    else root.prepend(wrap);
+    const btn = wrap.querySelector('#fs68BackArena');
+    if(btn) btn.onclick = function(ev){
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      if(typeof window.route === 'function') window.route('arena');
+    };
+  }
+
+  function install(){
+    try{
+      if(!window.Modules || !Modules.eliminatorias || Modules.eliminatorias.__fs68Wrapped) return false;
+      const oldRender = Modules.eliminatorias.render && Modules.eliminatorias.render.bind(Modules.eliminatorias);
+      if(!oldRender) return false;
+      Modules.eliminatorias.render = async function(opts){
+        await oldRender(opts || {});
+        injectBackButton();
+      };
+      Modules.eliminatorias.__fs68Wrapped = true;
+      return true;
+    }catch(_e){
+      return false;
+    }
+  }
+
+  document.head.insertAdjacentHTML('beforeend', `<style id="fs68css">
+    .fs68-back-wrap{margin:0 0 14px;display:flex;justify-content:flex-start}
+    .fs68-back-btn{min-height:48px;font-weight:900}
+    @media(max-width:720px){.fs68-back-wrap{margin-bottom:12px}.fs68-back-btn{width:100%}}
+  </style>`);
+
+  install();
+  setTimeout(install, 120);
+  setTimeout(injectBackButton, 250);
+  setTimeout(injectBackButton, 900);
 })();
 </script>
 
@@ -8026,6 +8160,235 @@
   try{
     obs.observe(document.body, {childList:true, subtree:true});
   }catch(_e){}
+})();
+</script>
+
+<script id="FS_V69_NAV_PERF_FIX">
+(function(){
+  'use strict';
+  if(window.__FS_V69_DONE) return;
+  window.__FS_V69_DONE = true;
+
+  const FAST_ACTIONS = new Set([
+    'dashboardEliminatoriasSeguro',
+    'worldEliminatoriasSeguro',
+    'fsKnockoutMatches',
+    'fsKnockoutPredictionsMine',
+    'fsArenaRegistrationStatus'
+  ]);
+  const fastCache = new Map();
+  const fastInflight = new Map();
+  const TTL = 20000;
+  const TABS = [
+    ['eliminatorias','Eliminatorias'],
+    ['campeon','Campeón'],
+    ['tombola','Sobre FIFA'],
+    ['rapidas','Rápidas'],
+    ['vip','VIP']
+  ];
+
+  function copy(v){
+    try{ return JSON.parse(JSON.stringify(v)); }catch(_e){ return v; }
+  }
+  function normKey(v){ return String(v ?? '').trim().toLowerCase(); }
+  function cacheKey(action, params){
+    const clean = {};
+    Object.keys(params || {}).sort().forEach(k => {
+      if(['callback','cb','jsonp','fresh','nocache','force'].includes(k)) return;
+      clean[k] = params[k];
+    });
+    return action + '::' + JSON.stringify(clean);
+  }
+  function getViewNode(){
+    try{
+      if(typeof window.view === 'function') return window.view();
+      if(window.view && typeof window.view.querySelector === 'function') return window.view;
+      if(typeof $ !== 'undefined') return $('view');
+    }catch(_e){}
+    return document.getElementById('view') || document.body;
+  }
+  function markNav(routeId){
+    document.querySelectorAll('#mainNav [data-route]').forEach(btn => {
+      const id = btn.getAttribute('data-route');
+      btn.classList.toggle('active', id === routeId);
+    });
+  }
+  function currentPhase(){
+    try{
+      return (window.state && state.fsPhaseRefactor && state.fsPhaseRefactor.activePhase) || 'fase 3';
+    }catch(_e){
+      return 'fase 3';
+    }
+  }
+  function tabs(kind, active){
+    return `<div class="fs64-tabs">${TABS.map(([id,label])=>`<button data-fs64-kind="${kind}" data-fs64-tab="${id}" class="${id===active?'active':''}">${label}</button>`).join('')}</div>`;
+  }
+  function shell(kind, title, desc, active){
+    return `<div class="hero"><h1>${title}</h1><p>${desc}</p><button class="btn light" id="fs64Refresh">🔄 Actualizar módulo</button></div>${tabs(kind, active)}<div id="fs64Body"><div class="fs64-card">⏳ Cargando...</div></div>`;
+  }
+
+  if(typeof window.jsonp === 'function' && !window.__fs69JsonpWrapped){
+    const origJsonp = window.jsonp;
+    window.jsonp = function(action, params, timeout){
+      if(!FAST_ACTIONS.has(action)){
+        return origJsonp(action, params, timeout);
+      }
+      const key = cacheKey(action, params || {});
+      const now = Date.now();
+      const hit = fastCache.get(key);
+      if(hit && now - hit.t < TTL){
+        return Promise.resolve(copy(hit.v));
+      }
+      if(fastInflight.has(key)){
+        return fastInflight.get(key).then(copy);
+      }
+      const p = origJsonp(action, params, timeout).then(res => {
+        fastCache.set(key, { t: Date.now(), v: copy(res) });
+        fastInflight.delete(key);
+        return copy(res);
+      }).catch(err => {
+        fastInflight.delete(key);
+        throw err;
+      });
+      fastInflight.set(key, p);
+      return p.then(copy);
+    };
+    window.__fs69JsonpWrapped = true;
+  }
+
+  function prefetchArenaData(){
+    if(typeof window.jsonp !== 'function') return;
+    if(!window.state || !state.token || state.isDemo) return;
+    const phase = currentPhase();
+    window.jsonp('dashboardEliminatoriasSeguro',{token:state.token,scope:'all',arenaFase:phase}).catch(()=>{});
+    window.jsonp('worldEliminatoriasSeguro',{token:state.token,scope:'all',arenaFase:phase}).catch(()=>{});
+    window.jsonp('fsKnockoutMatches',{token:state.token,arenaFase:phase}).catch(()=>{});
+    window.jsonp('fsKnockoutPredictionsMine',{token:state.token,arenaFase:phase}).catch(()=>{});
+    window.jsonp('fsArenaRegistrationStatus',{token:state.token,Nombre_Modulo:'Eliminatorias Directas'}).catch(()=>{});
+  }
+
+  async function renderDashboardFast(activeTab){
+    const active = activeTab || window.__fs64Dash || 'eliminatorias';
+    if(window.state) state.route = 'dashboard';
+    markNav('dashboard');
+    getViewNode().innerHTML = shell('dashboard','📊 Dashboard','Ranking, bolsa y desempeño por competencia.', active);
+    const refresh = document.getElementById('fs64Refresh');
+    if(refresh) refresh.onclick = () => window.FS_V64 && window.FS_V64.loadDashboard(window.__fs64Dash || 'eliminatorias', true);
+    if(window.FS_V64 && typeof window.FS_V64.loadDashboard === 'function'){
+      await window.FS_V64.loadDashboard(active);
+    }
+    prefetchArenaData();
+  }
+
+  async function renderWorldFast(activeTab){
+    const active = activeTab || window.__fs64World || 'eliminatorias';
+    if(window.state) state.route = 'world';
+    markNav('world');
+    getViewNode().innerHTML = shell('world','🌎 Mi Mundial','Comparativa de pronósticos y seguimiento por competencia.', active);
+    const refresh = document.getElementById('fs64Refresh');
+    if(refresh) refresh.onclick = () => window.FS_V64 && window.FS_V64.loadWorld(window.__fs64World || 'eliminatorias', true);
+    if(window.FS_V64 && typeof window.FS_V64.loadWorld === 'function'){
+      await window.FS_V64.loadWorld(active);
+    }
+    prefetchArenaData();
+  }
+
+  async function forceArenaHome(){
+    if(window.state) state.route = 'arena';
+    markNav('arena');
+    if(window.Modules && Modules.arena && typeof Modules.arena.render === 'function'){
+      await Modules.arena.render();
+    }
+    prefetchArenaData();
+  }
+
+  async function forceKoPhase(phase){
+    const target = phase || currentPhase();
+    if(window.state){
+      state.route = 'eliminatorias';
+      state.fsPhaseRefactor = state.fsPhaseRefactor || {};
+      state.fsPhaseRefactor.activePhase = target;
+    }
+    markNav('arena');
+    if(window.Modules && Modules.eliminatorias && typeof Modules.eliminatorias.render === 'function'){
+      await Modules.eliminatorias.render({ phase: target });
+    }
+    prefetchArenaData();
+  }
+
+  function install(){
+    if(window.FS_V64){
+      window.FS_V64.renderDashboard = renderDashboardFast;
+      window.FS_V64.renderWorld = renderWorldFast;
+    }
+    if(window.Modules){
+      Modules.dashboard = Modules.dashboard || {};
+      Modules.world = Modules.world || {};
+      Modules.dashboard.render = () => renderDashboardFast(window.__fs64Dash || 'eliminatorias');
+      Modules.world.render = () => renderWorldFast(window.__fs64World || 'eliminatorias');
+      Modules.dashboard.load = force => window.FS_V64 && window.FS_V64.loadDashboard(window.__fs64Dash || 'eliminatorias', !!force);
+      Modules.world.load = force => window.FS_V64 && window.FS_V64.loadWorld(window.__fs64World || 'eliminatorias', !!force);
+    }
+    if(typeof window.route === 'function' && !window.__fs69Route){
+      const old = window.route;
+      window.route = function(name, opts){
+        if(name === 'dashboard') return renderDashboardFast((opts && opts.tab) || window.__fs64Dash || 'eliminatorias');
+        if(name === 'world') return renderWorldFast((opts && opts.tab) || window.__fs64World || 'eliminatorias');
+        return old.call(this, name, opts);
+      };
+      window.__fs69Route = true;
+    }
+  }
+
+  document.addEventListener('click', function(ev){
+    const backBtn = ev.target.closest('#v60KoBackArena,#fs68BackArena');
+    if(backBtn){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      forceArenaHome();
+      return;
+    }
+    const arenaPhase = ev.target.closest('[data-v60-arena-phase]');
+    if(arenaPhase){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      forceKoPhase(arenaPhase.dataset.v60ArenaPhase);
+      return;
+    }
+    const koPhase = ev.target.closest('[data-v60-ko-phase]');
+    if(koPhase){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      forceKoPhase(koPhase.dataset.v60KoPhase);
+      return;
+    }
+    const goKo = ev.target.closest('#v60ArenaGoKo');
+    if(goKo){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      forceKoPhase(currentPhase());
+      return;
+    }
+    const fs64Tab = ev.target.closest('[data-fs64-kind]');
+    if(fs64Tab){
+      const kind = fs64Tab.dataset.fs64Kind;
+      const tab = fs64Tab.dataset.fs64Tab || 'eliminatorias';
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      if(kind === 'dashboard'){
+        if(window.__fs64Dash === tab && document.getElementById('fs64Body')) window.FS_V64 && window.FS_V64.loadDashboard(tab);
+        else renderDashboardFast(tab);
+      } else if(kind === 'world'){
+        if(window.__fs64World === tab && document.getElementById('fs64Body')) window.FS_V64 && window.FS_V64.loadWorld(tab);
+        else renderWorldFast(tab);
+      }
+    }
+  }, true);
+
+  install();
+  setTimeout(install, 120);
+  setTimeout(prefetchArenaData, 180);
+  setTimeout(prefetchArenaData, 900);
 })();
 </script>
 
