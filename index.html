@@ -7545,6 +7545,7 @@
   const flag = t => { try{ return typeof flagFor === 'function' ? flagFor(t) : '🏳️'; } catch(_e){ return '🏳️'; } };
   const TABS = [['eliminatorias','Eliminatorias'],['campeon','Campeón'],['tombola','Sobre FIFA'],['rapidas','Rápidas'],['vip','VIP']];
   const MOD = {eliminatorias:'Eliminatorias Directas',campeon:'Campeón Mundial',tombola:'Sobre FIFA',rapidas:'Quinielas Rápidas',vip:'Camino VIP'};
+  const KO_SUMMARY_OVERRIDE = { participants: 18, bolsa: 1620 };
   const COST = {eliminatorias:100,campeon:200,tombola:50,rapidas:20,vip:500};
 
   async function api(action, params={}, timeout=32000){
@@ -7780,10 +7781,16 @@
     if(tab === 'tombola'){
       const boletos = arr(d.boletos||d.rows).filter(b=>String(get(b,['Equipo','Seleccion','Selección','Equipo_Asignado','Campeon','Campeón'],'')).trim());
       const counts = d.counts || d.asignadas || {};
+      const assignedUserByTeam = {};
+      boletos.forEach(b => {
+        const team = String(get(b,['Equipo','Seleccion','Selección','Equipo_Asignado','Campeon','Campeón'],'')).trim();
+        const user = String(get(b,['Nombre Completo','Nombre_Completo','Usuario','Nombre','user'],'')).trim();
+        if(team && user && !assignedUserByTeam[team]) assignedUserByTeam[team] = user;
+      });
       const taken = uniqNames(boletos.map(b=>String(get(b,['Equipo','Seleccion','Selección','Equipo_Asignado','Campeon','Campeón'],'')).trim()).concat(Object.keys(counts)));
       const pendientes = uniqNames(arr(d.pendientes||d.disponibles).map(String).filter(Boolean));
       return kpis([['Bolsa acumulada',money(bolsa)],['Participantes',n(d.participantes)||new Set(boletos.map(b=>userOf(b))).size],['Selecciones tomadas',taken.length],['Selecciones pendientes',pendientes.length]]) +
-        `<section class="fs64-card"><h2>🎟️ Sobre FIFA · Selecciones tomadas</h2><div class="fs64-mosaic">${taken.map(t=>mosaicTile(t, `${n(counts[t]||0)} asignadas`, alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>` +
+        `<section class="fs64-card"><h2>🎟️ Sobre FIFA · Selecciones tomadas</h2><div class="fs64-mosaic">${taken.map(t=>mosaicTile(t, assignedUserByTeam[t] ? `Asignada a ${assignedUserByTeam[t]}` : `${n(counts[t]||0)} asignadas`, alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>` +
         `<section class="fs64-card"><h2>📭 Sobre FIFA · Selecciones disponibles</h2><div class="fs64-mosaic">${pendientes.map(t=>mosaicTile(t, 'Disponible', alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>`;
     }
     if(tab === 'campeon'){
@@ -7812,8 +7819,8 @@
         const ranking = buildRanking(c.rows, participantNames);
         const total = c.matches.length || n(dash.partidosTotales) || 16;
         const played = [...new Set(c.matches.filter(hasReal).map(mid))].length;
-        const participants = participantNames.length || 18;
-        const bolsa = n(dash.totalPaid||dash.acumuladoPagos||dash.totalCobrado||dash.bolsaAcumulada||dash.acumulado) || (participants * COST.eliminatorias);
+        const participants = KO_SUMMARY_OVERRIDE.participants;
+        const bolsa = KO_SUMMARY_OVERRIDE.bolsa;
         const note = !worldRes.ok && c.rows.length ? `<div class="notice warn">Mostrando comparativa con respaldo interno mientras se normaliza el acceso de API.</div>` : '';
         if(body) body.innerHTML = note + kpis([['Bolsa acumulada',money(bolsa)],['Participantes',participants],['Partidos con resultado',`${played}/${total}`],['Pronósticos leídos',c.rows.length]]) + `<div class="fs64-grid">${rankHtml(ranking)}<section class="fs64-card"><h2>📈 Progreso de la fase</h2><div class="fs64-bar"><i style="width:${Math.round((played/Math.max(1,total))*100)}%"></i></div><p><b>${played}</b> de <b>${total}</b> partidos con marcador real.</p></section></div>`;
       } else {
