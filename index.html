@@ -7655,6 +7655,64 @@
     });
     return dense(Object.values(by));
   }
+  function uniqNames(list){
+    const seen = new Set();
+    const out = [];
+    (list||[]).forEach(v => {
+      const name = String(v || '').trim();
+      const key = norm(name);
+      if(!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(name);
+    });
+    return out;
+  }
+  function resolveParticipantNames(dash, world, c){
+    const pools = [
+      arr(dash && (dash.participantesDetalle || dash.usersDetail || dash.users || dash.participants || dash.usuarios)),
+      arr(world && (world.participantesDetalle || world.usersDetail || world.users || world.participants || world.usuarios)),
+      arr(c && c.users)
+    ];
+    for(const pool of pools){
+      const names = uniqNames(pool.map(item => {
+        if(typeof item === 'string') return item;
+        const est = norm(get(item,['Estatus','Estado'], 'activo'));
+        const pago = norm(get(item,['Estatus Pago','Estatus_Pago'], 'completo'));
+        const modulo = norm(get(item,['Nombre_Modulo','Nombre Modulo','Modulo','Módulo'], 'eliminatorias directas'));
+        if(est && est !== 'activo') return '';
+        if(pago && !['completo','confirmado','ok'].includes(pago)) return '';
+        if(modulo && !modulo.includes('eliminatorias')) return '';
+        return get(item,['Nombre Completo','Nombre_Completo','Usuario','Nombre','user'],'');
+      }));
+      if(names.length) return names;
+    }
+    return uniqNames((c && c.rows || []).map(r => r.user));
+  }
+  function aliveSetFromMatches(matches){
+    const alive = new Set();
+    const rows = matches || [];
+    rows.forEach(m => {
+      const l = local(m), v = visit(m), adv = realAdv(m);
+      if(hasReal(m)){
+        if(adv) alive.add(norm(adv));
+      }else{
+        if(l) alive.add(norm(l));
+        if(v) alive.add(norm(v));
+      }
+    });
+    return alive;
+  }
+  async function getAliveTeams(){
+    if(window.__fs64AliveTeams) return window.__fs64AliveTeams;
+    const src = (await apiSoft('dashboardEliminatoriasSeguro',{scope:'all'})).data || (await apiSoft('worldEliminatoriasSeguro',{scope:'all'})).data || {};
+    const c = buildCompare(src);
+    window.__fs64AliveTeams = aliveSetFromMatches(c.matches);
+    return window.__fs64AliveTeams;
+  }
+  function mosaicTile(team, meta='', aliveSet=null){
+    const isAlive = !aliveSet || !aliveSet.size || aliveSet.has(norm(team));
+    return `<div class="fs64-mosaic-tile ${isAlive?'':'is-out'}"><span>${flag(team)}</span><b>${esc(team)}</b>${meta?`<small>${meta}</small>`:''}</div>`;
+  }
 
   function kpis(items){ return `<div class="fs64-kpis">${items.map(([a,b])=>`<div class="fs64-card fs64-kpi"><small>${esc(a)}</small><b>${esc(b)}</b></div>`).join('')}</div>`; }
   function tabs(kind,active='eliminatorias'){ return `<div class="fs64-tabs">${TABS.map(([id,lab])=>`<button data-fs64-kind="${kind}" data-fs64-tab="${id}" class="${id===active?'active':''}">${esc(lab)}</button>`).join('')}</div>`; }
@@ -7662,16 +7720,14 @@
 
   function rankHtml(ranking){
     const max = Math.max(1, ...ranking.map(r => n(r.points)));
-    const top = ranking.slice(0,3);
     return `<section class="fs64-card">
       <div class="fs64-rank-title">
-        <div><h2>🏁 Ranking FIFA 2026 · Eliminatorias</h2><p>Clasificación por puntos con desglose de exactos, avanza y penales.</p></div>
+        <div><h2>🏁 Ranking FIFA 2026 · Eliminatorias</h2><p>Clasificación por puntos. El desglose individual se abre por participante.</p></div>
         <span class="fs64-pill">${ranking.length} participantes</span>
       </div>
-      ${top.length ? `<div class="fs64-podium">${top.map((r,idx)=>`<article class="place-${idx+1}"><small>${idx===0?'🥇 1er lugar':idx===1?'🥈 2do lugar':'🥉 3er lugar'}</small><strong>${esc(r.user)}</strong><b>${n(r.points)} pts</b><em>Exactos ${n(r.exact)} · Avanza ${n(r.advance)} · Penales ${n(r.penales)}</em></article>`).join('')}</div>` : ''}
       <div class="fs64-rank">
-        <header><span>Pos.</span><strong>Participante</strong><b>Puntos</b><em>Exactos</em><em>Avanza</em><em>Penales</em></header>
-        ${ranking.map(r=>`<article class="${n(r.rank)<=3?'top':''}"><span>${n(r.rank)<=3?['🥇','🥈','🥉'][n(r.rank)-1]||('#'+r.rank):'#'+r.rank}</span><strong>${esc(r.user)}</strong><b>${n(r.points)} pts</b><em>${n(r.exact)}</em><em>${n(r.advance)}</em><em>${n(r.penales)}</em><i style="width:${Math.max(4,Math.round(n(r.points)/max*100))}%"></i></article>`).join('') || '<div class="notice warn">Aún no hay ranking.</div>'}
+        <header><span>Pos.</span><strong>Participante</strong><b>Puntos</b><em>Detalle</em></header>
+        ${ranking.map(r=>`<article><span>#${n(r.rank)}</span><div class="fs64-rank-user"><strong>${esc(r.user)}</strong><small>Participante activo de Eliminatorias</small></div><b>${n(r.points)} pts</b><details class="fs64-rank-breakdown"><summary>Ver detalle</summary><div class="fs64-rank-stats"><button type="button">Exactos: ${n(r.exact)}</button><button type="button">Avanza: ${n(r.advance)}</button><button type="button">Penales: ${n(r.penales)}</button></div></details><i style="width:${Math.max(4,Math.round(n(r.points)/max*100))}%"></i></article>`).join('') || '<div class="notice warn">Aún no hay ranking.</div>'}
       </div>
     </section>`;
   }
@@ -7717,9 +7773,27 @@
     return await api(action, {modulo:mod,Nombre_Modulo:mod});
   }
 
-  function moduleDash(tab,d){
+  async function moduleDash(tab,d){
     const participantes = n(d.participantes) || arr(d.rows||d.picks||d.apuestas||d.boletos).length;
     const bolsa = n(d.bolsa) || Math.round(participantes * (COST[tab]||0) * 0.9);
+    const alive = await getAliveTeams();
+    if(tab === 'tombola'){
+      const boletos = arr(d.boletos||d.rows).filter(b=>String(get(b,['Equipo','Seleccion','Selección','Equipo_Asignado','Campeon','Campeón'],'')).trim());
+      const counts = d.counts || d.asignadas || {};
+      const taken = uniqNames(boletos.map(b=>String(get(b,['Equipo','Seleccion','Selección','Equipo_Asignado','Campeon','Campeón'],'')).trim()).concat(Object.keys(counts)));
+      const pendientes = uniqNames(arr(d.pendientes||d.disponibles).map(String).filter(Boolean));
+      return kpis([['Bolsa acumulada',money(bolsa)],['Participantes',n(d.participantes)||new Set(boletos.map(b=>userOf(b))).size],['Selecciones tomadas',taken.length],['Selecciones pendientes',pendientes.length]]) +
+        `<section class="fs64-card"><h2>🎟️ Sobre FIFA · Selecciones tomadas</h2><div class="fs64-mosaic">${taken.map(t=>mosaicTile(t, `${n(counts[t]||0)} asignadas`, alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>` +
+        `<section class="fs64-card"><h2>📭 Sobre FIFA · Selecciones disponibles</h2><div class="fs64-mosaic">${pendientes.map(t=>mosaicTile(t, 'Disponible', alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>`;
+    }
+    if(tab === 'campeon'){
+      const rows = arr(d.rows||d.picks).filter(r=>String(get(r,['Equipo','Seleccion','Selección','Equipo_Campeon','Campeon','Campeón'],'')).trim());
+      const counts = d.counts || {};
+      const teams = uniqNames(Object.keys(counts).concat(rows.map(r=>String(get(r,['Equipo','Seleccion','Selección','Equipo_Campeon','Campeon','Campeón'],'')).trim())));
+      const participantesChamp = n(d.participantes) || rows.length || Object.values(counts).reduce((a,b)=>a+n(b),0);
+      return kpis([['Bolsa acumulada',money(bolsa)],['Participantes',participantesChamp],['Equipos elegidos',teams.length],['Entrada','$200']]) +
+        `<section class="fs64-card"><h2>👑 Campeón Mundial · Mosaico de selecciones</h2><div class="fs64-mosaic">${teams.map(t=>mosaicTile(t, `${n(counts[t]||0)} picks`, alive)).join('') || '<div class="notice warn">Sin datos.</div>'}</div></section>`;
+    }
     return kpis([['Bolsa acumulada',money(bolsa)],['Participantes',participantes],['Registros',arr(d.rows||d.picks||d.apuestas||d.boletos).length],['Entrada',money(COST[tab]||0)]]) + `<section class="fs64-card"><h2>${esc(MOD[tab])}</h2><p>Resumen de competencia.</p></section>`;
   }
 
@@ -7734,16 +7808,17 @@
         const dash = dashRes.data || {};
         const world = worldRes.data || dash || {};
         const c = buildCompare((worldRes.ok && arr(comparePayload(world).predictions).length) ? world : dash);
-        const users = [...new Set([...(c.users||[]).map(u=>typeof u === 'string' ? u : get(u,['Usuario','Nombre'],'')), ...c.rows.map(r=>r.user)].filter(Boolean))];
-        const ranking = buildRanking(c.rows, users);
+        const participantNames = resolveParticipantNames(dash, world, c);
+        const ranking = buildRanking(c.rows, participantNames);
         const total = c.matches.length || n(dash.partidosTotales) || 16;
         const played = [...new Set(c.matches.filter(hasReal).map(mid))].length;
-        const bolsa = n(dash.bolsa) || Math.round(users.length * COST.eliminatorias * 0.9);
+        const participants = participantNames.length || 18;
+        const bolsa = n(dash.totalPaid||dash.acumuladoPagos||dash.totalCobrado||dash.bolsaAcumulada||dash.acumulado) || (participants * COST.eliminatorias);
         const note = !worldRes.ok && c.rows.length ? `<div class="notice warn">Mostrando comparativa con respaldo interno mientras se normaliza el acceso de API.</div>` : '';
-        if(body) body.innerHTML = note + kpis([['Bolsa acumulada',money(bolsa)],['Participantes',users.length],['Partidos con resultado',`${played}/${total}`],['Pronósticos leídos',c.rows.length]]) + `<div class="fs64-grid">${rankHtml(ranking)}<section class="fs64-card"><h2>📈 Progreso de la fase</h2><div class="fs64-bar"><i style="width:${Math.round((played/Math.max(1,total))*100)}%"></i></div><p><b>${played}</b> de <b>${total}</b> partidos con marcador real.</p></section></div>`;
+        if(body) body.innerHTML = note + kpis([['Bolsa acumulada',money(bolsa)],['Participantes',participants],['Partidos con resultado',`${played}/${total}`],['Pronósticos leídos',c.rows.length]]) + `<div class="fs64-grid">${rankHtml(ranking)}<section class="fs64-card"><h2>📈 Progreso de la fase</h2><div class="fs64-bar"><i style="width:${Math.round((played/Math.max(1,total))*100)}%"></i></div><p><b>${played}</b> de <b>${total}</b> partidos con marcador real.</p></section></div>`;
       } else {
         const d = await moduleData(tab);
-        if(body) body.innerHTML = moduleDash(tab,d);
+        if(body) body.innerHTML = await moduleDash(tab,d);
       }
     } catch(e){
       if(body) body.innerHTML = `<div class="notice error">${esc(e.message || 'No se pudo cargar el dashboard.')}</div>`;
@@ -7765,7 +7840,7 @@
         bindWorldTable(c.rows);
       } else {
         const d = await moduleData(tab);
-        if(body) body.innerHTML = moduleDash(tab,d);
+        if(body) body.innerHTML = await moduleDash(tab,d);
       }
     } catch(e){
       if(body) body.innerHTML = `<div class="notice error">${esc(e.message || 'No se pudo cargar Mi Mundial.')}</div>`;
@@ -7809,17 +7884,17 @@
     .fs64-pill{display:inline-flex;align-items:center;border-radius:999px;padding:9px 14px;background:#eef7ff;color:#0b4d90;font-weight:900}
     .fs64-rank-title{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:16px}
     .fs64-rank-title h2{margin:0}.fs64-rank-title p{margin:6px 0 0;color:#667085;font-weight:700}
-    .fs64-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
-    .fs64-podium article{border-radius:22px;padding:18px;border:1px solid #dcecff;background:linear-gradient(180deg,#fff,#f7fbff);box-shadow:0 10px 24px rgba(0,70,140,.08);display:grid;gap:8px}
-    .fs64-podium article small{font-weight:900;color:#7c5a00}.fs64-podium article strong{font-size:1.1rem;color:#082d5f}.fs64-podium article b{font-size:1.8rem;color:#0b2b5f}.fs64-podium article em{font-style:normal;color:#5b6d86;font-weight:800}
-    .fs64-podium .place-1{background:linear-gradient(180deg,#fff8d9,#fffdf6);border-color:#ffd76a}.fs64-podium .place-2{background:linear-gradient(180deg,#f6f9ff,#ffffff);border-color:#d5e1f4}.fs64-podium .place-3{background:linear-gradient(180deg,#fff1e6,#ffffff);border-color:#ffd0ab}
-    .fs64-rank{display:grid;gap:10px}.fs64-rank header,.fs64-rank article{display:grid;grid-template-columns:64px minmax(220px,1.7fr) 110px 88px 88px 88px;gap:10px;align-items:center}
+    .fs64-rank{display:grid;gap:10px}.fs64-rank header,.fs64-rank article{display:grid;grid-template-columns:64px minmax(220px,1.8fr) 110px 140px;gap:10px;align-items:center}
     .fs64-rank header{padding:0 14px 8px;color:#64748b;font-size:12px;font-weight:900;text-transform:uppercase}
     .fs64-rank article{position:relative;border:1px solid #dcecff;border-radius:18px;padding:14px;background:linear-gradient(90deg,#f8fcff,#fff)}
-    .fs64-rank article.top{border-color:#c8dcff;box-shadow:0 10px 22px rgba(12,85,170,.08)}
     .fs64-rank span{background:#1598ff;color:#fff;border-radius:999px;padding:8px 12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;min-width:48px}
-    .fs64-rank strong{color:#062a56}.fs64-rank b{color:#004990}.fs64-rank em{font-style:normal;color:#35506d;text-align:center;font-weight:900}
-    .fs64-rank i,.fs64-bar i{display:block;height:8px;border-radius:999px;background:linear-gradient(90deg,#1598ff,#00a66a)}.fs64-rank article i{grid-column:1/7;margin-top:2px}
+    .fs64-rank-user{display:grid;gap:2px}.fs64-rank-user strong{color:#062a56;font-size:.94rem;line-height:1.15}.fs64-rank-user small{color:#6b7b92;font-size:.75rem;font-weight:700}
+    .fs64-rank b{color:#004990}.fs64-rank em{font-style:normal;color:#35506d;text-align:center;font-weight:900}
+    .fs64-rank-breakdown summary{list-style:none;cursor:pointer;border:1px solid #cfe2ff;border-radius:999px;padding:8px 12px;background:#f3f9ff;color:#0b4d90;font-weight:900;text-align:center}
+    .fs64-rank-breakdown summary::-webkit-details-marker{display:none}
+    .fs64-rank-stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .fs64-rank-stats button{border:0;background:#eef7ff;color:#0b4d90;border-radius:999px;padding:7px 10px;font-weight:800}
+    .fs64-rank i,.fs64-bar i{display:block;height:8px;border-radius:999px;background:linear-gradient(90deg,#1598ff,#00a66a)}.fs64-rank article i{grid-column:1/5;margin-top:2px}
     .fs64-bar{height:28px;background:#eaf5ff;border-radius:999px;overflow:hidden}.fs64-bar i{height:100%}
     .fs64-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px}.fs64-filters select,.fs64-filters input{border:2px solid #c8ddff;border-radius:16px;padding:12px;background:#fff;color:#001a3d}
     .fs64-compare-card{order:-1}.fs64-compare-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
@@ -7827,7 +7902,8 @@
     .fs64-table-wrap tr.exact td{background:#eafff1}.fs64-table-wrap tr.advance td{background:#fff7cb}.fs64-table-wrap tr.penalty td{background:#e7f1ff}.fs64-table-wrap tr.miss td{background:#fff0f0}.fs64-table-wrap tr.pending td{background:#f8fbff}
     .fs64-status{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;font-weight:800;font-size:12px}.fs64-status.exact{background:#dff8ea;color:#057a4d}.fs64-status.advance{background:#fff2c7;color:#8a6400}.fs64-status.penalty{background:#ede7ff;color:#5b35bd}.fs64-status.miss{background:#ffe4e8;color:#b00032}.fs64-status.pending{background:#edf2f7;color:#607080}
     .fs64-picks{display:grid;gap:10px}.fs64-picks article{border:1px solid #dcecff;border-radius:16px;padding:12px;background:#f8fcff}
-    @media(max-width:720px){.fs64-kpis{grid-template-columns:1fr}.fs64-rank-title{flex-direction:column}.fs64-podium{grid-template-columns:1fr}.fs64-rank header{display:none}.fs64-rank article{grid-template-columns:52px 1fr 90px;align-items:start}.fs64-rank article em{background:#eef7ff;border-radius:12px;padding:8px 10px}.fs64-rank article i{grid-column:1/4}.fs64-rank article em:nth-of-type(1),.fs64-rank article em:nth-of-type(2),.fs64-rank article em:nth-of-type(3){grid-column:2/3}.fs64-filters{grid-template-columns:1fr}.fs64-card{padding:16px}}
+    .fs64-mosaic{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}.fs64-mosaic-tile{border:1px solid #dcecff;background:linear-gradient(180deg,#fff,#f6fbff);border-radius:18px;padding:14px;display:grid;gap:4px}.fs64-mosaic-tile span{font-size:2rem}.fs64-mosaic-tile small{color:#607080;font-weight:700}.fs64-mosaic-tile.is-out{opacity:.42;filter:grayscale(1)}
+    @media(max-width:720px){.fs64-kpis{grid-template-columns:1fr}.fs64-rank-title{flex-direction:column}.fs64-rank header{display:none}.fs64-rank article{grid-template-columns:52px 1fr;align-items:start}.fs64-rank b{grid-column:2/3}.fs64-rank-breakdown{grid-column:2/3}.fs64-rank article i{grid-column:1/3}.fs64-filters{grid-template-columns:1fr}.fs64-card{padding:16px}}
   </style>`);
 
   install();
