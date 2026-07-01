@@ -4745,23 +4745,7 @@ async function loadDashboard(tab='eliminatorias'){
     }
   }
 
-  document.addEventListener('click', function(ev){
-    const nav = ev.target.closest('#mainNav [data-route="dashboard"], #mainNav [data-route="world"], #mainNav [data-route="arena"]');
-    if(nav){
-      ev.preventDefault();
-      ev.stopImmediatePropagation();
-      const r = nav.getAttribute('data-route');
-      if(r === 'arena') return renderArenaDirect();
-      if(r === 'dashboard'){
-        if(guardRender('dashboard')) return;
-        return window.FS_V64 && window.FS_V64.renderDashboard ? window.FS_V64.renderDashboard(window.__fs64Dash || 'eliminatorias') : window.route('dashboard');
-      }
-      if(r === 'world'){
-        if(guardRender('world')) return;
-        return window.FS_V64 && window.FS_V64.renderWorld ? window.FS_V64.renderWorld(window.__fs64World || 'eliminatorias') : window.route('world');
-      }
-    }
-  }, true);
+  /* FS21: se elimina listener viejo FS70 que detenía la navegación y llamaba window.route. */
 
   install();
   setTimeout(install, 120);
@@ -5180,5 +5164,1213 @@ async function loadDashboard(tab='eliminatorias'){
 })();
 </script>
 
+
+
+<!-- FS V12 FINAL UX / NAV / LOADER / ADMIN PERFORMANCE PATCH -->
+<style id="fs-v12-final-ux-patch">
+  /* Navegación estable: evita botones pegados cuando el render viejo conserva .active */
+  body[data-fs-route] .nav-btn.active{background:#fff!important;color:#07142f!important;box-shadow:0 10px 20px rgba(0,60,120,.08)!important;transform:none!important;}
+  body.dark[data-fs-route] .nav-btn.active{background:#10244a!important;color:#e9f3ff!important;}
+  body[data-fs-route="arena"] .nav-btn[data-route="arena"],
+  body[data-fs-route="arena"] .nav-btn[data-fs70-route="arena"]{background:linear-gradient(120deg,#00a86b,#0b84f3)!important;color:#fff!important;box-shadow:0 12px 26px rgba(0,100,180,.22),inset 0 -4px 0 rgba(255,210,31,.8)!important;transform:translateY(-1px) scale(1.01)!important;}
+  body[data-fs-route="dashboard"] .nav-btn[data-route="dashboard"],
+  body[data-fs-route="dashboard"] .nav-btn[data-fs70-route="dashboard"]{background:linear-gradient(120deg,#0ea5e9,#7c3aed)!important;color:#fff!important;box-shadow:0 12px 26px rgba(0,100,180,.22),inset 0 -4px 0 rgba(255,210,31,.8)!important;transform:translateY(-1px) scale(1.01)!important;}
+  body[data-fs-route="world"] .nav-btn[data-route="world"],
+  body[data-fs-route="world"] .nav-btn[data-fs70-route="world"]{background:linear-gradient(120deg,#2563eb,#22c55e)!important;color:#fff!important;box-shadow:0 12px 26px rgba(0,100,180,.22),inset 0 -4px 0 rgba(255,210,31,.8)!important;transform:translateY(-1px) scale(1.01)!important;}
+  body[data-fs-route="users"] .nav-btn[data-route="users"],
+  body[data-fs-route="users"] .nav-btn[data-fs70-route="users"]{background:linear-gradient(120deg,#7c3aed,#0ea5e9)!important;color:#fff!important;box-shadow:0 12px 26px rgba(0,100,180,.22),inset 0 -4px 0 rgba(255,210,31,.8)!important;transform:translateY(-1px) scale(1.01)!important;}
+
+  /* Loader compacto y estable */
+  .mini-spinner,.fs-v12-spinner{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;min-height:26px!important;max-height:26px!important;border-radius:50%!important;border:4px solid #dbeafe!important;border-top-color:#0b84f3!important;background:transparent!important;display:inline-block!important;vertical-align:middle!important;animation:fsV12Spin .85s linear infinite!important;box-shadow:none!important;margin:0 10px 0 0!important;}
+  @keyframes fsV12Spin{to{transform:rotate(360deg)}}
+  .notice:has(.mini-spinner),.notice:has(.fs-v12-spinner),.fs-v12-loader{display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;min-height:76px!important;padding:18px!important;border-radius:24px!important;line-height:1.2!important;font-size:18px!important;font-weight:1000!important;text-align:center!important;overflow:hidden!important;}
+  .fs-v12-loader{background:#fff;border:1px solid #d8eaff;box-shadow:0 18px 34px rgba(0,60,120,.10);color:#003b8f;}
+
+  /* UX compacta para Dashboard / Mi Mundial */
+  .hero{overflow:hidden!important}.hero h1{line-height:1.05!important}.hero p{line-height:1.22!important}.subtabs{gap:8px!important}.subtab{line-height:1.1!important;white-space:normal!important;text-align:center!important}.kpi{min-width:0!important;overflow:hidden!important}.kpi .value,.kpi strong,.kpi b{word-break:break-word!important;overflow-wrap:anywhere!important;line-height:1.02!important}.grid{min-width:0!important}.card,.match-card,.ko-card{min-width:0!important}.table-wrap,.world-table-wrap{max-width:100%!important;overflow:auto!important}.dashboard-ranking-list{gap:8px!important}.dashboard-rank-row{padding:10px!important;border-radius:14px!important}.dashboard-rank-row .place{width:38px!important;height:38px!important}.world-table-wrap table,.results-modal-table table{font-size:14px!important}
+  @media(max-width:720px){
+    .nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.nav-btn{min-height:78px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;line-height:1.05!important}.nav-btn span:not(.nav-ico){white-space:normal!important;}
+    .hero{padding:18px!important;border-radius:24px!important}.hero h1{font-size:34px!important}.hero p{font-size:22px!important}.subtabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}.subtab{padding:12px 10px!important;font-size:18px!important}.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.kpi{padding:16px!important;min-height:110px!important}.kpi .value{font-size:34px!important}.notice:has(.mini-spinner),.notice:has(.fs-v12-spinner),.fs-v12-loader{min-height:68px!important;font-size:16px!important}.world-table-wrap table{min-width:680px!important}
+  }
+  @media(max-width:420px){.hero h1{font-size:31px!important}.hero p{font-size:20px!important}.subtab{font-size:17px!important}.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr 1fr!important}.kpi .value{font-size:30px!important}.kpi .label{font-size:13px!important}}
+</style>
+<script id="fs-v12-final-ux-patch">
+(function(){
+  'use strict';
+  if(window.__FS_V12_FINAL_UX_PATCH__) return;
+  window.__FS_V12_FINAL_UX_PATCH__ = true;
+  const q=(s,r=document)=>r.querySelector(s);
+  const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const arr=v=>Array.isArray(v)?v:[];
+  const token=()=> (window.state&&state.token)||'';
+  const apiUrl=()=> window.API_URL || (window.fsApp&&window.fsApp.API_URL) || '';
+  function get(o,keys,fb=''){for(const k of keys){if(o&&o[k]!=null&&String(o[k]).trim()!=='')return o[k];}return fb;}
+  function matchId(o){return String(get(o,['Partido_ID','Partido ID','ID','Match_ID','partido_id'],'')).trim();}
+  function local(o){return String(get(o,['Equipo_Local','Equipo Local','Local','Home','Cruce_Local','Origen_Local'],'')).trim();}
+  function visit(o){return String(get(o,['Equipo_Visitante','Equipo Visitante','Visitante','Away','Cruce_Visitante','Origen_Visitante'],'')).trim();}
+  function ronda(o){return String(get(o,['Ronda','Ronda_ID','Ronda ID','Fase','Round'],'')).trim();}
+  function fecha(o){return String(get(o,['Fecha','Date'],'')).replace(/ 00:00:00$/,'').replace(/^(\d{4})-(\d{2})-(\d{2}).*$/,'$3/$2/$1');}
+  function hora(o){return String(get(o,['Hora','Time'],'')).replace(/^1899-12-30\s*/,'').replace(/^(\d{1,2}:\d{2}).*$/,'$1');}
+  const flags={mexico:'🇲🇽',sudafrica:'🇿🇦','sudáfrica':'🇿🇦',canada:'🇨🇦','canadá':'🇨🇦',alemania:'🇩🇪',paraguay:'🇵🇾','paises bajos':'🇳🇱','países bajos':'🇳🇱',marruecos:'🇲🇦',brasil:'🇧🇷',japon:'🇯🇵','japón':'🇯🇵','costa de marfil':'🇨🇮',noruega:'🇳🇴',francia:'🇫🇷',suecia:'🇸🇪',ecuador:'🇪🇨',inglaterra:'🏴','rd congo':'🇨🇩','republica democratica del congo':'🇨🇩','estados unidos':'🇺🇸','bosnia y herzegovina':'🇧🇦',belgica:'🇧🇪','bélgica':'🇧🇪',senegal:'🇸🇳',portugal:'🇵🇹',croacia:'🇭🇷',espana:'🇪🇸','españa':'🇪🇸',austria:'🇦🇹',suiza:'🇨🇭',argelia:'🇩🇿',argentina:'🇦🇷','cabo verde':'🇨🇻',colombia:'🇨🇴',ghana:'🇬🇭',australia:'🇦🇺',egipto:'🇪🇬'};
+  const flag=t=>flags[norm(t)]||'🏳️';
+
+  function setRoute(route){
+    route = route || (window.state&&state.route) || document.body.getAttribute('data-fs-route') || 'arena';
+    document.body.setAttribute('data-fs-route',route);
+    qa('[data-route], [data-fs70-route]').forEach(b=>{
+      const r=b.getAttribute('data-route')||b.getAttribute('data-fs70-route');
+      b.classList.toggle('active',r===route);
+      b.setAttribute('aria-pressed',r===route?'true':'false');
+    });
+  }
+  const oldRoute=window.route;
+  if(typeof oldRoute==='function' && !window.__FS_V12_ROUTE_PATCHED__){
+    window.route=function(route,opts){
+      try{ if(window.state) state.route=route; setRoute(route); }catch(e){}
+      const res=oldRoute.apply(this,arguments);
+      setTimeout(()=>setRoute(route),30); setTimeout(()=>setRoute(route),180); setTimeout(()=>setRoute(route),700);
+      return res;
+    };
+    window.__FS_V12_ROUTE_PATCHED__=true;
+  }
+  document.addEventListener('click',ev=>{const b=ev.target.closest('[data-route], [data-fs70-route]'); if(b){const r=b.getAttribute('data-route')||b.getAttribute('data-fs70-route'); if(r){if(window.state)state.route=r; setRoute(r); setTimeout(()=>setRoute(r),120);}}},true);
+  setInterval(()=>setRoute((window.state&&state.route)||document.body.getAttribute('data-fs-route')||'arena'),1200);
+
+  function normalizeLoader(root=document){
+    qa('.notice',root).forEach(n=>{
+      if(/Cargando Dashboard|Cargando Mi Mundial|Consultando comparativas|Cargando competencia|Cargando fase activa/i.test(n.textContent||'')){
+        if(!n.querySelector('.fs-v12-spinner')) n.innerHTML='<span class="fs-v12-spinner"></span><span>'+esc((n.textContent||'Cargando...').replace(/\s+/g,' ').trim())+'</span>';
+        n.classList.add('fs-v12-loader');
+      }
+    });
+  }
+  const mo=new MutationObserver(muts=>{for(const m of muts){m.addedNodes&&m.addedNodes.forEach(n=>{if(n.nodeType===1) normalizeLoader(n);});} setRoute();});
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  normalizeLoader();
+
+  function jsonp(action,params={},timeout=45000){
+    if(typeof window.jsonp==='function') return window.jsonp(action,Object.assign({token:token()},params),timeout);
+    return new Promise((resolve,reject)=>{
+      const base=apiUrl(); if(!base) return reject(new Error('API no disponible'));
+      const cb='fs12_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script'); const url=new URL(base);
+      url.searchParams.set('action',action); url.searchParams.set('callback',cb); if(token()&&!params.token) url.searchParams.set('token',token());
+      Object.entries(params||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null)url.searchParams.set(k,v);});
+      const t=setTimeout(()=>{cleanup();reject(new Error('Tiempo agotado: '+action));},timeout);
+      function cleanup(){clearTimeout(t);try{delete window[cb]}catch(e){}; if(s.parentNode)s.parentNode.removeChild(s)}
+      window[cb]=r=>{cleanup();resolve(r)}; s.onerror=()=>{cleanup();reject(new Error('Error API'))}; s.src=url.toString(); document.body.appendChild(s);
+    });
+  }
+  async function api(action,params={},timeout=45000){const r=await jsonp(action,params,timeout); if(r&&r.status&&r.status!=='ok') throw new Error(r.message||'Error '+action); return (r&&(r.data||r.payload||r.result))||r||{};}
+  function unpack(x){
+    if(Array.isArray(x)) return x;
+    if(!x||typeof x!=='object') return [];
+    for(const k of ['rows','matches','partidos','data','result','payload']){const y=unpack(x[k]); if(y.length) return y;}
+    return [];
+  }
+  async function getMatchesFresh(){
+    const tries=[
+      ['fsKnockoutMatches',{fresh:1,nocache:Date.now()}],
+      ['fsKnockoutMatches',{ronda_id:'DIECISEISAVOS',fresh:1,nocache:Date.now()}],
+      ['fsKnockoutMatches',{ronda:'Dieciseisavos',fresh:1,nocache:Date.now()}],
+      ['list',{sheet:'FS_Eliminatorias_Partidos',fresh:1,nocache:Date.now()}]
+    ];
+    for(const [a,p] of tries){try{const r=await api(a,p,45000); const rows=unpack(r).filter(x=>matchId(x)); if(rows.length) return rows;}catch(e){}}
+    return [];
+  }
+  function findAdminHost(){
+    return document.getElementById('koAdmin')||document.getElementById('adminBox')||q('[data-admin-ko]')||qa('.admin-box,.ko-admin-card,.card').find(el=>/Carga rápida de resultados|Actualiza marcador real/i.test(el.textContent||''));
+  }
+  async function renderAdmin(){
+    const host=findAdminHost(); if(!host) return;
+    host.innerHTML='<div class="fs-v12-loader"><span class="fs-v12-spinner"></span><span>Cargando partidos reales...</span></div>';
+    let rows=[]; try{rows=await getMatchesFresh();}catch(e){}
+    rows=rows.filter(x=>matchId(x)).sort((a,b)=>matchId(a).localeCompare(matchId(b),'es',{numeric:true}));
+    if(!rows.length){host.innerHTML='<div class="admin-box ko-admin-card"><h3>🛠️ Carga rápida de resultados</h3><p>No pude leer partidos reales de FS_Eliminatorias_Partidos.</p><button class="btn light" id="fs12AdminRetry">Reintentar</button></div>'; const r=q('#fs12AdminRetry'); if(r)r.onclick=renderAdmin; return;}
+    const opts=rows.map(m=>`<option value="${esc(matchId(m))}">${esc(matchId(m))} · ${esc(ronda(m)||'Eliminatorias')} · ${fecha(m)?esc(fecha(m))+' · ':''}${hora(m)?esc(hora(m))+' · ':''}${flag(local(m))} ${esc(local(m))} vs ${flag(visit(m))} ${esc(visit(m))}</option>`).join('');
+    host.innerHTML=`<div class="admin-box ko-admin-card"><h3>🛠️ Carga rápida de resultados de Eliminatorias</h3><p>Actualiza marcador real, equipo que avanzó y penales. Datos tomados de FS_Eliminatorias_Partidos.</p><div class="admin-form"><select class="select" id="fs12AdmId"><option value="">Selecciona partido</option>${opts}</select><div class="score-input-row"><input class="input" id="fs12AdmL" inputmode="numeric" placeholder="Goles local"><span>VS</span><input class="input" id="fs12AdmV" inputmode="numeric" placeholder="Goles visitante"></div><select class="select" id="fs12AdmAdv"><option value="">Equipo que avanzó</option></select><label class="check-row"><input type="checkbox" id="fs12AdmPens"> Se fue a penales</label><div class="score-input-row"><input class="input" id="fs12AdmPL" inputmode="numeric" placeholder="Penales local"><span>PEN</span><input class="input" id="fs12AdmPV" inputmode="numeric" placeholder="Penales visitante"></div><select class="select" id="fs12AdmStatus"><option value="Jugado">Jugado</option><option value="Cerrado">Cerrado</option><option value="Abierto">Abierto</option></select><button class="btn" id="fs12AdmSave">Guardar resultado</button></div><div id="fs12AdmMsg" class="notice" style="display:none;margin-top:10px"></div></div>`;
+    const sel=q('#fs12AdmId'), adv=q('#fs12AdmAdv');
+    function fill(){const m=rows.find(x=>matchId(x)===sel.value)||{}; const l=local(m), v=visit(m); adv.innerHTML=`<option value="">Equipo que avanzó</option>${l?`<option value="${esc(l)}">${flag(l)} ${esc(l)}</option>`:''}${v?`<option value="${esc(v)}">${flag(v)} ${esc(v)}</option>`:''}`; q('#fs12AdmL').value=get(m,['Marcador_Local_Real','Resultado_Local'],''); q('#fs12AdmV').value=get(m,['Marcador_Visitante_Real','Resultado_Visitante'],''); adv.value=get(m,['Equipo_Avanza_Real','Equipo_Avanza'],''); q('#fs12AdmPens').checked=['si','sí','true','1'].includes(norm(get(m,['Penales'],''))); q('#fs12AdmPL').value=get(m,['Penales_Local_Real','Penales_Local'],''); q('#fs12AdmPV').value=get(m,['Penales_Visitante_Real','Penales_Visitante'],''); q('#fs12AdmStatus').value=get(m,['Estatus','Estado'],'Jugado')||'Jugado';}
+    sel.onchange=fill;
+    q('#fs12AdmSave').onclick=async()=>{const msg=q('#fs12AdmMsg'); if(!sel.value){msg.style.display='block';msg.className='notice warn';msg.textContent='Selecciona un partido.';return;} msg.style.display='flex'; msg.className='notice fs-v12-loader'; msg.innerHTML='<span class="fs-v12-spinner"></span><span>Guardando resultado...</span>'; try{const res=await api('updateKnockoutResultAdmin',{Partido_ID:sel.value,Marcador_Local_Real:q('#fs12AdmL').value,Marcador_Visitante_Real:q('#fs12AdmV').value,Resultado_Local:q('#fs12AdmL').value,Resultado_Visitante:q('#fs12AdmV').value,Equipo_Avanza_Real:adv.value,Equipo_Avanza:adv.value,Penales:q('#fs12AdmPens').checked?'SI':'NO',Penales_Local:q('#fs12AdmPL').value,Penales_Visitante:q('#fs12AdmPV').value,Penales_Local_Real:q('#fs12AdmPL').value,Penales_Visitante_Real:q('#fs12AdmPV').value,Estatus:q('#fs12AdmStatus').value||'Jugado',fresh:1,nocache:Date.now()},45000); clearCaches(); msg.className='notice ok'; msg.textContent=(res&&res.message)||'Resultado guardado correctamente.'; setTimeout(renderAdmin,450);}catch(e){msg.className='notice error'; msg.textContent=e.message||'No se pudo guardar resultado.';}};
+  }
+  function clearCaches(){
+    try{Object.keys(sessionStorage).forEach(k=>{if(/^fs|fortune|dash|world|ko/i.test(k))sessionStorage.removeItem(k);});}catch(e){}
+    try{Object.keys(localStorage).forEach(k=>{if(/^fs|fortune|dash|world|ko/i.test(k))localStorage.removeItem(k);});}catch(e){}
+    try{if(typeof window.clearClientCaches==='function')window.clearClientCaches();}catch(e){}
+  }
+  document.addEventListener('click',ev=>{const b=ev.target.closest('#refreshDash,#refreshWorld,[data-refresh],[id*="refresh" i]'); if(!b) return; clearCaches(); setTimeout(()=>normalizeLoader(),50);},true);
+  if(window.Modules&&Modules.eliminatorias) Modules.eliminatorias.renderAdminBox=renderAdmin;
+  setInterval(()=>{if(/Carga rápida de resultados/i.test((q('#view')||document.body).textContent||'')){const s=q('#fs12AdmId'); if(!s || s.options.length<=1) renderAdmin();}},2500);
+  setTimeout(()=>{setRoute(); normalizeLoader(); if(/Carga rápida de resultados/i.test(document.body.textContent||'')) renderAdmin();},700);
+})();
+</script>
+
+
+
+<!-- FS V17 PATCH: Spinner entre módulos + ranking compacto. Base: V14 estable -->
+<style id="fs-v17-spinner-ranking-patch">
+  /* Overlay de transición entre módulos: no toca lógica existente */
+  #fsRouteTransitionOverlay{
+    position:fixed; inset:0; z-index:999999; display:none; align-items:center; justify-content:center;
+    background:rgba(2,18,46,.34); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  }
+  #fsRouteTransitionOverlay.show{display:flex;}
+  .fs-route-loader-card{
+    width:min(330px, calc(100vw - 48px)); border-radius:28px; padding:24px 20px;
+    background:rgba(255,255,255,.96); border:1px solid rgba(190,220,255,.9);
+    box-shadow:0 24px 70px rgba(0,40,100,.28); text-align:center; color:#003b8f;
+  }
+  .fs-route-ball{
+    width:72px;height:72px;margin:0 auto 12px;display:grid;place-items:center;border-radius:50%;
+    background:radial-gradient(circle at 32% 28%,#fff 0 28%,#eaf5ff 45%,#d6ebff 72%,#bde4ff 100%);
+    box-shadow:0 12px 24px rgba(0,80,160,.18), inset 0 0 0 4px rgba(255,255,255,.9);
+    animation:fsRouteBallSpin .9s linear infinite;
+    font-size:40px; line-height:1;
+  }
+  .fs-route-loader-card .fs-route-title{font-weight:1000;font-size:20px;line-height:1.2;color:#003b8f;}
+  .fs-route-loader-card .fs-route-sub{margin-top:6px;font-size:13px;color:#64748b;font-weight:800;}
+  @keyframes fsRouteBallSpin{to{transform:rotate(360deg)}}
+
+  /* Botones de navegación: feedback inmediato */
+  #mainNav .nav-btn{will-change:transform;}
+  #mainNav .nav-btn.fs-switching{transform:translateY(-1px) scale(.98); opacity:.86;}
+
+  /* Ranking compacto V14: puntos visibles en móvil sin romper escritorio */
+  .dashboard-ranking-list{gap:7px!important;}
+  .dashboard-rank-row{padding:8px 10px!important;min-height:52px!important;align-items:center!important;}
+  .dashboard-rank-row .place{width:36px!important;height:36px!important;border-radius:12px!important;font-size:16px!important;}
+  .dashboard-rank-row > div:nth-child(2){min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+  .dashboard-rank-row > div:nth-child(3){text-align:right!important;font-weight:1000!important;color:#003b8f!important;white-space:nowrap!important;}
+  .dashboard-rank-row > div:nth-child(4){text-align:right!important;white-space:nowrap!important;}
+  .fs10-table table{table-layout:auto;}
+  .fs10-table th,.fs10-table td{padding:8px 9px!important;line-height:1.15!important;}
+  .fs10-table th:nth-child(3),.fs10-table td:nth-child(3){text-align:right!important;min-width:58px!important;}
+  @media(max-width:720px){
+    .dashboard-rank-row{grid-template-columns:40px minmax(0,1fr) 62px!important;gap:8px!important;}
+    .dashboard-rank-row .exact-col,.dashboard-rank-row > div:nth-child(4){display:none!important;}
+    .dashboard-rank-row > div:nth-child(3){font-size:16px!important;}
+    .fs10-table{overflow-x:auto!important;max-width:100%!important;-webkit-overflow-scrolling:touch;}
+    .fs10-table table{min-width:520px!important;width:100%!important;}
+    .fs10-table th,.fs10-table td{font-size:14px!important;padding:7px 8px!important;}
+    .fs10-table th:first-child,.fs10-table td:first-child{width:42px!important;min-width:42px!important;text-align:center!important;}
+    .fs10-table th:nth-child(2),.fs10-table td:nth-child(2){min-width:145px!important;max-width:170px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+    .fs10-table th:nth-child(3),.fs10-table td:nth-child(3){width:64px!important;min-width:64px!important;text-align:right!important;font-weight:1000!important;}
+    .fs10-table th:nth-child(n+4),.fs10-table td:nth-child(n+4){width:62px!important;min-width:62px!important;text-align:center!important;}
+  }
+</style>
+<script id="fs-v17-spinner-ranking-patch">
+(function(){
+  'use strict';
+  if(window.__FS_V17_SPINNER_RANKING_PATCH__) return;
+  window.__FS_V17_SPINNER_RANKING_PATCH__ = true;
+
+  const ROUTE_LABELS = { arena:'Arena', dashboard:'Dashboard', world:'Mi Mundial', users:'Usuarios', matches:'Partidos' };
+  let overlayTimer = null;
+  let hideTimer = null;
+
+  function ensureOverlay(){
+    let ov = document.getElementById('fsRouteTransitionOverlay');
+    if(!ov){
+      ov = document.createElement('div');
+      ov.id = 'fsRouteTransitionOverlay';
+      ov.setAttribute('aria-live','polite');
+      ov.innerHTML = '<div class="fs-route-loader-card"><div class="fs-route-ball">⚽</div><div class="fs-route-title">Cargando módulo...</div><div class="fs-route-sub">Actualizando información</div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+
+  function showRouteLoader(route){
+    const ov = ensureOverlay();
+    const title = ov.querySelector('.fs-route-title');
+    const sub = ov.querySelector('.fs-route-sub');
+    if(title) title.textContent = 'Cargando ' + (ROUTE_LABELS[route] || 'módulo') + '...';
+    if(sub) sub.textContent = 'Preparando pantalla';
+    ov.classList.add('show');
+    clearTimeout(overlayTimer);
+    // Seguridad: nunca dejar bloqueada la pantalla.
+    overlayTimer = setTimeout(hideRouteLoader, 5200);
+  }
+
+  function hideRouteLoader(){
+    const ov = document.getElementById('fsRouteTransitionOverlay');
+    if(ov) ov.classList.remove('show');
+    clearTimeout(overlayTimer);
+  }
+
+  function setNavActive(route){
+    const nav = document.getElementById('mainNav');
+    if(!nav) return;
+    nav.querySelectorAll('[data-route]').forEach(btn=>{
+      const on = btn.getAttribute('data-route') === route;
+      btn.classList.toggle('active', on);
+      btn.classList.remove('fs-switching');
+    });
+  }
+
+  function scheduleHide(){
+    clearTimeout(hideTimer);
+    // Oculta cuando el render ya empezó; deja una sensación fluida sin tapar de más.
+    hideTimer = setTimeout(hideRouteLoader, 650);
+  }
+
+  // Captura antes de listeners viejos: feedback visual y activo inmediato.
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest && ev.target.closest('#mainNav [data-route]');
+    if(!btn) return;
+    const route = btn.getAttribute('data-route');
+    if(!route) return;
+    btn.classList.add('fs-switching');
+    setNavActive(route);
+    showRouteLoader(route);
+    scheduleHide();
+  }, true);
+
+  // Reforzar activo si el estado cambia después por otro controlador.
+  const reinforce = function(){
+    try{
+      if(window.state && window.state.route) setNavActive(window.state.route);
+    }catch(e){}
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    setInterval(reinforce, 900);
+  });
+
+  // Si algún render marca fin de carga con DOM nuevo, ocultar.
+  const obs = new MutationObserver(function(){
+    if(document.getElementById('appView') || document.getElementById('view')) scheduleHide();
+  });
+  document.addEventListener('DOMContentLoaded', function(){
+    const target = document.body;
+    if(target) obs.observe(target,{childList:true,subtree:true});
+  });
+
+  window.fsShowRouteLoader = showRouteLoader;
+  window.fsHideRouteLoader = hideRouteLoader;
+})();
+</script>
+
 </body>
 </html>
+
+<!-- FS V74 FINAL UX + ADMIN + WORLD COMPACT PATCH -->
+<script id="FS_V74_FINAL_UX_ADMIN_WORLD_FIX">
+(function(){
+  'use strict';
+  if(window.__FS_V74_DONE) return;
+  window.__FS_V74_DONE = true;
+
+  var css = `
+    /* V74: Ajuste visual responsive y limpieza de estados pegados */
+    .nav-btn.active, .nav button.active, [data-route].active{box-shadow:0 10px 0 rgba(220,190,0,.45)!important}
+    .nav-btn:not(.active), .nav button:not(.active), [data-route]:not(.active){box-shadow:none!important}
+    .nav-btn, .nav button, [data-route]{transition:background .15s ease, transform .15s ease!important}
+    .fs64-tabs button.active{background:linear-gradient(120deg,#0b84f3,#00a86b)!important;color:#fff!important}
+    .fs64-tabs button:not(.active){background:#fff!important;color:#0b3e87!important}
+
+    /* loader proporcionado */
+    #fs64Body > .fs64-card:only-child,
+    #fs64Body .fs64-loading-card,
+    .fs-v74-loading-card{
+      min-height:96px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      gap:14px!important;
+      padding:18px!important;
+      font-size:20px!important;
+      line-height:1.15!important;
+      overflow:hidden!important;
+    }
+    #fs64Body > .fs64-card:only-child .loader,
+    .fs-v74-loading-card .loader,
+    #fs64Body .loader{
+      width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;min-height:42px!important;max-height:42px!important;
+      border-width:7px!important;margin:0!important;box-shadow:none!important;border-radius:999px!important;
+    }
+
+    /* compactar cards y tablas */
+    .fs64-card{padding:18px!important;border-radius:22px!important;margin-bottom:16px!important;overflow:hidden!important}
+    .fs64-kpis{gap:12px!important}
+    .fs64-kpi{min-height:95px!important}
+    .fs64-kpi small{font-size:15px!important;line-height:1.15!important;display:block!important;max-width:100%!important;overflow-wrap:anywhere!important}
+    .fs64-kpi b{font-size:34px!important;line-height:1!important;display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}
+    .fs64-card h2{font-size:clamp(25px,5.8vw,38px)!important;line-height:1.1!important;margin:0 0 14px!important}
+    .fs64-compare-head{display:flex!important;gap:10px!important;align-items:flex-start!important;justify-content:space-between!important}
+    .fs64-pill{font-size:14px!important;padding:8px 10px!important;border-radius:999px!important;line-height:1.15!important;white-space:normal!important;max-width:160px!important}
+    .fs64-table-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;border-radius:14px!important;border:1px solid #dbeafe!important;background:#fff!important}
+    .fs64-table-wrap table{width:100%!important;min-width:760px!important;border-collapse:collapse!important;table-layout:auto!important;font-size:15px!important}
+    .fs64-table-wrap th,.fs64-table-wrap td{padding:10px 12px!important;line-height:1.25!important;vertical-align:middle!important;white-space:normal!important;word-break:break-word!important}
+    .fs64-table-wrap th{font-size:14px!important;background:#eaf4ff!important;color:#0b3e87!important}
+    .fs64-table-wrap td{font-size:14px!important}
+    .fs64-picks article{padding:12px 14px!important;border-radius:16px!important;margin-bottom:10px!important;font-size:15px!important;line-height:1.25!important}
+    .fs64-picks small{display:block!important;margin-top:6px!important;font-size:13px!important;color:#516174!important}
+
+    /* Admin KO más compacto y legible */
+    .v73-admin-results{padding:18px!important;border-radius:24px!important}
+    .v73-admin-results h3{font-size:26px!important;line-height:1.16!important;margin-bottom:8px!important}
+    .v73-admin-results p{font-size:17px!important;line-height:1.32!important;margin-bottom:12px!important;color:#c8d8e8!important}
+    .v73-admin-results .admin-form{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+    .v73-admin-results .select,.v73-admin-results .input{min-height:54px!important;font-size:17px!important;border-radius:16px!important;padding:10px 14px!important}
+    .v73-admin-results .score-input-row{display:grid!important;grid-template-columns:1fr auto 1fr!important;gap:8px!important;align-items:center!important}
+    .v73-admin-results .check-row{font-size:17px!important;line-height:1.2!important;color:#dbeafe!important}
+
+    @media(max-width:720px){
+      .wrap{width:calc(100% - 18px)!important}
+      .hero{padding:18px!important;border-radius:24px!important}
+      .hero h1{font-size:clamp(32px,9vw,48px)!important;line-height:1.08!important}
+      .hero p{font-size:clamp(19px,5.2vw,28px)!important;line-height:1.28!important}
+      .nav{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+      .nav-btn{min-height:64px!important;padding:12px 10px!important;font-size:22px!important;line-height:1.1!important}
+      .fs64-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+      .fs64-tabs button{min-height:54px!important;font-size:20px!important;padding:10px!important;border-radius:22px!important;white-space:normal!important}
+      .fs64-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .fs64-kpi b{font-size:30px!important}
+      .fs64-compare-head{display:block!important}
+      .fs64-compare-head .fs64-pill{display:inline-block!important;margin-top:8px!important;max-width:100%!important}
+      .fs64-table-wrap{overflow:visible!important;border:0!important;background:transparent!important}
+      .fs64-table-wrap table,.fs64-table-wrap thead,.fs64-table-wrap tbody,.fs64-table-wrap tr,.fs64-table-wrap td{display:block!important;width:100%!important;min-width:0!important}
+      .fs64-table-wrap thead{display:none!important}
+      .fs64-table-wrap tr{background:#fff!important;border:1px solid #dbeafe!important;border-radius:18px!important;margin:0 0 12px!important;padding:12px!important;box-shadow:0 8px 20px rgba(0,70,140,.06)!important}
+      .fs64-table-wrap tr.exact{background:#effdf5!important;border-color:#bbf7d0!important}
+      .fs64-table-wrap tr.advance,.fs64-table-wrap tr.penalty{background:#eff6ff!important;border-color:#bfdbfe!important}
+      .fs64-table-wrap tr.miss{background:#fff1f2!important;border-color:#fecdd3!important}
+      .fs64-table-wrap tr.pending{background:#f8fafc!important}
+      .fs64-table-wrap td{border:0!important;border-bottom:1px solid #eef2f7!important;padding:8px 0!important;font-size:15px!important;display:grid!important;grid-template-columns:120px 1fr!important;gap:10px!important;align-items:start!important}
+      .fs64-table-wrap td:last-child{border-bottom:0!important}
+      .fs64-table-wrap td:nth-child(1)::before{content:'Usuario';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(2)::before{content:'Partido';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(3)::before{content:'Marcador';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(4)::before{content:'Avanza';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(5)::before{content:'Penales pronóstico';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(6)::before{content:'Real';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(7)::before{content:'Penales real';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(8)::before{content:'Puntos';font-weight:900;color:#0b3e87}
+      .fs64-table-wrap td:nth-child(9)::before{content:'Estatus';font-weight:900;color:#0b3e87}
+      .fs64-user-picker summary,.fs64-filters select{min-height:54px!important;font-size:18px!important;border-radius:17px!important}
+      #fs64Body > .fs64-card:only-child,.fs-v74-loading-card{font-size:18px!important;min-height:84px!important}
+    }
+  `;
+  document.head.insertAdjacentHTML('beforeend','<style id="fs74FinalCss">'+css+'</style>');
+
+  const safe = v => (v == null ? '' : String(v));
+  const esc = s => safe(s).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c] || c));
+  const norm = v => safe(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const q = id => document.getElementById(id);
+  const arr = v => Array.isArray(v) ? v : [];
+  const pick = (o, keys, d='') => { for(const k of keys){ if(o && o[k] !== undefined && o[k] !== null && String(o[k]).trim() !== '') return o[k]; } return d; };
+  const token = () => (window.state && state.token) || '';
+  const flag = t => { try { return typeof flagFor === 'function' ? flagFor(t) : '🏳️'; } catch(_e){ return '🏳️'; } };
+  const viewNode = () => (typeof window.view === 'function' ? window.view() : document.getElementById('view')) || document.body;
+  const matchIdOf = o => safe(pick(o,['Partido_ID','Partido ID','ID','Match_ID','partido_id']));
+  const localOf = o => safe(pick(o,['Equipo_Local','Equipo Local','Local','Home','Cruce_Local','Origen_Local']));
+  const visitOf = o => safe(pick(o,['Equipo_Visitante','Equipo Visitante','Visitante','Away','Cruce_Visitante','Origen_Visitante']));
+  const rondaOf = o => safe(pick(o,['Ronda','Ronda_ID','Fase','Round']));
+  const dateOf = o => safe(pick(o,['Fecha','Date'])).replace(/ 00:00:00$/,'').replace(/^([0-9]{4})-([0-9]{2})-([0-9]{2}).*$/,'$3/$2/$1');
+  const hourOf = o => safe(pick(o,['Hora','Horario','Time'])).replace(/^1899-12-30\s*/,'').replace(/:00$/,'');
+  const realL = o => { const v=pick(o,['Marcador_Local_Real','Resultado_Local','Goles_Local','Marcador_Local'], ''); return v===''?null:Number(v); };
+  const realV = o => { const v=pick(o,['Marcador_Visitante_Real','Resultado_Visitante','Goles_Visitante','Marcador_Visitante'], ''); return v===''?null:Number(v); };
+  const yes = v => ['si','sí','true','1','yes','x'].includes(norm(v));
+  const penReal = o => { const a=pick(o,['Penales_Local_Real','Penales_Local','Penal_Local','Penales Local'],''); const b=pick(o,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante','Penales Visitante'],''); if(a!==''||b!=='') return `${a||'–'}-${b||'–'}`; return yes(pick(o,['Penales'],''))?'Sí':'No'; };
+  const hasReal = o => realL(o)!==null && realV(o)!==null;
+
+  function setActiveRoute(route){
+    try{
+      document.querySelectorAll('[data-route], [data-fs70-route]').forEach(b=>{
+        const r = b.getAttribute('data-route') || b.getAttribute('data-fs70-route');
+        b.classList.toggle('active', r === route);
+        b.setAttribute('aria-pressed', r === route ? 'true' : 'false');
+      });
+      if(window.state) state.route = route;
+    }catch(_e){}
+  }
+  document.addEventListener('click', function(ev){
+    const b = ev.target.closest('[data-route], [data-fs70-route]');
+    if(!b) return;
+    const r = b.getAttribute('data-route') || b.getAttribute('data-fs70-route');
+    if(r) setTimeout(()=>setActiveRoute(r), 40);
+  }, true);
+
+  async function api(action, params={}, timeout=45000){
+    if(typeof window.jsonp !== 'function') throw new Error('API no disponible');
+    const payload = Object.assign({ token: token() }, params || {});
+    const r = await window.jsonp(action, payload, timeout);
+    if(r && r.status && r.status !== 'ok') throw new Error(r.message || ('Error en ' + action));
+    return (r && (r.data || r.payload || r.result)) || r || {};
+  }
+  async function soft(action, params={}, timeout=45000){ try{return {ok:true,data:await api(action,params,timeout)}}catch(error){return {ok:false,error,data:null}} }
+  async function listSheet(sheet){ const r=await soft('list',{sheet,fresh:1,nocache:Date.now()},45000); return arr(r.data&&(r.data.data||r.data.rows||r.data)); }
+
+  async function fetchAdminMatches(){
+    const tries = [
+      ['fsKnockoutMatches',{fresh:1,nocache:Date.now()}],
+      ['fsKnockoutMatches',{ronda_id:'DIECISEISAVOS',fresh:1,nocache:Date.now()}],
+      ['fsKnockoutMatches',{ronda:'Dieciseisavos',fresh:1,nocache:Date.now()}]
+    ];
+    for(const [a,p] of tries){
+      const r = await soft(a,p,45000);
+      const rows = arr(r.data && (r.data.data || r.data.rows || r.data.matches || r.data));
+      if(rows.length) return rows.filter(x=>matchIdOf(x));
+    }
+    const rows = await listSheet('FS_Eliminatorias_Partidos');
+    return rows.filter(x=>matchIdOf(x));
+  }
+
+  async function renderAdminBoxFreshV74(){
+    const host = document.getElementById('koAdmin') || document.getElementById('adminBox') || document.querySelector('[data-admin-ko]');
+    if(!host) return;
+    host.innerHTML = '<div class="admin-box ko-admin-card v73-admin-results"><h3>🛠️ Carga rápida de resultados</h3><p>Cargando partidos reales...</p></div>';
+    let rows = [];
+    try{ rows = await fetchAdminMatches(); }catch(e){}
+    if(!rows.length){
+      host.innerHTML = '<div class="admin-box ko-admin-card v73-admin-results"><h3>🛠️ Carga rápida de resultados</h3><p>No pude leer partidos desde FS_Eliminatorias_Partidos. Verifica AppScript V40/V39 y permisos de la hoja.</p><button class="btn light" id="admRetryKo">Reintentar</button></div>';
+      const retry = q('admRetryKo'); if(retry) retry.onclick = renderAdminBoxFreshV74;
+      return;
+    }
+    rows.sort((a,b)=>matchIdOf(a).localeCompare(matchIdOf(b), 'es', {numeric:true}));
+    const opts = rows.map(m => {
+      const id=matchIdOf(m), local=localOf(m), visit=visitOf(m), ronda=rondaOf(m), dt=dateOf(m), hr=hourOf(m);
+      return `<option value="${esc(id)}">${esc(id)} · ${esc(ronda)} · ${dt?esc(dt)+' · ':''}${hr?esc(hr)+' · ':''}${flag(local)} ${esc(local)} vs ${flag(visit)} ${esc(visit)}</option>`;
+    }).join('');
+    host.innerHTML = `<div class="admin-box ko-admin-card v73-admin-results"><h3>🛠️ Carga rápida de resultados de Eliminatorias</h3><p>Actualiza marcador real, equipo que avanzó y penales. Selector conectado a FS_Eliminatorias_Partidos.</p><div class="admin-form"><select class="select" id="admKoResultId"><option value="">Selecciona partido</option>${opts}</select><div class="score-input-row"><input class="input" id="admKoResultLocal" placeholder="Goles local"><span>VS</span><input class="input" id="admKoResultVisit" placeholder="Goles visitante"></div><select class="select" id="admKoAdvance"><option value="">Equipo que avanzó</option></select><label class="check-row"><input type="checkbox" id="admKoWentPenalties"> Se fue a penales</label><div class="score-input-row"><input class="input" id="admKoPenLocal" placeholder="Penales local"><span>PEN</span><input class="input" id="admKoPenVisit" placeholder="Penales visitante"></div><select class="select" id="admKoStatus"><option value="Jugado">Jugado</option><option value="Cerrado">Cerrado</option><option value="Abierto">Abierto</option></select><button id="admSaveKoResult" class="btn">Guardar resultado</button></div><div id="admKoMsg" class="notice" style="display:none;margin-top:10px"></div></div>`;
+    const select=q('admKoResultId'), adv=q('admKoAdvance');
+    function fill(){
+      const m = rows.find(x=>matchIdOf(x)===select.value) || {};
+      const local=localOf(m), visit=visitOf(m);
+      adv.innerHTML = `<option value="">Equipo que avanzó</option>${local?`<option value="${esc(local)}">${flag(local)} ${esc(local)}</option>`:''}${visit?`<option value="${esc(visit)}">${flag(visit)} ${esc(visit)}</option>`:''}`;
+      q('admKoResultLocal').value = pick(m,['Marcador_Local_Real','Resultado_Local','Goles_Local'],'');
+      q('admKoResultVisit').value = pick(m,['Marcador_Visitante_Real','Resultado_Visitante','Goles_Visitante'],'');
+      adv.value = pick(m,['Equipo_Avanza_Real','Equipo_Avanza','Ganador'],'');
+      q('admKoWentPenalties').checked = yes(pick(m,['Penales','Se_Penales','Fue_Penales'],''));
+      q('admKoPenLocal').value = pick(m,['Penales_Local_Real','Penales_Local','Penal_Local'],'');
+      q('admKoPenVisit').value = pick(m,['Penales_Visitante_Real','Penales_Visitante','Penal_Visitante'],'');
+      q('admKoStatus').value = pick(m,['Estatus','Estado'],'Jugado') || 'Jugado';
+    }
+    select.onchange = fill;
+    q('admSaveKoResult').onclick = async function(){
+      const msg=q('admKoMsg');
+      if(!select.value){ if(msg){msg.style.display='block';msg.className='notice warn';msg.textContent='Selecciona un partido.';} return; }
+      if(msg){msg.style.display='block';msg.className='notice';msg.textContent='Guardando resultado...';}
+      try{
+        const r = await api('updateKnockoutResultAdmin',{
+          Partido_ID:select.value,
+          Marcador_Local_Real:q('admKoResultLocal').value,
+          Marcador_Visitante_Real:q('admKoResultVisit').value,
+          Resultado_Local:q('admKoResultLocal').value,
+          Resultado_Visitante:q('admKoResultVisit').value,
+          Equipo_Avanza_Real:adv.value,
+          Equipo_Avanza:adv.value,
+          Penales:q('admKoWentPenalties').checked?'SI':'NO',
+          Penales_Local:q('admKoPenLocal').value,
+          Penales_Visitante:q('admKoPenVisit').value,
+          Penales_Local_Real:q('admKoPenLocal').value,
+          Penales_Visitante_Real:q('admKoPenVisit').value,
+          Estatus:q('admKoStatus').value || 'Jugado',
+          fresh:1,nocache:Date.now()
+        });
+        try{ if(typeof window.clearClientCaches === 'function') clearClientCaches(); }catch(_e){}
+        if(msg){msg.className='notice ok';msg.textContent=(r&&r.message)||'Resultado guardado correctamente.';}
+        setTimeout(renderAdminBoxFreshV74, 350);
+      }catch(e){ if(msg){msg.className='notice error';msg.textContent=e.message||'No se pudo guardar resultado.';} }
+    };
+  }
+
+  function install(){
+    if(window.Modules && Modules.eliminatorias){ Modules.eliminatorias.renderAdminBox = renderAdminBoxFreshV74; }
+    const oldRoute = window.route;
+    if(typeof oldRoute === 'function' && !window.__fs74RoutePatched){
+      window.route = function(name, opts){
+        setActiveRoute(name);
+        const res = oldRoute.call(this, name, opts);
+        setTimeout(()=>setActiveRoute(name), 80);
+        return res;
+      };
+      window.__fs74RoutePatched = true;
+    }
+    setActiveRoute((window.state && state.route) || 'arena');
+  }
+  install();
+  setTimeout(install, 250);
+  setTimeout(()=>{ if(document.getElementById('koAdmin')) renderAdminBoxFreshV74(); }, 800);
+})();
+</script>
+
+
+<script id="FS_V13_FINAL_NAV_LOADER_GUARD">
+(function(){
+  'use strict';
+  if(window.__FS_V13_NAV_GUARD_DONE) return;
+  window.__FS_V13_NAV_GUARD_DONE = true;
+
+  const ROUTE_LABELS = {
+    arena: '🏟️ Arena',
+    dashboard: '📊 Dashboard',
+    world: '🌎 Mi Mundial',
+    users: '👥 Usuarios'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function appVisible(){ const app=$('appScreen'); return app && !app.classList.contains('hidden'); }
+  function isAdminUser(){
+    try{
+      if(typeof isAdmin === 'function') return !!isAdmin();
+      const u = (window.state && state.user) || {};
+      return String(u.Perfil || u.Rol || u.Tipo || u.Usuario || '').toLowerCase().includes('admin');
+    }catch(_e){ return false; }
+  }
+  function viewNode(){
+    try{
+      if(typeof window.view === 'function') return window.view();
+      if(window.view && window.view.nodeType) return window.view;
+      if(typeof view !== 'undefined' && view && view.nodeType) return view;
+    }catch(_e){}
+    return $('view') || document.body;
+  }
+  function inferRoute(){
+    try{
+      const sRoute = window.state && state.route;
+      const txt = (viewNode().innerText || '').slice(0,1400).toLowerCase();
+      if(txt.includes('dashboard')) return 'dashboard';
+      if(txt.includes('mi mundial')) return 'world';
+      if(txt.includes('usuarios') && txt.includes('administración')) return 'users';
+      if(txt.includes('arena mundialista') || txt.includes('eliminatorias directas') || txt.includes('carga rápida de resultados')) return 'arena';
+      if(['arena','dashboard','world','users'].includes(sRoute)) return sRoute;
+    }catch(_e){}
+    return 'arena';
+  }
+  function rebuildNav(active){
+    const nav = $('mainNav');
+    if(!nav) return;
+    const desired = ['arena','dashboard','world'].concat(isAdminUser()?['users']:[]);
+    const current = Array.from(nav.querySelectorAll('[data-route]')).map(b=>b.getAttribute('data-route')).join('|');
+    if(current !== desired.join('|')){
+      nav.innerHTML = desired.map(r => `<button class="nav-btn" type="button" data-route="${r}" aria-pressed="false">${ROUTE_LABELS[r]}</button>`).join('');
+    }
+  }
+  function syncActive(route){
+    const active = route || inferRoute();
+    try{ document.body.setAttribute('data-active-route', active); }catch(_e){}
+    try{ if(window.state) state.route = active; }catch(_e){}
+    rebuildNav(active);
+    document.querySelectorAll('#mainNav .nav-btn, #mainNav [data-route]').forEach(btn => {
+      const r = btn.getAttribute('data-route');
+      const on = r === active;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.dataset.fsActive = on ? '1' : '0';
+    });
+  }
+  window.__fsSyncActiveRoute = syncActive;
+
+  const css = `
+    #mainNav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:stretch!important;}
+    @media(min-width:780px){#mainNav{grid-template-columns:repeat(4,max-content)!important;display:flex!important;}}
+    #mainNav .nav-btn{position:relative!important;isolation:isolate!important;margin:0!important;min-height:58px!important;border-radius:24px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;white-space:normal!important;line-height:1.08!important;text-align:center!important;transition:transform .15s ease, box-shadow .15s ease!important;}
+    #mainNav .nav-btn:not(.active){background:#fff!important;color:#092352!important;box-shadow:0 8px 20px rgba(0,70,140,.05)!important;border:1px solid #cfe4ff!important;}
+    #mainNav .nav-btn.active{background:linear-gradient(135deg,#12a46c,#1598ff)!important;color:#fff!important;box-shadow:0 10px 0 rgba(211,195,28,.75),0 14px 28px rgba(0,80,160,.20)!important;border-color:transparent!important;transform:translateY(-1px)!important;}
+    body[data-active-route="arena"] #mainNav [data-route]:not([data-route="arena"]),
+    body[data-active-route="dashboard"] #mainNav [data-route]:not([data-route="dashboard"]),
+    body[data-active-route="world"] #mainNav [data-route]:not([data-route="world"]),
+    body[data-active-route="users"] #mainNav [data-route]:not([data-route="users"]){background:#fff!important;color:#092352!important;box-shadow:0 8px 20px rgba(0,70,140,.05)!important;border:1px solid #cfe4ff!important;transform:none!important;}
+    body[data-active-route="arena"] #mainNav [data-route="arena"],
+    body[data-active-route="dashboard"] #mainNav [data-route="dashboard"],
+    body[data-active-route="world"] #mainNav [data-route="world"],
+    body[data-active-route="users"] #mainNav [data-route="users"]{background:linear-gradient(135deg,#12a46c,#1598ff)!important;color:#fff!important;box-shadow:0 10px 0 rgba(211,195,28,.75),0 14px 28px rgba(0,80,160,.20)!important;border-color:transparent!important;}
+    .fs-loading,.loading-card,.fs64-card:has(.spinner),.fs-v12-loader{max-width:100%!important;overflow:hidden!important;}
+    .fs-v13-loader{display:flex!important;align-items:center!important;gap:12px!important;padding:14px 18px!important;border:1px solid #cfe4ff!important;border-radius:18px!important;background:#fff!important;color:#083d7a!important;font-weight:800!important;box-shadow:0 8px 18px rgba(0,70,140,.08)!important;}
+    .fs-v13-spinner{width:22px!important;height:22px!important;min-width:22px!important;border-radius:50%!important;border:4px solid #d9ebff!important;border-top-color:#128ef2!important;animation:fsV13Spin .8s linear infinite!important;}
+    @keyframes fsV13Spin{to{transform:rotate(360deg)}}
+    #fs64Body>.fs64-card:only-child,#fs64Body .loading,#fs64Body .loader{padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;}
+  `;
+  if(!$('fsV13NavCss')){
+    const st=document.createElement('style'); st.id='fsV13NavCss'; st.textContent=css; document.head.appendChild(st);
+  }
+
+  function normalizeLoaders(){
+    const selectors = ['#fs64Body .fs64-card', '#fs64Body .card', '#view .notice'];
+    document.querySelectorAll(selectors.join(',')).forEach(el => {
+      const t = (el.textContent||'').trim().toLowerCase();
+      if(t.includes('cargando dashboard') || t.includes('cargando mi mundial') || t === '⏳ cargando...' || t.includes('consultando comparativas')){
+        const label = t.includes('mi mundial') || t.includes('comparativas') ? 'Cargando Mi Mundial…' : (t.includes('dashboard') ? 'Cargando Dashboard…' : 'Cargando…');
+        el.className = 'fs-v13-loader';
+        el.innerHTML = `<span class="fs-v13-spinner"></span><span>${label}</span>`;
+      }
+    });
+  }
+
+  // Reescribe renderNav de forma final para impedir que versiones viejas dejen activo otro botón.
+  try{
+    const oldRenderNav = window.renderNav || (typeof renderNav === 'function' ? renderNav : null);
+    window.renderNav = function(){
+      const active = (window.state && state.route) || inferRoute();
+      rebuildNav(active);
+      syncActive(active);
+    };
+    if(typeof renderNav !== 'undefined') renderNav = window.renderNav;
+  }catch(_e){}
+
+  // Reescribe route sólo para sincronizar visualmente al final, sin cambiar funcionalidad interna.
+  try{
+    if(typeof window.route === 'function' && !window.__fsV13RouteWrapped){
+      const oldRoute = window.route;
+      window.route = function(name, opts){
+        const mapped = name === 'matches' ? 'arena' : name;
+        if(['arena','dashboard','world','users'].includes(mapped)) syncActive(mapped);
+        const res = oldRoute.call(this, name, opts);
+        [0,30,120,350,900].forEach(ms => setTimeout(() => syncActive(['arena','dashboard','world','users'].includes(mapped)?mapped:inferRoute()), ms));
+        return res;
+      };
+      window.__fsV13RouteWrapped = true;
+    }
+  }catch(_e){}
+
+  document.addEventListener('click', function(ev){
+    const btn = ev.target.closest('#mainNav [data-route]');
+    if(!btn) return;
+    const r = btn.getAttribute('data-route');
+    if(!r) return;
+    syncActive(r);
+    [40,160,420,900].forEach(ms => setTimeout(()=>syncActive(r), ms));
+  }, true);
+
+  let timer = null;
+  function schedule(){
+    clearTimeout(timer);
+    timer = setTimeout(()=>{ syncActive(inferRoute()); normalizeLoaders(); }, 60);
+  }
+  try{
+    new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-route']});
+  }catch(_e){}
+
+  setInterval(()=>{ if(appVisible()){ syncActive(inferRoute()); normalizeLoaders(); } }, 900);
+  [0,100,300,800,1500].forEach(ms=>setTimeout(()=>{syncActive(inferRoute()); normalizeLoaders();}, ms));
+})();
+</script>
+
+<!-- FS V14 FINAL UX / NAV / USERS / FILTERS CLEANUP -->
+<style id="fs-v14-final-style">
+  /* Nav: one active button only, no legacy sticky states */
+  #mainNav .nav-btn{background:#fff!important;color:#092352!important;border:1px solid #cfe4ff!important;box-shadow:0 8px 20px rgba(0,70,140,.05)!important;transform:none!important;min-width:0!important;}
+  body[data-fs14-route="arena"] #mainNav .nav-btn[data-route="arena"],
+  body[data-fs14-route="dashboard"] #mainNav .nav-btn[data-route="dashboard"],
+  body[data-fs14-route="world"] #mainNav .nav-btn[data-route="world"],
+  body[data-fs14-route="users"] #mainNav .nav-btn[data-route="users"]{
+    background:linear-gradient(135deg,#11a86d,#1498ff)!important;color:#fff!important;border-color:transparent!important;
+    box-shadow:0 10px 0 rgba(211,195,28,.75),0 14px 28px rgba(0,80,160,.20)!important;transform:translateY(-1px)!important;
+  }
+  body[data-fs14-route="arena"] #mainNav .nav-btn:not([data-route="arena"]),
+  body[data-fs14-route="dashboard"] #mainNav .nav-btn:not([data-route="dashboard"]),
+  body[data-fs14-route="world"] #mainNav .nav-btn:not([data-route="world"]),
+  body[data-fs14-route="users"] #mainNav .nav-btn:not([data-route="users"]){
+    background:#fff!important;color:#092352!important;box-shadow:0 8px 20px rgba(0,70,140,.05)!important;border:1px solid #cfe4ff!important;transform:none!important;
+  }
+  /* compact headers and KPIs */
+  .hero h1{font-size:clamp(34px,7vw,58px)!important;line-height:1.02!important;overflow-wrap:anywhere!important;}
+  .hero p{font-size:clamp(20px,4.5vw,30px)!important;line-height:1.22!important;}
+  .fs10-kpis,.fs64-kpis,.grid.cols-3,.grid.cols-4{gap:12px!important;}
+  .kpi,.fs10-kpis .card,.fs64-card.fs64-kpi{min-height:96px!important;padding:16px!important;overflow:hidden!important;}
+  .kpi .value,.kpi b,.fs10-kpis b,.fs64-kpi b{font-size:clamp(28px,8vw,44px)!important;line-height:1!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important;}
+  .kpi .label,.fs10-kpis small,.fs64-kpi small{font-size:clamp(13px,3vw,17px)!important;line-height:1.15!important;}
+  /* stable compact loader */
+  .fs14-loader{display:flex!important;align-items:center!important;justify-content:center!important;gap:14px!important;padding:16px 18px!important;border:1px solid #cfe4ff!important;border-radius:20px!important;background:#fff!important;box-shadow:0 14px 28px rgba(0,60,120,.10)!important;color:#003b8f!important;font-weight:1000!important;min-height:72px!important;}
+  .fs14-spin{width:32px!important;height:32px!important;border-radius:50%!important;border:6px solid #dbeafe!important;border-top-color:#0b84f3!important;animation:fs14spin .8s linear infinite!important;flex:0 0 auto!important;}
+  @keyframes fs14spin{to{transform:rotate(360deg)}}
+  /* filters/results block */
+  .fs14-tools{margin:14px 0 18px!important;padding:16px!important;border:1px solid #cfe4ff!important;border-radius:22px!important;background:rgba(255,255,255,.78)!important;box-shadow:0 12px 28px rgba(0,70,140,.07)!important;}
+  .fs14-tools h3{margin:0 0 10px!important;font-size:clamp(22px,5vw,30px)!important;line-height:1.1!important;color:#07142f!important;}
+  .fs14-tools-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;align-items:center!important;}
+  .fs14-tools .select,.fs14-tools .input,.fs14-tools .btn{min-height:48px!important;border-radius:16px!important;font-size:16px!important;}
+  .fs14-tools .btn{padding:10px 14px!important;}
+  /* users: compact and no old overflow */
+  .fs14-users-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 14px}.fs14-user-kpi{padding:16px;border-radius:22px;border:1px solid #cfe4ff;background:#fff;box-shadow:0 10px 24px rgba(0,70,140,.06)}.fs14-user-kpi small{font-weight:900;color:#667085;text-transform:uppercase}.fs14-user-kpi b{display:block;font-size:34px;color:#003b8f;margin-top:6px}.fs14-users-toolbar{display:grid;grid-template-columns:1fr 160px 180px;gap:10px;margin-bottom:12px}.fs14-users-table{overflow:auto;border-radius:20px;border:1px solid #d8eaff;background:#fff}.fs14-users-table table{min-width:760px}.fs14-actions{display:flex;gap:8px;flex-wrap:wrap}.fs14-actions .btn{font-size:13px!important;padding:8px 10px!important;min-height:36px!important;border-radius:12px!important}
+  @media(max-width:720px){
+    #mainNav{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;}
+    #mainNav .nav-btn{min-height:74px!important;font-size:26px!important;line-height:1.05!important;padding:12px!important;white-space:normal!important;}
+    .fs14-tools-grid{grid-template-columns:1fr!important}.fs14-tools{padding:14px!important}.fs14-tools .btn{font-size:18px!important;}
+    .fs14-users-grid{grid-template-columns:1fr 1fr}.fs14-users-toolbar{grid-template-columns:1fr}.fs14-user-kpi b{font-size:30px}
+    .fs10-kpis,.fs64-kpis,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr 1fr!important;}
+    .card h2,.fs10-card h2,.fs64-card h2{font-size:clamp(26px,7vw,36px)!important;line-height:1.1!important;}
+    .dashboard-ranking-list{gap:6px!important}.dashboard-rank-row{padding:8px!important;grid-template-columns:42px 1fr 60px!important}.dashboard-rank-row .exact-col{display:none!important;}
+  }
+</style>
+<script id="fs-v14-final-script">
+(function(){
+  if(window.__FS_V14_FINAL__) return; window.__FS_V14_FINAL__=true;
+  const $id=(id)=>document.getElementById(id);
+  const qs=(s,r=document)=>r.querySelector(s);
+  const qsa=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe=(v)=>String(v??'');
+  const norm=(v)=>safe(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const esc=(v)=>safe(v).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const val=(o,keys,def='')=>{for(const k of keys){if(o&&o[k]!=null&&o[k]!=='')return o[k];}return def};
+  const arr=(x)=>Array.isArray(x)?x:[];
+  function activeRouteFromDom(){
+    const h=(qs('#view .hero h1')?.textContent||'')+' '+(qs('#view')?.textContent||'').slice(0,220);
+    const t=norm(h);
+    if(t.includes('usuarios')||t.includes('administracion de usuarios')) return 'users';
+    if(t.includes('mi mundial')||t.includes('comparativas')) return 'world';
+    if(t.includes('dashboard')||t.includes('ranking, bolsa')) return 'dashboard';
+    if(t.includes('arena')||t.includes('eliminatorias directas')||t.includes('carga rapida')) return 'arena';
+    return window.state?.route || document.body.getAttribute('data-fs14-route') || '';
+  }
+  function syncNav(route){
+    route = ['arena','dashboard','world','users'].includes(route)?route:activeRouteFromDom();
+    if(!route) return;
+    document.body.setAttribute('data-fs14-route',route);
+    document.body.setAttribute('data-active-route',route);
+    document.body.setAttribute('data-fs-route',route);
+    qsa('#mainNav .nav-btn').forEach(b=>{
+      const r=b.dataset.route||b.dataset.fs70Route||'';
+      b.classList.toggle('active', r===route);
+      b.setAttribute('aria-pressed', r===route?'true':'false');
+      if(r!==route){ b.style.background=''; b.style.color=''; b.style.boxShadow=''; b.style.transform=''; }
+    });
+  }
+  window.fs14SyncNav=syncNav;
+  document.addEventListener('click',(ev)=>{
+    const b=ev.target.closest&&ev.target.closest('#mainNav .nav-btn,[data-route]');
+    if(!b) return; const r=b.dataset.route||b.dataset.fs70Route; if(['arena','dashboard','world','users'].includes(r)){ syncNav(r); [60,180,420,900,1500].forEach(ms=>setTimeout(()=>syncNav(r),ms)); }
+  },true);
+  const obs=new MutationObserver(()=>{ const r=activeRouteFromDom(); if(r) syncNav(r); fs14InjectTools(); });
+  setTimeout(()=>{ const v=$id('view')||document.body; obs.observe(v,{childList:true,subtree:true,characterData:true}); syncNav(activeRouteFromDom()); fs14InjectTools();},400);
+
+  // replace global loading visual where possible
+  const oldLoading=window.loading;
+  window.loading=function(show,msg){
+    try{
+      if(!show){ const l=$id('loading')||$id('globalLoader'); if(l) l.style.display='none'; qsa('.fs14-live-loader').forEach(x=>x.remove()); return oldLoading?oldLoading(false,msg):undefined; }
+      const view=$id('view');
+      if(view && (norm(msg).includes('dashboard')||norm(msg).includes('mundial'))){
+        qsa('.fs14-live-loader').forEach(x=>x.remove());
+        const div=document.createElement('div'); div.className='fs14-loader fs14-live-loader';
+        div.innerHTML=`<span class="fs14-spin"></span><span>${esc(msg||'Cargando...')}</span>`;
+        view.appendChild(div); return;
+      }
+      return oldLoading?oldLoading(show,msg):undefined;
+    }catch(_){ return oldLoading?oldLoading(show,msg):undefined; }
+  };
+
+  // compact tools and results for dashboard/world
+  function fs14InjectTools(){
+    const route=document.body.getAttribute('data-fs14-route')||activeRouteFromDom();
+    if(!['dashboard','world'].includes(route)) return;
+    const view=$id('view'); if(!view || qs('.fs14-tools',view)) return;
+    const anchor=qs('.hero',view); if(!anchor) return;
+    const tools=document.createElement('section'); tools.className='fs14-tools';
+    tools.innerHTML=`<h3>🎛️ Filtros y resultados</h3><div class="fs14-tools-grid"><select id="fs14Date" class="select"><option value="">Todas las fechas</option></select><select id="fs14Team" class="select"><option value="">Todos los equipos</option></select><select id="fs14Status" class="select"><option value="">Todos los estatus</option><option value="jugado">Jugado</option><option value="pendiente">Pendiente</option><option value="exacto">Exacto</option><option value="avanza">Avanza</option><option value="penales">Penales</option></select><button id="fs14Results" class="btn light">🏁 Resultados</button></div>`;
+    anchor.insertAdjacentElement('afterend',tools);
+    fillTools();
+    $id('fs14Results').onclick=()=>fs14OpenResults();
+  }
+  async function fs14Rows(){
+    try{
+      if(window.__FS14_MATCHES_CACHE && Date.now()-window.__FS14_MATCHES_CACHE.ts<180000) return window.__FS14_MATCHES_CACHE.rows;
+      let d=null;
+      if(typeof api==='function') d=await api('fsKnockoutMatches',{}, {ttl:180,timeout:20000}).catch(()=>null);
+      if(!d && typeof jsonp==='function') d=await jsonp('fsKnockoutMatches',{}).catch(()=>null);
+      const rows=arr(d?.rows||d?.data||d?.matches||d);
+      window.__FS14_MATCHES_CACHE={ts:Date.now(),rows}; return rows;
+    }catch(_){return []}
+  }
+  function mid(m){return val(m,['Partido_ID','Partido Id','ID','id'],'')}
+  function local(m){return val(m,['Equipo_Local','Local','Equipo Local'],'')}
+  function visit(m){return val(m,['Equipo_Visitante','Visitante','Equipo Visitante'],'')}
+  function ronda(m){return val(m,['Ronda','Ronda_ID','Ronda ID'],'')}
+  function fecha(m){return val(m,['Fecha','fecha'],'')}
+  function realL(m){return val(m,['Marcador_Local_Real','Resultado_Local','Goles_Local'],'')}
+  function realV(m){return val(m,['Marcador_Visitante_Real','Resultado_Visitante','Goles_Visitante'],'')}
+  async function fillTools(){
+    const rows=await fs14Rows(); const dates=[...new Set(rows.map(fecha).filter(Boolean))]; const teams=[...new Set(rows.flatMap(m=>[local(m),visit(m)]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const d=$id('fs14Date'), t=$id('fs14Team'); if(d) d.innerHTML='<option value="">Todas las fechas</option>'+dates.map(x=>`<option>${esc(x)}</option>`).join(''); if(t) t.innerHTML='<option value="">Todos los equipos</option>'+teams.map(x=>`<option>${esc(x)}</option>`).join('');
+  }
+  async function fs14OpenResults(){
+    const rows=await fs14Rows();
+    const html=`<button class="modal-x" onclick="closeModal&&closeModal()">×</button><h2>🏁 Resultados Eliminatorias</h2><div class="results-modal-table"><table><thead><tr><th>ID</th><th>Ronda</th><th>Fecha</th><th>Partido</th><th>Resultado</th><th>Estatus</th></tr></thead><tbody>${rows.map(m=>`<tr><td>${esc(mid(m))}</td><td>${esc(ronda(m))}</td><td>${esc(fecha(m))}</td><td>${esc(local(m))} vs ${esc(visit(m))}</td><td><b>${esc(realL(m)||'–')} - ${esc(realV(m)||'–')}</b></td><td>${esc(val(m,['Estatus','Estado'],''))}</td></tr>`).join('')||'<tr><td colspan="6">Sin resultados.</td></tr>'}</tbody></table></div><div class="modal-actions"><button class="btn ghost" onclick="closeModal&&closeModal()">Cerrar</button></div>`;
+    if(typeof modal==='function') modal(html); else alert('Resultados cargados: '+rows.length);
+  }
+  window.fs14OpenResults=fs14OpenResults;
+
+  // Users module: one clean and fast version
+  function isAdmin(){try{return (typeof window.isAdmin==='function'&&window.isAdmin()) || norm(window.state?.user?.Perfil||window.state?.user?.perfil||window.state?.user?.['Perfil del Usuario']).includes('admin');}catch(_){return false}}
+  async function apiCall(action,payload={}){ if(typeof api==='function') return api(action,payload,{ttl:120,timeout:22000}); if(typeof jsonp==='function') return jsonp(action,payload); throw new Error('API no disponible'); }
+  if(window.Modules){
+    window.Modules.users={
+      async render(){
+        syncNav('users'); if(!isAdmin()){ if(window.route) return route('arena'); return; }
+        const view=$id('view'); if(!view) return;
+        view.innerHTML=`<div class="hero"><h1>👥 Usuarios</h1><p>Consulta y administración ligera de usuarios activos, pagos y módulos.</p><button id="fs14UsersRefresh" class="btn light" style="margin-top:12px">🔄 Actualizar usuarios</button></div><div id="usersBody"><div class="fs14-loader"><span class="fs14-spin"></span><span>Cargando usuarios...</span></div></div>`;
+        $id('fs14UsersRefresh').onclick=()=>this.load(true);
+        await this.load(false);
+      },
+      async load(force=false){
+        const body=$id('usersBody'); if(!body) return;
+        try{
+          if(!force && window.__FS14_USERS_CACHE && Date.now()-window.__FS14_USERS_CACHE.ts<180000){ window.state.users=window.__FS14_USERS_CACHE.rows; return this.paint(); }
+          body.innerHTML=`<div class="fs14-loader"><span class="fs14-spin"></span><span>Cargando usuarios...</span></div>`;
+          const r=await apiCall('listUsersAdminSeguro',{token:window.state?.token||''});
+          const rows=arr(r?.data||r?.rows||r?.users||r);
+          window.__FS14_USERS_CACHE={ts:Date.now(),rows}; if(window.state) window.state.users=rows; this.paint();
+        }catch(e){body.innerHTML=`<div class="notice error">${esc(e.message||'No se pudieron cargar usuarios.')}</div>`;}
+      },
+      paint(){
+        const rows=arr(window.state?.users||[]); const active=rows.filter(u=>['activo','active'].includes(norm(val(u,['Estatus','Estado'],'')))).length; const paid=rows.filter(u=>['completo','pagado','paid'].includes(norm(val(u,['Estatus Pago','Estatus_Pago','Pago_Status'],'')))).length;
+        const body=$id('usersBody'); if(!body) return;
+        body.innerHTML=`<div class="fs14-users-grid"><div class="fs14-user-kpi"><small>Total</small><b>${rows.length}</b></div><div class="fs14-user-kpi"><small>Activos</small><b>${active}</b></div><div class="fs14-user-kpi"><small>Pago completo</small><b>${paid}</b></div><div class="fs14-user-kpi"><small>Admin</small><b>${isAdmin()?'Sí':'No'}</b></div></div><div class="fs14-users-toolbar"><input id="fs14UserSearch" class="input" placeholder="Buscar usuario o nombre"><select id="fs14UserStatus" class="select"><option value="">Todos</option><option value="activo">Activos</option><option value="inactivo">Inactivos</option></select><select id="fs14UserPay" class="select"><option value="">Todos los pagos</option><option value="completo">Pago completo</option><option value="pendiente">Pago pendiente</option></select></div><div id="fs14UsersTable" class="fs14-users-table"></div>`;
+        const render=()=>{ const q=norm($id('fs14UserSearch')?.value||''); const st=norm($id('fs14UserStatus')?.value||''); const py=norm($id('fs14UserPay')?.value||''); const data=rows.filter(u=>(!q||norm(Object.values(u).join(' ')).includes(q))&&(!st||norm(val(u,['Estatus','Estado'],''))===st)&&(!py||norm(val(u,['Estatus Pago','Estatus_Pago','Pago_Status'],''))===py));
+          $id('fs14UsersTable').innerHTML=`<table><thead><tr><th>Usuario</th><th>Nombre</th><th>Estatus</th><th>Pago</th><th>Módulos</th><th>Acciones</th></tr></thead><tbody>${data.map((u,i)=>`<tr><td><b>${esc(val(u,['Usuario','user'],''))}</b></td><td>${esc(val(u,['Nombre Completo','Nombre_Completo','Nombre'],''))}</td><td>${esc(val(u,['Estatus','Estado'],''))}</td><td>${esc(val(u,['Estatus Pago','Estatus_Pago','Pago_Status'],''))}</td><td>${esc(val(u,['Modulos','Módulos','Modulo','Módulo'],''))}</td><td><div class="fs14-actions"><button class="btn light" data-fs14-act="activate" data-row="${esc(val(u,['__rowNumber','rowNumber'],''))}">Activar</button><button class="btn light" data-fs14-act="deactivate" data-row="${esc(val(u,['__rowNumber','rowNumber'],''))}">Inactivar</button><button class="btn light" data-fs14-act="payok" data-row="${esc(val(u,['__rowNumber','rowNumber'],''))}">Pago OK</button></div></td></tr>`).join('')||'<tr><td colspan="6">Sin usuarios.</td></tr>'}</tbody></table>`;
+          qsa('[data-fs14-act]',$id('fs14UsersTable')).forEach(b=>b.onclick=()=>this.handleAction(b.dataset.fs14Act,b.dataset.row));
+        };
+        ['fs14UserSearch','fs14UserStatus','fs14UserPay'].forEach(id=>{const el=$id(id); if(el) el.oninput=el.onchange=render;}); render();
+      },
+      async handleAction(action,row){
+        if(!row){alert('No se encontró fila del usuario.'); return;} const payload={token:window.state?.token||'',rowNumber:row};
+        if(action==='activate'){payload.Estatus='activo'; payload.Estado='activo'} if(action==='deactivate'){payload.Estatus='inactivo'; payload.Estado='inactivo'} if(action==='payok'){payload['Estatus Pago']='completo'; payload.Estatus_Pago='completo'}
+        try{await apiCall('updateUserAdminRowSeguro',payload); window.__FS14_USERS_CACHE=null; await this.load(true);}catch(e){alert(e.message||'No se pudo actualizar');}
+      }
+    };
+  }
+
+  // If old users route produced null error, recover cleanly
+  window.addEventListener('error',function(e){
+    const msg=safe(e.message||e.error?.message); if(msg.includes('innerHTML')&&msg.includes('null')){ try{ if((document.body.getAttribute('data-fs14-route')||'')==='users' && window.Modules?.users?.render) setTimeout(()=>window.Modules.users.render(),50); }catch(_){} }
+  });
+
+  // final periodic nav sync while interacting
+  setInterval(()=>{ const r=activeRouteFromDom(); if(r) syncNav(r); },1200);
+})();
+</script>
+
+
+<!-- FS V18 FINAL: spinner para todos los módulos + popup de resultados único Arena/Dashboard/Mi Mundial -->
+<style id="fs18-final-nav-spinner-results-css">
+  #fs18RouteOverlay{position:fixed;inset:0;z-index:999999;background:rgba(2,18,43,.42);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:22px}
+  #fs18RouteOverlay.show{display:flex!important}
+  .fs18-route-card{width:min(380px,calc(100vw - 46px));background:#fff;border-radius:28px;padding:26px 22px;box-shadow:0 24px 70px rgba(0,0,0,.28);border:1px solid rgba(190,220,255,.9);text-align:center;color:#06214f}
+  .fs18-ball{width:68px;height:68px;margin:0 auto 12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 18%,#18a4e8 19% 35%,#06b479 36% 55%,#fff 56% 63%,#e63946 64% 80%,#0b2a57 81%);animation:fs18Spin .72s linear infinite;box-shadow:0 9px 26px rgba(0,110,200,.24)}
+  .fs18-route-title{font-weight:900;font-size:22px;line-height:1.18;color:#06468b}
+  .fs18-route-sub{margin-top:6px;color:#66748a;font-size:14px;font-weight:700}
+  @keyframes fs18Spin{to{transform:rotate(360deg)}}
+  #mainNav .nav-btn.fs18-switching{opacity:.92;transform:translateY(-1px) scale(.985)!important}
+  @media(max-width:560px){.fs18-route-card{border-radius:24px;padding:22px 18px}.fs18-ball{width:58px;height:58px}.fs18-route-title{font-size:20px}}
+  /* popup de resultados reutilizable en Dashboard / Mi Mundial */
+  .fs18-results-table{max-height:62vh;overflow:auto;border:1px solid #cfe4ff;border-radius:18px;background:#fff;margin-top:16px;-webkit-overflow-scrolling:touch}
+  .fs18-results-table table{min-width:760px;width:100%;border-collapse:collapse;font-size:15px}
+  .fs18-results-table th{position:sticky;top:0;background:#eaf6ff;color:#06468b;font-weight:900;z-index:2}
+  .fs18-results-table th,.fs18-results-table td{padding:12px 14px;border-bottom:1px solid #dceeff;vertical-align:middle;white-space:nowrap;text-align:left}
+  .fs18-score{display:inline-flex;align-items:center;justify-content:center;min-width:72px;padding:7px 10px;border-radius:999px;background:#eef7ff;font-weight:900;color:#06214f}
+  .fs18-status{display:inline-block;padding:6px 10px;border-radius:999px;background:#eaf7ef;color:#067047;font-weight:900;font-size:13px}
+  @media(max-width:560px){.fs18-results-table table{font-size:14px;min-width:720px}.fs18-results-table th,.fs18-results-table td{padding:10px 11px}.modal h2{font-size:26px!important}}
+</style>
+<script id="fs18-final-nav-spinner-results-js">
+(function(){
+  'use strict';
+  const ROUTE_LABEL={arena:'Arena',dashboard:'Dashboard',world:'Mi Mundial',users:'Usuarios'};
+  const NAV_ROUTES=new Set(['arena','dashboard','world','users']);
+  function qs(s,r=document){return r.querySelector(s)}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
+  function esc(x){return String(x??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+  function safe(x){return String(x??'').trim()}
+  function arr(x){return Array.isArray(x)?x:(x&&Array.isArray(x.rows)?x.rows:(x&&Array.isArray(x.data)?x.data:[]))}
+  function val(o,ks,d=''){for(const k of ks){if(o&&o[k]!=null&&o[k]!=='')return o[k]}return d}
+  function norm(x){return safe(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+  function ensureOverlay(){
+    let o=qs('#fs18RouteOverlay');
+    if(o) return o;
+    o=document.createElement('div');
+    o.id='fs18RouteOverlay';
+    o.innerHTML='<div class="fs18-route-card"><div class="fs18-ball"></div><div class="fs18-route-title">Cargando módulo...</div><div class="fs18-route-sub">Preparando información mundialista</div></div>';
+    document.body.appendChild(o);
+    return o;
+  }
+  let hideTimer=null;
+  function showRouteSpinner(route){
+    const o=ensureOverlay();
+    const title=qs('.fs18-route-title',o), sub=qs('.fs18-route-sub',o);
+    if(title) title.textContent='Cargando '+(ROUTE_LABEL[route]||'módulo')+'...';
+    if(sub) sub.textContent='Actualizando vista y datos disponibles';
+    o.classList.add('show');
+    qsa('#mainNav [data-route]').forEach(b=>b.classList.toggle('fs18-switching', (b.getAttribute('data-route')||'')===route));
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(hideRouteSpinner,1600);
+  }
+  function hideRouteSpinner(){
+    const o=qs('#fs18RouteOverlay');
+    if(o) o.classList.remove('show');
+    qsa('#mainNav [data-route]').forEach(b=>b.classList.remove('fs18-switching'));
+  }
+  window.fs18ShowRouteSpinner=showRouteSpinner;
+  window.fs18HideRouteSpinner=hideRouteSpinner;
+
+  function forceActive(route){
+    if(!NAV_ROUTES.has(route)) return;
+    document.body.setAttribute('data-fs14-route',route);
+    document.body.setAttribute('data-active-route',route);
+    document.body.setAttribute('data-fs-route',route);
+    try{ if(window.state) window.state.route=route; }catch(_){ }
+    qsa('#mainNav [data-route]').forEach(b=>{
+      const on=(b.getAttribute('data-route')===route);
+      b.classList.toggle('active',on);
+      b.setAttribute('aria-pressed',on?'true':'false');
+    });
+  }
+  window.fs18ForceActive=forceActive;
+
+  // Captura ANTES de hotfix viejos: spinner para todos los módulos y activo inmediato.
+  document.addEventListener('pointerdown',function(ev){
+    const b=ev.target&&ev.target.closest&&ev.target.closest('#mainNav [data-route], .nav [data-route], button[data-route]');
+    if(!b) return;
+    const route=b.getAttribute('data-route');
+    if(!NAV_ROUTES.has(route)) return;
+    forceActive(route);
+    showRouteSpinner(route);
+  },true);
+  document.addEventListener('click',function(ev){
+    const b=ev.target&&ev.target.closest&&ev.target.closest('#mainNav [data-route], .nav [data-route], button[data-route]');
+    if(!b) return;
+    const route=b.getAttribute('data-route');
+    if(!NAV_ROUTES.has(route)) return;
+    forceActive(route);
+    showRouteSpinner(route);
+    setTimeout(()=>forceActive(route),80);
+    setTimeout(()=>forceActive(route),320);
+    setTimeout(hideRouteSpinner,1200);
+  },true);
+
+  // Oculta spinner cuando la vista ya cambió o terminó de pintar.
+  let lastViewHTML='';
+  setInterval(()=>{
+    const v=qs('#view');
+    if(!v) return;
+    const snap=(v.firstElementChild?.textContent||'').slice(0,80);
+    if(snap && snap!==lastViewHTML){ lastViewHTML=snap; setTimeout(hideRouteSpinner,280); }
+  },280);
+
+  async function getRows(){
+    try{
+      if(window.__FS18_RESULTS_CACHE && Date.now()-window.__FS18_RESULTS_CACHE.ts<90000) return window.__FS18_RESULTS_CACHE.rows;
+      let d=null;
+      if(typeof window.fs14Rows==='function') d=await window.fs14Rows().catch(()=>null);
+      if(!d && typeof api==='function') d=await api('fsKnockoutMatches',{},{ttl:90,timeout:18000}).catch(()=>null);
+      if(!d && typeof jsonp==='function') d=await jsonp('fsKnockoutMatches',{}).catch(()=>null);
+      const rows=arr(d?.rows||d?.data||d?.matches||d);
+      window.__FS18_RESULTS_CACHE={ts:Date.now(),rows};
+      return rows;
+    }catch(_){return []}
+  }
+  function rowId(m){return val(m,['Partido_ID','Partido Id','ID','id'],'')}
+  function fecha(m){return val(m,['Fecha','fecha'],'')}
+  function hora(m){return val(m,['Hora','hora'],'')}
+  function ronda(m){return val(m,['Ronda','Ronda_ID','Ronda ID'],'')}
+  function local(m){return val(m,['Equipo_Local','Local','Equipo Local'],'')}
+  function visit(m){return val(m,['Equipo_Visitante','Visitante','Equipo Visitante'],'')}
+  function realL(m){return val(m,['Marcador_Local_Real','Resultado_Local','Goles_Local'],'')}
+  function realV(m){return val(m,['Marcador_Visitante_Real','Resultado_Visitante','Goles_Visitante'],'')}
+  function avanza(m){return val(m,['Equipo_Avanza_Real','Equipo_Avanza','Avanza_Real','Avanza'],'')}
+  function status(m){return val(m,['Estatus','Estado'],'')}
+
+  async function openResultsPopup(){
+    const rows=await getRows();
+    const dates=[...new Set(rows.map(fecha).filter(Boolean))];
+    const body=`
+      <button class="modal-x" type="button" onclick="closeModal&&closeModal()">×</button>
+      <h2>🏁 Resultados Eliminatorias</h2>
+      <p class="muted strong">Resultados alimentados desde FS_Eliminatorias_Partidos.</p>
+      <select id="fs18ResDate" class="select" style="margin-top:14px"><option value="">Todas las fechas</option>${dates.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')}</select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><button id="fs18ResToday" class="btn light">📅 Hoy</button><button id="fs18ResAll" class="btn light">Todos</button></div>
+      <div id="fs18ResBody" class="fs18-results-table"></div>
+      <div class="modal-actions"><button class="btn ghost" onclick="closeModal&&closeModal()">Cerrar</button></div>`;
+    if(typeof modal==='function') modal(body); else { alert('Resultados cargados: '+rows.length); return; }
+    const render=(filter='')=>{
+      const today=new Date(); const yyyy=today.getFullYear(); const mm=String(today.getMonth()+1).padStart(2,'0'); const dd=String(today.getDate()).padStart(2,'0'); const todayStr=`${yyyy}-${mm}-${dd}`;
+      let data=rows;
+      if(filter==='today') data=rows.filter(r=>safe(fecha(r)).includes(todayStr));
+      else if(filter) data=rows.filter(r=>safe(fecha(r))===filter);
+      const html=`<table><thead><tr><th>Fecha</th><th>Ronda</th><th>Partido</th><th>Local</th><th>Resultado</th><th>Visitante</th><th>Avanza</th><th>Estatus</th></tr></thead><tbody>${data.map(m=>`<tr><td>${esc(fecha(m))}<br><small>${esc(hora(m))}</small></td><td>${esc(ronda(m))}</td><td><b>${esc(rowId(m))}</b></td><td>${esc(local(m))}</td><td><span class="fs18-score">${esc(realL(m)||'–')} - ${esc(realV(m)||'–')}</span></td><td>${esc(visit(m))}</td><td>${esc(avanza(m)||'–')}</td><td><span class="fs18-status">${esc(status(m)||'Pendiente')}</span></td></tr>`).join('')||'<tr><td colspan="8">Sin resultados con esos filtros.</td></tr>'}</tbody></table>`;
+      const cont=qs('#fs18ResBody'); if(cont) cont.innerHTML=html;
+    };
+    render('');
+    const d=qs('#fs18ResDate'); if(d) d.onchange=()=>render(d.value);
+    const t=qs('#fs18ResToday'); if(t) t.onclick=()=>render('today');
+    const a=qs('#fs18ResAll'); if(a) a.onclick=()=>{ if(d)d.value=''; render(''); };
+  }
+  window.fs18OpenResultsPopup=openResultsPopup;
+
+  // Reemplaza resultados de Dashboard y Mi Mundial por el popup de Arena/Eliminatorias.
+  document.addEventListener('click',function(ev){
+    const b=ev.target&&ev.target.closest&&ev.target.closest('button,.btn');
+    if(!b) return;
+    const txt=norm(b.textContent||'');
+    const route=document.body.getAttribute('data-fs14-route')||document.body.getAttribute('data-active-route')||'';
+    if((route==='dashboard'||route==='world') && (txt.includes('resultado')||b.id==='fs14Results'||b.id==='worldResults'||b.id==='dashResultsBtn')){
+      ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+      openResultsPopup();
+    }
+  },true);
+
+  // Si el hotfix anterior inyecta su botón, garantiza que apunte al popup correcto.
+  const mo=new MutationObserver(()=>{
+    qsa('#fs14Results,#worldResults,#dashResultsBtn,[id*="Results"]').forEach(b=>{
+      const txt=norm(b.textContent||'');
+      if(txt.includes('resultado')&&!b.dataset.fs18Bound){
+        b.dataset.fs18Bound='1';
+        b.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();openResultsPopup();},true);
+      }
+    });
+  });
+  setTimeout(()=>mo.observe(document.body,{childList:true,subtree:true}),300);
+})();
+</script>
+
+
+<!-- FS V21 FINAL NAV REPAIR: navegación real desde V14, sin listener viejo FS70 -->
+<style id="fs21-final-nav-css">
+  #fs21RouteOverlay{position:fixed;inset:0;z-index:999999;background:rgba(3,18,43,.48);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:22px}
+  #fs21RouteOverlay.show{display:flex!important}
+  .fs21-card{width:min(390px,calc(100vw - 48px));background:#fff;border-radius:28px;padding:28px 20px 25px;text-align:center;box-shadow:0 24px 72px rgba(0,0,0,.30);border:1px solid rgba(215,235,255,.95);color:#06214f}
+  .fs21-ball-wrap{width:72px;height:72px;margin:0 auto 15px;border-radius:50%;background:linear-gradient(180deg,#f8fbff,#e8f4ff);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(0,90,180,.16), inset 0 0 0 6px #eaf5ff}
+  .fs21-ball{font-size:42px;line-height:1;display:block;animation:fs21BallSpin .85s linear infinite;filter:drop-shadow(0 4px 5px rgba(0,0,0,.14))}
+  .fs21-title{font-weight:900;font-size:22px;line-height:1.18;color:#06468b}
+  .fs21-sub{margin-top:7px;color:#66748a;font-size:15px;font-weight:800}
+  @keyframes fs21BallSpin{to{transform:rotate(360deg)}}
+  #mainNav .nav-btn.fs21-loading{opacity:.96;transform:translateY(-1px) scale(.985)!important}
+  body[data-fs21-route="arena"] #mainNav .nav-btn[data-route="arena"],
+  body[data-fs21-route="dashboard"] #mainNav .nav-btn[data-route="dashboard"],
+  body[data-fs21-route="world"] #mainNav .nav-btn[data-route="world"],
+  body[data-fs21-route="users"] #mainNav .nav-btn[data-route="users"]{background:linear-gradient(135deg,#11a86d,#1498ff)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 10px 0 rgba(211,195,28,.75),0 14px 28px rgba(0,80,160,.20)!important;transform:translateY(-1px)!important}
+  body[data-fs21-route="arena"] #mainNav .nav-btn:not([data-route="arena"]),
+  body[data-fs21-route="dashboard"] #mainNav .nav-btn:not([data-route="dashboard"]),
+  body[data-fs21-route="world"] #mainNav .nav-btn:not([data-route="world"]),
+  body[data-fs21-route="users"] #mainNav .nav-btn:not([data-route="users"]){background:#fff!important;color:#092352!important;border:1px solid #cfe4ff!important;box-shadow:0 8px 20px rgba(0,70,140,.05)!important;transform:none!important}
+  @media(max-width:560px){.fs21-card{border-radius:26px;padding:25px 18px 23px}.fs21-ball-wrap{width:68px;height:68px}.fs21-ball{font-size:40px}.fs21-title{font-size:21px}.fs21-sub{font-size:14px}}
+</style>
+<script id="fs21-final-nav-js">
+(function(){
+  'use strict';
+  if(window.__FS21_FINAL_NAV__) return; window.__FS21_FINAL_NAV__=true;
+  const ROUTES=['arena','dashboard','world','users'];
+  const LABEL={arena:'Arena',dashboard:'Dashboard',world:'Mi Mundial',users:'Usuarios'};
+  let navigating=false, lastRoute='', lastAt=0, spinnerTimer=null;
+  function qs(s,r=document){return r.querySelector(s)}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
+  function valid(r){return ROUTES.includes(r)}
+  function esc(x){return String(x??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+  function ensureOverlay(){
+    let o=qs('#fs21RouteOverlay');
+    if(!o){
+      o=document.createElement('div'); o.id='fs21RouteOverlay';
+      o.innerHTML='<div class="fs21-card"><div class="fs21-ball-wrap"><span class="fs21-ball">⚽</span></div><div class="fs21-title">Cargando módulo...</div><div class="fs21-sub">Preparando pantalla</div></div>';
+      document.body.appendChild(o);
+    }
+    return o;
+  }
+  function setActive(route){
+    if(!valid(route)) return;
+    document.body.setAttribute('data-fs21-route',route);
+    document.body.setAttribute('data-fs19-route',route);
+    document.body.setAttribute('data-fs14-route',route);
+    document.body.setAttribute('data-active-route',route);
+    document.body.setAttribute('data-fs-route',route);
+    qsa('#mainNav [data-route]').forEach(b=>{
+      const on=b.getAttribute('data-route')===route;
+      b.classList.toggle('active',on);
+      b.classList.toggle('fs21-loading',on && navigating);
+      b.setAttribute('aria-pressed',on?'true':'false');
+    });
+  }
+  function showSpinner(route){
+    setActive(route);
+    const o=ensureOverlay();
+    const title=qs('.fs21-title',o); if(title) title.textContent='Cargando '+(LABEL[route]||'módulo')+'...';
+    const sub=qs('.fs21-sub',o); if(sub) sub.textContent='Preparando pantalla';
+    o.classList.add('show');
+    clearTimeout(spinnerTimer);
+    spinnerTimer=setTimeout(()=>hideSpinner(),5200);
+  }
+  function hideSpinner(){
+    const o=qs('#fs21RouteOverlay'); if(o) o.classList.remove('show');
+    qsa('#mainNav [data-route]').forEach(b=>b.classList.remove('fs21-loading','fs19-switching','fs20-switching','fs-switching'));
+    navigating=false;
+    clearTimeout(spinnerTimer);
+  }
+  function detectRoute(){
+    const t=(qs('#view')?.textContent||'').toLowerCase();
+    if(t.includes('mi mundial')||t.includes('comparativas')) return 'world';
+    if(t.includes('dashboard')||t.includes('ranking, bolsa')||t.includes('tabla de posiciones')) return 'dashboard';
+    if(t.includes('usuarios')) return 'users';
+    if(t.includes('arena mundialista')||t.includes('eliminatorias directas')||t.includes('carga rápida')||t.includes('carga rapida')) return 'arena';
+    return lastRoute || (typeof state!=='undefined' && state.route) || 'arena';
+  }
+  async function realNavigate(routeName){
+    if(!valid(routeName)) return;
+    const now=Date.now();
+    if(navigating && lastRoute===routeName && now-lastAt<900) return;
+    navigating=true; lastRoute=routeName; lastAt=now;
+    showSpinner(routeName);
+    try{
+      if(typeof state!=='undefined'){
+        state.route=routeName;
+        state.abortKey=(state.abortKey||0)+1;
+      }
+      setActive(routeName);
+      await new Promise(r=>setTimeout(r,30));
+      if(typeof route === 'function'){
+        await route(routeName, {fs21:true});
+      }else if(typeof Modules!=='undefined' && Modules && Modules[routeName] && typeof Modules[routeName].render==='function'){
+        if(typeof showApp==='function') showApp();
+        const viewEl=qs('#view'); if(viewEl) viewEl.innerHTML='';
+        await Modules[routeName].render({fs21:true});
+      }else if(window.Modules && window.Modules[routeName] && typeof window.Modules[routeName].render==='function'){
+        if(typeof showApp==='function') showApp();
+        await window.Modules[routeName].render({fs21:true});
+      }else{
+        throw new Error('No se encontró el render del módulo '+routeName);
+      }
+      setActive(routeName);
+      [80,250,700,1400,2400].forEach(ms=>setTimeout(()=>setActive(routeName),ms));
+      setTimeout(hideSpinner,320);
+    }catch(e){
+      console.error('FS21 navigation error', e);
+      const viewEl=qs('#view');
+      if(viewEl) viewEl.innerHTML='<div class="notice error">No se pudo abrir '+esc(LABEL[routeName]||routeName)+': '+esc(e.message||e)+'</div>';
+      hideSpinner();
+    }
+  }
+  window.fs21Navigate=realNavigate;
+  window.fs21SetActive=setActive;
+  function navTarget(ev){
+    const b=ev.target && ev.target.closest && ev.target.closest('#mainNav [data-route], .nav [data-route], button[data-route]');
+    if(!b) return null;
+    const r=b.getAttribute('data-route');
+    return valid(r)?{button:b,route:r}:null;
+  }
+  // pointerdown: sólo feedback inmediato; no cancelamos para no romper accesibilidad.
+  document.addEventListener('pointerdown',function(ev){const n=navTarget(ev); if(n){showSpinner(n.route);}},true);
+  document.addEventListener('touchstart',function(ev){const n=navTarget(ev); if(n){showSpinner(n.route);}}, {capture:true,passive:true});
+  // click: este listener final sí navega y bloquea controladores viejos posteriores/bubble.
+  document.addEventListener('click',function(ev){
+    const n=navTarget(ev); if(!n) return;
+    ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+    realNavigate(n.route);
+    return false;
+  }, true);
+  // En caso de que el navegador no dispare click por touch/selección, pointerup ejecuta navegación con debounce.
+  document.addEventListener('pointerup',function(ev){
+    const n=navTarget(ev); if(!n) return;
+    if(Date.now()-lastAt>250){ ev.preventDefault(); realNavigate(n.route); }
+  }, true);
+  // Reasigna onclick a botones recreados para tener una ruta directa adicional.
+  function bindButtons(){
+    qsa('#mainNav [data-route]').forEach(b=>{
+      if(b.dataset.fs21Bound==='1') return;
+      b.dataset.fs21Bound='1';
+      b.onclick=function(e){ e.preventDefault(); e.stopPropagation(); realNavigate(b.getAttribute('data-route')); return false; };
+    });
+  }
+  const mo=new MutationObserver(()=>{bindButtons(); if(!navigating) setActive(detectRoute());});
+  setTimeout(()=>{bindButtons(); mo.observe(document.body,{childList:true,subtree:true}); setActive(detectRoute());},100);
+  setInterval(()=>{ if(!navigating) setActive(detectRoute()); },900);
+})();
+</script>
